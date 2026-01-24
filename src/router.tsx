@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 
 import App from './App'
+import DashboardPage from './pages/Dashboard'
 import EventsPage from './pages/Events'
 import MessageDetailPage from './pages/MessageDetail'
 
@@ -18,6 +19,9 @@ const RootLayout = () => (
         <span className="nav-subtitle">Sources</span>
       </div>
       <div className="nav-links">
+        <Link className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/dashboard">
+          Dashboard
+        </Link>
         <Link className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/events">
           Events
         </Link>
@@ -68,7 +72,7 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: EventsPage,
+  component: DashboardPage,
 })
 
 const sourcesRoute = createRoute({
@@ -81,6 +85,12 @@ const eventsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/events',
   component: EventsPage,
+})
+
+const dashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dashboard',
+  component: DashboardPage,
 })
 
 const messageDetailRoute = createRoute({
@@ -99,6 +109,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   sourcesRoute,
   eventsRoute,
+  dashboardRoute,
   messageDetailRoute,
   setupRoute,
 ])

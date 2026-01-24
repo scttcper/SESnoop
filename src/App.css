@@ -501,6 +501,68 @@ h3 {
   margin-top: 1.5rem;
 }
 
+.chart {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 0.5rem;
+  align-items: end;
+  height: 220px;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+.chart-col {
+  display: grid;
+  gap: 0.25rem;
+  align-items: end;
+  min-width: 24px;
+}
+
+.chart-bar {
+  width: 100%;
+  border-radius: 6px;
+  min-height: 4px;
+  background: rgba(243, 108, 61, 0.35);
+}
+
+.chart-bar.delivered {
+  background: rgba(30, 143, 111, 0.35);
+}
+
+.chart-bar.bounced {
+  background: rgba(215, 72, 72, 0.35);
+}
+
+.chart-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.breakdown {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.breakdown-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 60px;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.breakdown-bar {
+  height: 8px;
+  background: #f3ebe1;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.breakdown-bar div {
+  height: 100%;
+  background: var(--accent);
+}
+
 .timeline {
   display: grid;
   gap: 0.75rem;

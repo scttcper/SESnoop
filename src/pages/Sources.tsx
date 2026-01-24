@@ -14,7 +14,7 @@ export default function SourcesPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [isCreating, setIsCreating] = useState(false)
-  
+
   const [form, setForm] = useState({
     name: '',
     color: 'blue',
@@ -46,7 +46,7 @@ export default function SourcesPage() {
     const retentionValue = form.retention_days.trim()
       ? Number(form.retention_days)
       : undefined
-    
+
     createMutation.mutate({
       name: form.name.trim(),
       color: form.color,
@@ -101,7 +101,7 @@ export default function SourcesPage() {
                     </div>
 
                     <div className="flex gap-3 pt-2">
-                        <Button 
+                        <Button
                             variant="ghost"
                             className="flex-1 text-white/60 hover:text-white bg-transparent border border-white/10 hover:bg-white/5 disabled:opacity-50"
                             onClick={() => setIsCreating(false)}
@@ -109,7 +109,7 @@ export default function SourcesPage() {
                         >
                             Cancel
                         </Button>
-                        <Button 
+                        <Button
                             className="flex-1 bg-white text-black hover:bg-white/90 disabled:opacity-50 font-medium"
                             onClick={handleCreate}
                             disabled={!form.name.trim() || createMutation.isPending}
@@ -131,7 +131,7 @@ export default function SourcesPage() {
                 <h1 className="text-2xl font-display font-semibold tracking-tight text-white">Sources</h1>
                 <p className="text-white/60 mt-1">Manage your event sources and configurations.</p>
             </div>
-            <Button 
+            <Button
                 onClick={() => setIsCreating(true)}
                 className="bg-white text-black hover:bg-white/90 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors"
             >
@@ -152,8 +152,8 @@ export default function SourcesPage() {
                     <div key={source.id} className="group flex flex-col rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-all duration-200">
                         <div className="p-6 flex-1">
                             <div className="flex items-start justify-between mb-4">
-                                <Link 
-                                    to="/s/$sourceId/events" 
+                                <Link
+                                    to="/s/$sourceId/events"
                                     params={{ sourceId: source.id.toString() }}
                                     className="flex items-center gap-3"
                                 >
@@ -164,7 +164,7 @@ export default function SourcesPage() {
                                 </Link>
                                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Link
-                                         to="/s/$sourceId/settings" 
+                                         to="/s/$sourceId/settings"
                                          params={{ sourceId: source.id.toString() }}
                                          className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-md transition-colors"
                                          title="Settings"
@@ -173,7 +173,7 @@ export default function SourcesPage() {
                                     </Link>
                                 </div>
                             </div>
-                            
+
                             <div className="space-y-4">
                                 <div>
                                     <span className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1 block">Ingestion Token</span>
@@ -194,8 +194,8 @@ export default function SourcesPage() {
                             </div>
                         </div>
                         <div className="border-t border-white/5 p-4 flex items-center justify-between bg-white/[0.01]">
-                             <Link 
-                                to="/s/$sourceId/events" 
+                             <Link
+                                to="/s/$sourceId/events"
                                 params={{ sourceId: source.id.toString() }}
                                 className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-2"
                              >
@@ -212,10 +212,10 @@ export default function SourcesPage() {
                         </div>
                     </div>
                 ))}
-                
+
                 {/* Empty State Card */}
                 {sources.length === 0 && (
-                    <button 
+                    <button
                         onClick={() => setIsCreating(true)}
                         className="flex flex-col items-center justify-center h-64 rounded-xl border border-dashed border-white/10 bg-transparent hover:bg-white/[0.02] hover:border-white/20 transition-all group"
                     >

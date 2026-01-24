@@ -121,9 +121,9 @@ export default function SourceSetupPage() {
                     </div>
                     <div className="sm:col-span-2">
                         <span className="block text-xs uppercase tracking-wider text-white/40 font-semibold mb-1.5">Webhook URL</span>
-                        <InputGroup className="bg-white/5 border-white/10 text-white">
+                        <InputGroup className="bg-white/10 border-white/10 text-white h-9">
                             <InputGroupInput
-                                className="font-mono text-sm text-white"
+                                className="font-mono text-sm text-white h-9 py-0 leading-9"
                                 readOnly
                                 value={setupInfo.webhook_url}
                                 onFocus={(event) => event.currentTarget.select()}
@@ -154,16 +154,26 @@ export default function SourceSetupPage() {
         </section>
 
         <section>
-            <h3 className="text-lg font-semibold text-white mb-4">Step-by-step Instructions</h3>
-            <div className="space-y-6 border-l border-white/10 ml-3 pl-8 relative">
+            <h3 className="text-lg font-semibold text-white mb-6">Step-by-step Instructions</h3>
+            <div className="space-y-0">
                  {setupInfo.steps.map((step, i) => (
-                    <div key={i} className="relative">
-                        <span className="absolute -left-[43px] flex items-center justify-center w-7 h-7 rounded-full bg-[#0B0C0E] border border-white/20 text-xs font-mono text-white/60">
+                    <div key={i} className="group relative pl-10 pb-8 last:pb-0">
+                        {/* Connecting line */}
+                        {i !== setupInfo.steps.length - 1 && (
+                            <div className="absolute left-3 top-6 bottom-0 w-px -translate-x-1/2 bg-white/10 group-hover:bg-white/20 transition-colors" />
+                        )}
+                        
+                        {/* Step Counter */}
+                        <div className="absolute left-0 top-0 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[10px] font-mono font-medium text-white/60 ring-4 ring-[#0B0C0E] transition-colors group-hover:border-white/30 group-hover:bg-white/10 group-hover:text-white">
                             {i + 1}
-                        </span>
-                        <p className="text-white/80 leading-relaxed bg-white/[0.02] p-4 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
-                            {step}
-                        </p>
+                        </div>
+
+                        {/* Content Card */}
+                        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04] hover:border-white/10 hover:shadow-sm">
+                            <p className="text-sm text-white/80 leading-relaxed">
+                                {step}
+                            </p>
+                        </div>
                     </div>
                  ))}
             </div>

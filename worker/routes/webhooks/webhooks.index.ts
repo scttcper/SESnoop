@@ -195,6 +195,10 @@ router.post('/webhooks/:source_token', async (c) => {
       return c.json({ ok: true }, HttpStatusCodes.OK)
     }
     case 'UnsubscribeConfirmation': {
+      console.warn('SNS unsubscribe confirmation received', {
+        messageId: snsMessage.MessageId,
+        topicArn: snsMessage.TopicArn,
+      })
       return c.json({ ok: true }, HttpStatusCodes.OK)
     }
     default:

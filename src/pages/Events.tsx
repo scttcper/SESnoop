@@ -329,7 +329,10 @@ export default function EventsPage() {
                 {event.event_type}
               </span>
               <span>{event.message_subject ?? '—'}</span>
-              <Link className="link" to={`/messages/${event.ses_message_id}`}>
+              <Link
+                className="link"
+                to={`/messages/${event.ses_message_id}?sourceId=${sourceId ?? ''}`}
+              >
                 View
               </Link>
             </div>

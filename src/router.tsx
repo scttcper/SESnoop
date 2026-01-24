@@ -8,6 +8,7 @@ import {
 
 import App from './App'
 import EventsPage from './pages/Events'
+import MessageDetailPage from './pages/MessageDetail'
 
 const RootLayout = () => (
   <div className="shell">
@@ -82,6 +83,12 @@ const eventsRoute = createRoute({
   component: EventsPage,
 })
 
+const messageDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/messages/$sesMessageId',
+  component: MessageDetailPage,
+})
+
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/setup',
@@ -92,6 +99,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   sourcesRoute,
   eventsRoute,
+  messageDetailRoute,
   setupRoute,
 ])
 

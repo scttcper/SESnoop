@@ -501,6 +501,36 @@ h3 {
   margin-top: 1.5rem;
 }
 
+.timeline {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-columns: 180px minmax(160px, 1fr) 120px;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: var(--surface-strong);
+  border: 1px solid var(--outline);
+}
+
+.metadata summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.code-block {
+  background: #1e1a16;
+  color: #fef5ea;
+  padding: 1rem;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
 .reveal {
   animation: rise 0.6s ease both;
   animation-delay: var(--delay);
@@ -542,6 +572,10 @@ h3 {
 
   .table-header,
   .table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-row {
     grid-template-columns: 1fr;
   }
 }

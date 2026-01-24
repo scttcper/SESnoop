@@ -9,7 +9,18 @@ import {
   updateSourceFn,
 } from './lib/queries'
 
-const COLORS = ['purple', 'blue', 'cyan', 'green', 'red', 'orange', 'yellow', 'gray']
+const COLOR_STYLES: Record<string, string> = {
+  purple: 'bg-purple-500/80 shadow-[0_0_8px_rgba(var(--color-purple-500),0.5)]',
+  blue: 'bg-blue-500/80 shadow-[0_0_8px_rgba(var(--color-blue-500),0.5)]',
+  cyan: 'bg-cyan-500/80 shadow-[0_0_8px_rgba(var(--color-cyan-500),0.5)]',
+  green: 'bg-green-500/80 shadow-[0_0_8px_rgba(var(--color-green-500),0.5)]',
+  red: 'bg-red-500/80 shadow-[0_0_8px_rgba(var(--color-red-500),0.5)]',
+  orange: 'bg-orange-500/80 shadow-[0_0_8px_rgba(var(--color-orange-500),0.5)]',
+  yellow: 'bg-yellow-500/80 shadow-[0_0_8px_rgba(var(--color-yellow-500),0.5)]',
+  gray: 'bg-gray-500/80 shadow-[0_0_8px_rgba(var(--color-gray-500),0.5)]',
+}
+
+const COLORS = Object.keys(COLOR_STYLES)
 
 const formatDate = (value?: number | null) => {
   if (!value) {
@@ -24,6 +35,8 @@ export default function App() {
   const [panel, setPanel] = useState<'overview' | 'settings' | 'setup'>('overview')
   const [isCreating, setIsCreating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false)
+  
   const [form, setForm] = useState({
     name: '',
     color: 'blue',
@@ -80,6 +93,7 @@ export default function App() {
       // or we can explicitly check here. For simplicity, let the effect handle it.
       if (selectedSource) {
          setSelectedId(null)
+         setIsMobileDetailOpen(false)
       }
     },
     onError: (err) => {
@@ -149,6 +163,7 @@ export default function App() {
   const startCreate = () => {
     setIsCreating(true)
     setIsEditing(false)
+    setIsMobileDetailOpen(true)
     resetForm()
   }
 
@@ -158,6 +173,7 @@ export default function App() {
     }
     setIsEditing(true)
     setIsCreating(false)
+    setIsMobileDetailOpen(true)
     resetForm(selectedSource)
   }
 
@@ -165,8 +181,7 @@ export default function App() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-[#0B0C0E] border-x border-white/10">
       <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
         <div>
-          <p className="text-xs font-medium text-blue-400 mb-1">SESnoop recreation</p>
-          <h1 className="text-2xl font-display font-semibold tracking-tight text-white">Sources control room</h1>
+          <h1 className="text-2xl font-display font-semibold tracking-tight text-white">Sources</h1>
         </div>
         <div className="flex items-center space-x-3">
           <button 
@@ -188,7 +203,7 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sources List Panel */}
-        <section className="w-1/3 min-w-[320px] max-w-md border-r border-white/10 flex flex-col bg-white/[0.01]">
+        <section className={`w-full md:w-1/3 md:min-w-[320px] max-w-md border-r border-white/10 flex flex-col bg-white/[0.01] ${isMobileDetailOpen ? 'hidden md:flex' : 'flex'}`}>
           <div className="flex items-center justify-between p-4 border-b border-white/5">
             <h2 className="text-sm font-semibold text-white">Sources</h2>
             <span className="text-xs text-white/40 font-mono">
@@ -211,11 +226,12 @@ export default function App() {
                   setPanel('overview')
                   setIsCreating(false)
                   setIsEditing(false)
+                  setIsMobileDetailOpen(true)
                 }}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
-                    <span className={`w-2 h-2 rounded-full ring-1 ring-white/20 bg-${source.color}-500/80 shadow-[0_0_8px_rgba(var(--color-${source.color}-500),0.5)]`} />
+                    <span className={`w-2 h-2 rounded-full ring-1 ring-white/20 ${COLOR_STYLES[source.color] || COLOR_STYLES.blue}`} />
                     <span className="text-sm font-medium text-white">{source.name}</span>
                   </div>
                 </div>
@@ -249,19 +265,34 @@ export default function App() {
         </section>
 
         {/* Detail Panel */}
-        <section className="flex-1 flex flex-col bg-[#0B0C0E] overflow-y-auto">
+        <section className={`flex-1 flex flex-col bg-[#0B0C0E] overflow-y-auto ${!isMobileDetailOpen ? 'hidden md:flex' : 'flex'}`}>
           {isCreating || isEditing ? (
             <div className="max-w-xl w-full mx-auto py-12 px-6">
               <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-display font-semibold text-white">
-                  {isEditing ? 'Edit source' : 'Create source'}
-                </h2>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="md:hidden text-white/60 hover:text-white"
+                    onClick={() => setIsMobileDetailOpen(false)}
+                  >
+                    ← Back
+                  </button>
+                  <h2 className="text-xl font-display font-semibold text-white">
+                    {isEditing ? 'Edit source' : 'Create source'}
+                  </h2>
+                </div>
                 <button
                   className="text-sm text-white/60 hover:text-white transition-colors"
                   type="button"
                   onClick={() => {
                     setIsCreating(false)
                     setIsEditing(false)
+                    // If we cancel create/edit on mobile we should probably go back to list if no source selected?
+                    // But usually we just return to view mode if a source was selected.
+                    // Let's just stay in detail view if selectedSource exists, or go back to list if not.
+                    if (!selectedSource) {
+                       setIsMobileDetailOpen(false)
+                    }
                   }}
                 >
                   Cancel
@@ -330,12 +361,17 @@ export default function App() {
             <div className="flex-1 flex flex-col">
               <div className="px-8 py-6 border-b border-white/10 flex items-center justify-between bg-white/[0.01]">
                 <div>
+                  <button
+                    type="button"
+                    className="md:hidden text-xs font-medium text-white/60 hover:text-white mb-3 flex items-center gap-1"
+                    onClick={() => setIsMobileDetailOpen(false)}
+                  >
+                    ← All sources
+                  </button>
                   <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Selected source</p>
                   <div className="flex items-center space-x-3">
+                    <span className={`w-3 h-3 rounded-full ring-1 ring-white/20 ${COLOR_STYLES[selectedSource.color] || COLOR_STYLES.blue}`} />
                     <h2 className="text-2xl font-display font-semibold text-white">{selectedSource.name}</h2>
-                    <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] uppercase font-bold tracking-wide text-white/50">
-                      {selectedSource.color}
-                    </span>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">

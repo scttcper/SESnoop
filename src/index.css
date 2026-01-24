@@ -15,6 +15,19 @@
   --color-foreground: var(--foreground);
   --font-display: "Space Grotesk", sans-serif;
   --font-sans: "Inter", sans-serif;
+
+  /* Modern Palette Overrides (Linear/Vercel inspired) */
+  --color-red-400: #F85149;
+  --color-red-500: #E5484D;
+  
+  --color-green-400: #4CC38A;
+  --color-green-500: #30A46C;
+  
+  --color-blue-400: #5EB1EF;
+  --color-blue-500: #0091FF;
+  
+  --color-orange-400: #FFC53D;
+  --color-orange-500: #F5D90A;
 }
 
 body {

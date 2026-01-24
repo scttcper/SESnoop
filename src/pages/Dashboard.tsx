@@ -37,11 +37,10 @@ export default function DashboardPage() {
   }, [overview])
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-[#0B0C0E] p-6 space-y-8 border-x border-white/10">
-      <header className="flex items-center justify-between">
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-[#0B0C0E] border-x border-white/10">
+      <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
         <div>
-          <p className="text-xs font-medium text-blue-400 mb-1">Source overview</p>
-          <h1 className="text-3xl font-display font-bold tracking-tight text-white">Dashboard metrics</h1>
+          <h1 className="text-2xl font-display font-semibold tracking-tight text-white">Dashboard</h1>
         </div>
         <div className="flex items-center space-x-3">
           <Link 
@@ -59,6 +58,8 @@ export default function DashboardPage() {
           </button>
         </div>
       </header>
+
+      <div className="p-6 space-y-8 flex-1 overflow-y-auto">
 
       <section className="space-y-6">
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -205,6 +206,7 @@ export default function DashboardPage() {
           </section>
         </div>
       ) : null}
+      </div>
     </div>
   )
 }

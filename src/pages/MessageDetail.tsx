@@ -2,6 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
+import {
   messageQueryOptions,
   sourcesQueryOptions,
 } from '../lib/queries'
@@ -73,17 +80,25 @@ export default function MessageDetailPage() {
         <div className="w-full md:w-1/3 mb-6">
           <label className="flex flex-col space-y-2">
             <span className="text-sm font-medium text-white/60">Source</span>
-            <select
-              className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
-              value={sourceId ?? ''}
-              onChange={(event) => setSourceId(Number(event.target.value))}
+            <Select
+              items={sources.map((source) => ({
+                label: source.name,
+                value: String(source.id),
+              }))}
+              value={sourceId ? String(sourceId) : ''}
+              onValueChange={(value) => setSourceId(Number(value))}
             >
-              {sources.map((source) => (
-                <option key={source.id} value={source.id} className="text-black">
-                  {source.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors">
+                <SelectValue placeholder="Select source" />
+              </SelectTrigger>
+              <SelectContent>
+                {sources.map((source) => (
+                  <SelectItem key={source.id} value={String(source.id)}>
+                    {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         </div>
 

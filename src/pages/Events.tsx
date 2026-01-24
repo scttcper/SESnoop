@@ -1,6 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
 import { eventsQueryOptions, sourcesQueryOptions } from '../lib/queries'
 
 const EVENT_TYPES = [
@@ -113,13 +122,13 @@ export default function EventsPage() {
           >
             Sources
           </Link>
-          <button
+          <Button variant="ghost"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-9 px-4 py-2 shadow-sm"
             type="button"
             onClick={() => setPage(1)}
           >
             Refresh
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -137,24 +146,32 @@ export default function EventsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <label className="flex flex-col space-y-2">
             <span className="text-sm font-medium text-white/60">Source</span>
-            <select
-              className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
-              value={sourceId ?? ''}
-              onChange={(event) => {
+            <Select
+              items={sources.map((source) => ({
+                label: source.name,
+                value: String(source.id),
+              }))}
+              value={sourceId ? String(sourceId) : ''}
+              onValueChange={(value) => {
                 setPage(1)
-                setSourceId(Number(event.target.value))
+                setSourceId(Number(value))
               }}
             >
-              {sources.map((source) => (
-                <option key={source.id} value={source.id} className="text-black">
-                  {source.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors">
+                <SelectValue placeholder="Select source" />
+              </SelectTrigger>
+              <SelectContent>
+                {sources.map((source) => (
+                  <SelectItem key={source.id} value={String(source.id)}>
+                    {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <label className="flex flex-col space-y-2">
             <span className="text-sm font-medium text-white/60">Search</span>
-            <input
+            <Input
               className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-colors"
               value={search}
               onChange={(event) => {
@@ -166,26 +183,34 @@ export default function EventsPage() {
           </label>
           <label className="flex flex-col space-y-2">
             <span className="text-sm font-medium text-white/60">Date range</span>
-            <select
-              className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+            <Select
+              items={DATE_PRESETS.map((preset) => ({
+                label: preset.label,
+                value: preset.value,
+              }))}
               value={datePreset}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 setPage(1)
-                setDatePreset(event.target.value)
+                setDatePreset(value)
               }}
             >
-              {DATE_PRESETS.map((preset) => (
-                <option key={preset.value} value={preset.value} className="text-black">
-                  {preset.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors">
+                <SelectValue placeholder="Select range" />
+              </SelectTrigger>
+              <SelectContent>
+                {DATE_PRESETS.map((preset) => (
+                  <SelectItem key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           {datePreset === 'custom' ? (
             <div className="flex space-x-2">
               <label className="flex flex-col space-y-2 flex-1">
                 <span className="text-sm font-medium text-white/60">From</span>
-                <input
+                <Input
                   className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
                   type="date"
                   value={from}
@@ -197,7 +222,7 @@ export default function EventsPage() {
               </label>
               <label className="flex flex-col space-y-2 flex-1">
                 <span className="text-sm font-medium text-white/60">To</span>
-                <input
+                <Input
                   className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
                   type="date"
                   value={to}
@@ -219,7 +244,7 @@ export default function EventsPage() {
                 const count = counts.event_types[type] ?? 0
                 const active = selectedEventTypes.includes(type)
                 return (
-                  <button
+                  <Button variant="ghost"
                     key={type}
                     className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                       active 
@@ -230,7 +255,7 @@ export default function EventsPage() {
                     onClick={() => toggleEventType(type)}
                   >
                     {type} <span className="opacity-60 ml-1">({count})</span>
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -242,7 +267,7 @@ export default function EventsPage() {
                 const count = counts.bounce_types[type] ?? 0
                 const active = selectedBounceTypes.includes(type)
                 return (
-                  <button
+                  <Button variant="ghost"
                     key={type}
                     className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                       active 
@@ -253,7 +278,7 @@ export default function EventsPage() {
                     onClick={() => toggleBounceType(type)}
                   >
                     {type} <span className="opacity-60 ml-1">({count})</span>
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -311,15 +336,15 @@ export default function EventsPage() {
         </div>
 
         <div className="flex items-center justify-between pt-4">
-          <button
+          <Button variant="ghost"
             className="px-4 py-2 rounded-md border border-white/10 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
             type="button"
             onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
             disabled={!pagination || pagination.page <= 1}
           >
             Previous
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             className="px-4 py-2 rounded-md border border-white/10 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
             type="button"
             onClick={() =>
@@ -330,7 +355,7 @@ export default function EventsPage() {
             disabled={!pagination || pagination.page >= pagination.total_pages}
           >
             Next
-          </button>
+          </Button>
         </div>
       </section>
       </div>

@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
+import { Button } from '../components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
 import { overviewQueryOptions, sourcesQueryOptions } from '../lib/queries'
 
 const formatPercent = (value: number) =>
@@ -49,13 +57,13 @@ export default function DashboardPage() {
           >
             Events
           </Link>
-          <button
+          <Button variant="ghost"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-9 px-4 py-2 shadow-sm"
             type="button"
             onClick={() => sourceId && setSourceId(sourceId)}
           >
             Refresh
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -75,17 +83,25 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-white/60">Source:</span>
-            <select
-              className="bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
-              value={sourceId ?? ''}
-              onChange={(event) => setSourceId(Number(event.target.value))}
+            <Select
+              items={sources.map((source) => ({
+                label: source.name,
+                value: String(source.id),
+              }))}
+              value={sourceId ? String(sourceId) : ''}
+              onValueChange={(value) => setSourceId(Number(value))}
             >
-              {sources.map((source) => (
-                <option key={source.id} value={source.id} className="text-black">
-                  {source.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-white/30 transition-colors">
+                <SelectValue placeholder="Select source" />
+              </SelectTrigger>
+              <SelectContent>
+                {sources.map((source) => (
+                  <SelectItem key={source.id} value={String(source.id)}>
+                    {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         

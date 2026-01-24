@@ -4,6 +4,8 @@ import {
   createRouter,
   Link,
   Outlet,
+  HeadContent,
+  Scripts,
 } from '@tanstack/react-router'
 
 import App from './App'
@@ -12,46 +14,50 @@ import EventsPage from './pages/Events'
 import MessageDetailPage from './pages/MessageDetail'
 
 const RootLayout = () => (
-  <div className="flex flex-col min-h-screen font-sans selection:bg-white/20">
-    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B0C0E]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#0B0C0E]/60">
-      <div className="flex h-14 items-center px-4 md:px-6 max-w-7xl mx-auto w-full">
-        <div className="mr-8 flex items-center space-x-2">
-          <span className="font-display font-bold text-lg tracking-tight">
-            SESnoop
-          </span>
+  <>
+    <HeadContent />
+    <div className="flex flex-col min-h-screen font-sans selection:bg-white/20">
+      <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B0C0E]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#0B0C0E]/60">
+        <div className="flex h-14 items-center px-4 md:px-6 max-w-7xl mx-auto w-full">
+          <div className="mr-8 flex items-center space-x-2">
+            <span className="font-display font-bold text-lg tracking-tight">
+              SESnoop
+            </span>
+          </div>
+          <div className="flex items-center space-x-6 text-sm font-medium">
+            <Link
+              to="/dashboard"
+              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/events"
+              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+            >
+              Events
+            </Link>
+            <Link
+              to="/sources"
+              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+            >
+              Sources
+            </Link>
+            <Link
+              to="/setup"
+              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+            >
+              Setup
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center space-x-6 text-sm font-medium">
-          <Link
-            to="/dashboard"
-            className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/events"
-            className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-          >
-            Events
-          </Link>
-          <Link
-            to="/sources"
-            className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-          >
-            Sources
-          </Link>
-          <Link
-            to="/setup"
-            className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-          >
-            Setup
-          </Link>
-        </div>
-      </div>
-    </nav>
-    <main className="flex-1 max-w-7xl mx-auto w-full">
-      <Outlet />
-    </main>
-  </div>
+      </nav>
+      <main className="flex-1 max-w-7xl mx-auto w-full">
+        <Outlet />
+      </main>
+    </div>
+    <Scripts />
+  </>
 )
 
 const SetupPage = () => (
@@ -78,6 +84,13 @@ const SetupPage = () => (
 )
 
 const rootRoute = createRootRoute({
+  head: () => ({
+    meta: [
+      {
+        title: 'SESnoop',
+      },
+    ],
+  }),
   component: RootLayout,
 })
 
@@ -85,36 +98,54 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: DashboardPage,
+  head: () => ({
+    meta: [{ title: 'Dashboard | SESnoop' }],
+  }),
 })
 
 const sourcesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sources',
   component: App,
+  head: () => ({
+    meta: [{ title: 'Sources | SESnoop' }],
+  }),
 })
 
 const eventsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/events',
   component: EventsPage,
+  head: () => ({
+    meta: [{ title: 'Events | SESnoop' }],
+  }),
 })
 
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dashboard',
   component: DashboardPage,
+  head: () => ({
+    meta: [{ title: 'Dashboard | SESnoop' }],
+  }),
 })
 
 const messageDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/messages/$sesMessageId',
   component: MessageDetailPage,
+  head: ({ params }) => ({
+    meta: [{ title: `Message ${params.sesMessageId} | SESnoop` }],
+  }),
 })
 
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/setup',
   component: SetupPage,
+  head: () => ({
+    meta: [{ title: 'Setup | SESnoop' }],
+  }),
 })
 
 const routeTree = rootRoute.addChildren([

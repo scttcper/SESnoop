@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import './App.css'
 
 type Source = {
   id: number
@@ -204,38 +203,50 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <header className="topbar">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-[#0B0C0E] border-x border-white/10">
+      <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
         <div>
-          <p className="eyebrow">Sessy recreation</p>
-          <h1>Sources control room</h1>
+          <p className="text-xs font-medium text-blue-400 mb-1">SESnoop recreation</p>
+          <h1 className="text-2xl font-display font-semibold tracking-tight text-white">Sources control room</h1>
         </div>
-        <div className="topbar-actions">
-          <button className="button ghost" type="button" onClick={startCreate}>
+        <div className="flex items-center space-x-3">
+          <button 
+            className="text-sm font-medium text-white/60 hover:text-white transition-colors px-3 py-2" 
+            type="button" 
+            onClick={startCreate}
+          >
             New source
           </button>
-          <button className="button primary" type="button" onClick={() => loadSources(true)}>
+          <button 
+             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-9 px-4 py-2 shadow-sm"
+            type="button" 
+            onClick={() => loadSources(true)}
+          >
             Refresh
           </button>
         </div>
-      </header>
+      </div>
 
-      <div className="layout">
-        <section className="panel">
-          <div className="panel-header">
-            <h2>Sources</h2>
-            <span className="meta">
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sources List Panel */}
+        <section className="w-1/3 min-w-[320px] max-w-md border-r border-white/10 flex flex-col bg-white/[0.01]">
+          <div className="flex items-center justify-between p-4 border-b border-white/5">
+            <h2 className="text-sm font-semibold text-white">Sources</h2>
+            <span className="text-xs text-white/40 font-mono">
               {loading ? 'Loading...' : `${sources.length} total`}
             </span>
           </div>
-          {error ? <p className="notice error">{error}</p> : null}
-          <div className="source-list">
-            {sources.map((source, index) => (
+          {error ? <p className="px-4 py-3 text-sm text-red-400 bg-red-400/10 border-b border-red-400/20">{error}</p> : null}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {sources.map((source) => (
               <button
                 key={source.id}
                 type="button"
-                className={`source-card ${selectedId === source.id ? 'selected' : ''} reveal`}
-                style={{ '--delay': `${index * 0.05}s` } as CSSProperties}
+                className={`w-full text-left p-3 rounded-lg transition-all duration-200 border ${
+                  selectedId === source.id 
+                    ? 'bg-white/10 border-white/10 shadow-sm' 
+                    : 'bg-transparent border-transparent hover:bg-white/[0.03]'
+                }`}
                 onClick={() => {
                   setSelectedId(source.id)
                   setPanel('overview')
@@ -243,26 +254,34 @@ export default function App() {
                   setIsEditing(false)
                 }}
               >
-                <div className="source-card-title">
-                  <span className={`palette-dot ${source.color}`} />
-                  <span>{source.name}</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className={`w-2 h-2 rounded-full ring-1 ring-white/20 bg-${source.color}-500/80 shadow-[0_0_8px_rgba(var(--color-${source.color}-500),0.5)]`} />
+                    <span className="text-sm font-medium text-white">{source.name}</span>
+                  </div>
                 </div>
-                <div className="source-card-meta">
-                  <span>Token</span>
-                  <span className="mono">{source.token.slice(0, 8)}…</span>
-                </div>
-                <div className="source-card-meta">
-                  <span>Retention</span>
-                  <span>
-                    {source.retention_days ? `${source.retention_days} days` : 'None'}
-                  </span>
+                <div className="grid grid-cols-2 gap-2 text-xs text-white/40">
+                  <div className="flex flex-col">
+                    <span className="mb-0.5 uppercase tracking-wider text-[10px]">Token</span>
+                    <span className="font-mono text-white/60">{source.token.slice(0, 8)}…</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="mb-0.5 uppercase tracking-wider text-[10px]">Retention</span>
+                    <span className="text-white/60">
+                      {source.retention_days ? `${source.retention_days} days` : 'None'}
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}
             {!loading && sources.length === 0 ? (
-              <div className="empty">
-                <p>No sources yet.</p>
-                <button className="button primary" type="button" onClick={startCreate}>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-sm text-white/40 mb-4">No sources yet.</p>
+                <button 
+                   className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-9 px-4 py-2 shadow-sm"
+                  type="button" 
+                  onClick={startCreate}
+                >
                   Create the first source
                 </button>
               </div>
@@ -270,13 +289,16 @@ export default function App() {
           </div>
         </section>
 
-        <section className="panel detail-panel">
+        {/* Detail Panel */}
+        <section className="flex-1 flex flex-col bg-[#0B0C0E] overflow-y-auto">
           {isCreating || isEditing ? (
-            <div className="detail">
-              <div className="panel-header">
-                <h2>{isEditing ? 'Edit source' : 'Create source'}</h2>
+            <div className="max-w-xl w-full mx-auto py-12 px-6">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-display font-semibold text-white">
+                  {isEditing ? 'Edit source' : 'Create source'}
+                </h2>
                 <button
-                  className="button ghost"
+                  className="text-sm text-white/60 hover:text-white transition-colors"
                   type="button"
                   onClick={() => {
                     setIsCreating(false)
@@ -286,11 +308,11 @@ export default function App() {
                   Cancel
                 </button>
               </div>
-              <div className="form">
-                <label className="field">
-                  <span>Name</span>
+              <div className="space-y-6">
+                <label className="block">
+                  <span className="block text-sm font-medium text-white/60 mb-2">Name</span>
                   <input
-                    className="input"
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-colors"
                     value={form.name}
                     onChange={(event) =>
                       setForm((prev) => ({ ...prev, name: event.target.value }))
@@ -298,24 +320,27 @@ export default function App() {
                     placeholder="e.g. Product alerts"
                   />
                 </label>
-                <label className="field">
-                  <span>Color</span>
-                  <div className="palette">
+                <div>
+                  <span className="block text-sm font-medium text-white/60 mb-2">Color</span>
+                  <div className="flex flex-wrap gap-2">
                     {COLORS.map((color) => (
                       <button
                         key={color}
                         type="button"
-                        className={`palette-dot ${color} ${form.color === color ? 'active' : ''}`}
+                        className={`w-6 h-6 rounded-full border border-white/10 transition-transform ${
+                          form.color === color ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[#0B0C0E]' : 'hover:scale-110'
+                        }`}
+                        style={{ backgroundColor: `var(--color-${color}-500, ${color})` }}
                         aria-label={color}
                         onClick={() => setForm((prev) => ({ ...prev, color }))}
                       />
                     ))}
                   </div>
-                </label>
-                <label className="field">
-                  <span>Retention days (optional)</span>
+                </div>
+                <label className="block">
+                  <span className="block text-sm font-medium text-white/60 mb-2">Retention days (optional)</span>
                   <input
-                    className="input"
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-colors"
                     type="number"
                     min="1"
                     value={form.retention_days}
@@ -328,9 +353,9 @@ export default function App() {
                     placeholder="30"
                   />
                 </label>
-                <div className="form-actions">
+                <div className="pt-4">
                   <button
-                    className="button primary"
+                    className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-10 px-4 py-2 shadow-sm"
                     type="button"
                     onClick={isEditing ? handleUpdate : handleCreate}
                     disabled={!form.name.trim()}
@@ -341,121 +366,154 @@ export default function App() {
               </div>
             </div>
           ) : selectedSource ? (
-            <div className="detail">
-              <div className="panel-header">
+            <div className="flex-1 flex flex-col">
+              <div className="px-8 py-6 border-b border-white/10 flex items-center justify-between bg-white/[0.01]">
                 <div>
-                  <p className="eyebrow">Selected source</p>
-                  <h2>{selectedSource.name}</h2>
+                  <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Selected source</p>
+                  <div className="flex items-center space-x-3">
+                    <h2 className="text-2xl font-display font-semibold text-white">{selectedSource.name}</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] uppercase font-bold tracking-wide text-white/50">
+                      {selectedSource.color}
+                    </span>
+                  </div>
                 </div>
-                <div className="actions">
-                  <button className="button ghost" type="button" onClick={startEdit}>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    className="px-3 py-1.5 text-xs font-medium text-white/60 border border-white/10 rounded-md hover:bg-white/5 transition-colors" 
+                    type="button" 
+                    onClick={startEdit}
+                  >
                     Edit
                   </button>
-                  <button className="button danger" type="button" onClick={handleDelete}>
+                  <button 
+                    className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-500/20 bg-red-500/5 rounded-md hover:bg-red-500/10 transition-colors" 
+                    type="button" 
+                    onClick={handleDelete}
+                  >
                     Delete
                   </button>
                 </div>
               </div>
 
-              <div className="tabs">
-                {(['overview', 'settings', 'setup'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    className={`tab ${panel === tab ? 'active' : ''}`}
-                    onClick={() => setPanel(tab)}
-                  >
-                    {tab}
-                  </button>
-                ))}
+              <div className="border-b border-white/10 px-8">
+                <div className="flex space-x-6">
+                  {(['overview', 'settings', 'setup'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={`py-4 text-sm font-medium border-b-2 transition-colors ${
+                        panel === tab 
+                          ? 'border-white text-white' 
+                          : 'border-transparent text-white/40 hover:text-white/70'
+                      }`}
+                      onClick={() => setPanel(tab)}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {panel === 'overview' ? (
-                <div className="overview">
-                  <div className="stat">
-                    <span className="label">Token</span>
-                    <span className="mono">{selectedSource.token}</span>
-                  </div>
-                  <div className="stat">
-                    <span className="label">Color</span>
-                    <span className="chip">
-                      <span className={`palette-dot ${selectedSource.color}`} />
-                      {selectedSource.color}
-                    </span>
-                  </div>
-                  <div className="stat">
-                    <span className="label">Retention</span>
-                    <span>
-                      {selectedSource.retention_days
-                        ? `${selectedSource.retention_days} days`
-                        : 'None'}
-                    </span>
-                  </div>
-                  <div className="stat">
-                    <span className="label">Created</span>
-                    <span>{formatDate(selectedSource.created_at)}</span>
-                  </div>
-                  <div className="stat">
-                    <span className="label">Updated</span>
-                    <span>{formatDate(selectedSource.updated_at)}</span>
-                  </div>
-                </div>
-              ) : null}
-
-              {panel === 'settings' ? (
-                <div className="settings">
-                  <h3>Retention policy</h3>
-                  <p>
-                    Set a retention window to automatically delete messages and events
-                    older than the configured number of days.
-                  </p>
-                  <div className="callout">
-                    <span className="label">Current retention</span>
-                    <span>
-                      {selectedSource.retention_days
-                        ? `${selectedSource.retention_days} days`
-                        : 'Not set'}
-                    </span>
-                  </div>
-                  <button className="button ghost" type="button" onClick={startEdit}>
-                    Update retention
-                  </button>
-                </div>
-              ) : null}
-
-              {panel === 'setup' ? (
-                <div className="setup">
-                  <h3>Setup guidance</h3>
-                  {setupInfo ? (
-                    <>
-                      <div className="callout">
-                        <div>
-                          <span className="label">Configuration set</span>
-                          <span className="mono">{setupInfo.configuration_set_name}</span>
+              <div className="p-8 max-w-4xl">
+                {panel === 'overview' ? (
+                  <div className="max-w-2xl space-y-8">
+                    <div>
+                    <h3 className="text-sm font-medium text-white/40 uppercase tracking-wider mb-3">Details</h3>
+                      <div className="bg-white/[0.02] rounded-lg border border-white/10 divide-y divide-white/5">
+                        <div className="flex items-center justify-between p-3">
+                          <span className="text-sm text-white/60">Token</span>
+                          <span className="font-mono text-sm text-white">{selectedSource.token}</span>
                         </div>
-                        <div>
-                          <span className="label">SNS topic</span>
-                          <span className="mono">{setupInfo.sns_topic_name}</span>
+                        <div className="flex items-center justify-between p-3">
+                          <span className="text-sm text-white/60">Retention policy</span>
+                          <span className="text-sm text-white">
+                            {selectedSource.retention_days
+                              ? `${selectedSource.retention_days} days`
+                              : 'Retain forever'}
+                          </span>
                         </div>
-                        <div>
-                          <span className="label">Webhook URL</span>
-                          <span className="mono">{setupInfo.webhook_url}</span>
+                        <div className="flex items-center justify-between p-3">
+                          <span className="text-sm text-white/60">Created</span>
+                          <span className="text-sm text-white">{formatDate(selectedSource.created_at)}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3">
+                          <span className="text-sm text-white/60">Last updated</span>
+                          <span className="text-sm text-white">{formatDate(selectedSource.updated_at)}</span>
                         </div>
                       </div>
-                      <ol className="steps">
-                        {setupInfo.steps.map((step) => (
-                          <li key={step}>{step}</li>
-                        ))}
-                      </ol>
-                    </>
-                  ) : (
-                    <p className="muted">Loading setup instructions...</p>
-                  )}
-                </div>
-              ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {panel === 'settings' ? (
+                  <div className="max-w-2xl">
+                    <h3 className="text-lg font-medium text-white mb-2">Retention policy</h3>
+                    <p className="text-sm text-white/60 mb-6 leading-relaxed">
+                      Set a retention window to automatically delete messages and events
+                      older than the configured number of days.
+                    </p>
+                    <div className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-white/[0.02] mb-6">
+                      <div className="flex flex-col">
+                        <span className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Current retention</span>
+                        <span className="text-sm font-medium text-white">
+                          {selectedSource.retention_days
+                            ? `${selectedSource.retention_days} days`
+                            : 'Not set (retain forever)'}
+                        </span>
+                      </div>
+                      <button 
+                        className="text-sm text-white/60 hover:text-white underline decoration-white/30" 
+                        type="button" 
+                        onClick={startEdit}
+                      >
+                        Update
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {panel === 'setup' ? (
+                  <div className="max-w-2xl">
+                    <h3 className="text-lg font-medium text-white mb-6">Setup guidance</h3>
+                    {setupInfo ? (
+                      <div className="space-y-6">
+                        <div className="grid gap-4 p-4 rounded-lg bg-white/[0.02] border border-white/10">
+                          <div>
+                            <span className="block text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Configuration set</span>
+                            <code className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-sm">{setupInfo.configuration_set_name}</code>
+                          </div>
+                          <div>
+                            <span className="block text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">SNS topic</span>
+                            <code className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-sm">{setupInfo.sns_topic_name}</code>
+                          </div>
+                          <div>
+                            <span className="block text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Webhook URL</span>
+                            <code className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-sm break-all">{setupInfo.webhook_url}</code>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          {setupInfo.steps.map((step, i) => (
+                            <div key={i} className="flex gap-4">
+                              <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-mono text-white/60 mt-0.5">
+                                {i + 1}
+                              </span>
+                              <p className="text-sm text-white/80 leading-relaxed pt-0.5">{step}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2 text-white/40">
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading setup instructions...</span>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : (
-            <div className="detail empty">
+            <div className="flex-1 flex flex-col items-center justify-center text-white/30">
               <p>Select a source to see details.</p>
             </div>
           )}

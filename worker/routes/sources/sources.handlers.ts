@@ -205,8 +205,8 @@ export const setup: AppRouteHandler<SetupRoute> = async (c) => {
   }
 
   const slug = toSlug(source.name)
-  const configurationSetName = `sessy-${slug}-config`
-  const snsTopicName = `sessy-${slug}-sns`
+  const configurationSetName = `sesnoop-${slug}-config`
+  const snsTopicName = `sesnoop-${slug}-sns`
   const origin = new URL(c.req.url).origin
   const webhookUrl = `${origin}/webhooks/${source.token}`
 

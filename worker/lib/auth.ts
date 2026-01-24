@@ -38,7 +38,7 @@ const parseBasicAuth = (value: string) => {
   }
 }
 
-const unauthorized = (realm = 'Sessy') =>
+const unauthorized = (realm = 'SESnoop') =>
   new Response('Unauthorized', {
     status: HttpStatusCodes.UNAUTHORIZED,
     headers: {

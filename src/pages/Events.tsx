@@ -167,33 +167,43 @@ export default function EventsPage() {
   const totalLabel = pagination ? `${pagination.total} events` : '—'
 
   return (
-    <div className="app">
-      <header className="topbar">
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-[#0B0C0E] p-6 space-y-8 border-x border-white/10">
+      <header className="flex items-center justify-between">
         <div>
-          <p className="eyebrow">Event stream</p>
-          <h1>Events & filters</h1>
+          <p className="text-xs font-medium text-blue-400 mb-1">Event stream</p>
+          <h1 className="text-3xl font-display font-bold tracking-tight text-white">Events & filters</h1>
         </div>
-        <div className="topbar-actions">
-          <Link className="button ghost" to="/sources">
+        <div className="flex items-center space-x-3">
+          <Link 
+            to="/sources"
+            className="text-sm font-medium text-white/60 hover:text-white transition-colors px-3 py-2"
+          >
             Sources
           </Link>
-          <button className="button primary" type="button" onClick={() => setPage(1)}>
+          <button
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-9 px-4 py-2 shadow-sm"
+            type="button"
+            onClick={() => setPage(1)}
+          >
             Refresh
           </button>
         </div>
       </header>
 
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Filters</h2>
-          <span className="meta">{loading ? 'Loading…' : totalLabel}</span>
+      <section className="space-y-6">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <h2 className="text-lg font-semibold text-white">Filters</h2>
+          <span className="text-sm font-mono text-white/40 bg-white/5 px-2 py-0.5 rounded">
+            {loading ? 'Loading…' : totalLabel}
+          </span>
         </div>
-        {error ? <p className="notice error">{error}</p> : null}
-        <div className="filters">
-          <label className="field">
-            <span>Source</span>
+        {error ? <p className="p-4 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg">{error}</p> : null}
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <label className="flex flex-col space-y-2">
+            <span className="text-sm font-medium text-white/60">Source</span>
             <select
-              className="input"
+              className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
               value={sourceId ?? ''}
               onChange={(event) => {
                 setPage(1)
@@ -201,16 +211,16 @@ export default function EventsPage() {
               }}
             >
               {sources.map((source) => (
-                <option key={source.id} value={source.id}>
+                <option key={source.id} value={source.id} className="text-black">
                   {source.name}
                 </option>
               ))}
             </select>
           </label>
-          <label className="field">
-            <span>Search</span>
+          <label className="flex flex-col space-y-2">
+            <span className="text-sm font-medium text-white/60">Search</span>
             <input
-              className="input"
+              className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-colors"
               value={search}
               onChange={(event) => {
                 setPage(1)
@@ -219,10 +229,10 @@ export default function EventsPage() {
               placeholder="Recipient or subject"
             />
           </label>
-          <label className="field">
-            <span>Date range</span>
+          <label className="flex flex-col space-y-2">
+            <span className="text-sm font-medium text-white/60">Date range</span>
             <select
-              className="input"
+              className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
               value={datePreset}
               onChange={(event) => {
                 setPage(1)
@@ -230,18 +240,18 @@ export default function EventsPage() {
               }}
             >
               {DATE_PRESETS.map((preset) => (
-                <option key={preset.value} value={preset.value}>
+                <option key={preset.value} value={preset.value} className="text-black">
                   {preset.label}
                 </option>
               ))}
             </select>
           </label>
           {datePreset === 'custom' ? (
-            <>
-              <label className="field">
-                <span>From</span>
+            <div className="flex space-x-2">
+              <label className="flex flex-col space-y-2 flex-1">
+                <span className="text-sm font-medium text-white/60">From</span>
                 <input
-                  className="input"
+                  className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
                   type="date"
                   value={from}
                   onChange={(event) => {
@@ -250,10 +260,10 @@ export default function EventsPage() {
                   }}
                 />
               </label>
-              <label className="field">
-                <span>To</span>
+              <label className="flex flex-col space-y-2 flex-1">
+                <span className="text-sm font-medium text-white/60">To</span>
                 <input
-                  className="input"
+                  className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
                   type="date"
                   value={to}
                   onChange={(event) => {
@@ -262,44 +272,52 @@ export default function EventsPage() {
                   }}
                 />
               </label>
-            </>
+            </div>
           ) : null}
         </div>
 
-        <div className="filter-groups">
+        <div className="flex flex-col space-y-4 pt-4 border-t border-white/10">
           <div>
-            <span className="label">Event types</span>
-            <div className="chips">
+            <span className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-2 block">Event types</span>
+            <div className="flex flex-wrap gap-2">
               {EVENT_TYPES.map((type) => {
                 const count = counts.event_types[type] ?? 0
                 const active = selectedEventTypes.includes(type)
                 return (
                   <button
                     key={type}
-                    className={`chip-btn ${active ? 'active' : ''}`}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                      active 
+                        ? 'bg-white text-black border-white' 
+                        : 'bg-transparent text-white/60 border-white/10 hover:border-white/30 hover:text-white'
+                    }`}
                     type="button"
                     onClick={() => toggleEventType(type)}
                   >
-                    {type} ({count})
+                    {type} <span className="opacity-60 ml-1">({count})</span>
                   </button>
                 )
               })}
             </div>
           </div>
           <div>
-            <span className="label">Bounce types</span>
-            <div className="chips">
+             <span className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-2 block">Bounce types</span>
+            <div className="flex flex-wrap gap-2">
               {BOUNCE_TYPES.map((type) => {
                 const count = counts.bounce_types[type] ?? 0
                 const active = selectedBounceTypes.includes(type)
                 return (
                   <button
                     key={type}
-                    className={`chip-btn ${active ? 'active' : ''}`}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                      active 
+                        ? 'bg-white text-black border-white' 
+                        : 'bg-transparent text-white/60 border-white/10 hover:border-white/30 hover:text-white'
+                    }`}
                     type="button"
                     onClick={() => toggleBounceType(type)}
                   >
-                    {type} ({count})
+                    {type} <span className="opacity-60 ml-1">({count})</span>
                   </button>
                 )
               })}
@@ -308,47 +326,58 @@ export default function EventsPage() {
         </div>
       </section>
 
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Events</h2>
-          <span className="meta">Page {pagination?.page ?? 1} of {pagination?.total_pages ?? 1}</span>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <h2 className="text-lg font-semibold text-white">Events</h2>
+          <span className="text-sm text-white/40">Page {pagination?.page ?? 1} of {pagination?.total_pages ?? 1}</span>
         </div>
-        <div className="table">
-          <div className="table-header">
-            <span>When</span>
+        <div className="rounded-xl border border-white/10 bg-white/[0.01] overflow-hidden">
+          <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] gap-4 p-4 border-b border-white/10 bg-white/[0.02] text-xs font-medium uppercase tracking-wider text-white/40">
+            <span className="w-40">When</span>
             <span>Recipient</span>
-            <span>Type</span>
+            <span className="w-32">Type</span>
             <span>Subject</span>
-            <span>Message</span>
+            <span className="w-16 text-right">Action</span>
           </div>
-          {events.map((event) => (
-            <div key={event.id} className="table-row">
-              <span className="mono">{formatDateTime(event.event_at)}</span>
-              <span>{event.recipient_email}</span>
-              <span className={`badge badge-${event.event_type.toLowerCase()}`}>
-                {event.event_type}
-              </span>
-              <span>{event.message_subject ?? '—'}</span>
-              <Link
-                className="link"
-                to="/messages/$sesMessageId"
-                params={{ sesMessageId: event.ses_message_id }}
-                search={{ sourceId: sourceId ?? undefined }}
-              >
-                View
-              </Link>
-            </div>
-          ))}
-          {!loading && events.length === 0 ? (
-            <div className="empty">
-              <p>No events found for this filter set.</p>
-            </div>
-          ) : null}
+          <div className="divide-y divide-white/5">
+            {events.map((event) => (
+              <div key={event.id} className="grid grid-cols-[auto_1fr_auto_1fr_auto] gap-4 p-4 items-center text-sm hover:bg-white/[0.02] transition-colors">
+                <span className="text-white/60 font-mono text-xs w-40">{formatDateTime(event.event_at)}</span>
+                <span className="text-white truncate">{event.recipient_email}</span>
+                <div className="w-32">
+                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide border ${
+                      event.event_type === 'Bounce' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                      event.event_type === 'Delivery' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                      event.event_type === 'Send' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      'bg-white/5 text-white/60 border-white/10'
+                   }`}>
+                    {event.event_type}
+                  </span>
+                </div>
+                <span className="text-white/60 truncate">{event.message_subject ?? '—'}</span>
+                <div className="w-16 text-right">
+                  <Link
+                    className="text-xs font-medium text-white/60 hover:text-white hover:underline decoration-white/30 underline-offset-4"
+                    to="/messages/$sesMessageId"
+                    params={{ sesMessageId: event.ses_message_id }}
+                    search={{ sourceId: sourceId ?? undefined }}
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+            ))}
+            {!loading && events.length === 0 ? (
+              <div className="p-12 text-center text-white/40">
+                <p>No events found for this filter set.</p>
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        <div className="pager">
+        <div className="flex items-center justify-between pt-4">
           <button
-            className="button ghost"
+            className="px-4 py-2 rounded-md border border-white/10 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
             type="button"
             onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
             disabled={!pagination || pagination.page <= 1}
@@ -356,7 +385,7 @@ export default function EventsPage() {
             Previous
           </button>
           <button
-            className="button ghost"
+            className="px-4 py-2 rounded-md border border-white/10 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
             type="button"
             onClick={() =>
               setPage((prev) =>

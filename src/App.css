@@ -1,0 +1,28 @@
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.card {
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  border: 1px solid #2a3340;
+  border-radius: 12px;
+  background: #141b24;
+}
+
+button {
+  border-radius: 999px;
+  border: 1px solid #3a4658;
+  background: #1f2a37;
+  color: inherit;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #5daeff;
+}

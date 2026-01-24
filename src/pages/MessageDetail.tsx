@@ -20,7 +20,7 @@ const formatJson = (value: Record<string, unknown>) =>
   JSON.stringify(value, null, 2)
 
 export default function MessageDetailPage() {
-  const { sesMessageId } = useParams({ from: '/messages/$sesMessageId' })
+  const { sesMessageId } = useParams({ from: '/app/messages/$sesMessageId' })
   const [sourceId, setSourceId] = useState<number | null>(null)
 
   const { data: sources = [] } = useQuery(sourcesQueryOptions)

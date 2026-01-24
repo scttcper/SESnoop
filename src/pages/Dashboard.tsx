@@ -1,37 +1,29 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { Activity, Plus, BarChart3, ArrowRight } from 'lucide-react'
 import { Button } from '../components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select'
 import { overviewQueryOptions, sourcesQueryOptions } from '../lib/queries'
+import { useActiveSourceId } from '../lib/use-active-source'
+import { cn, COLOR_STYLES } from '../lib/utils'
 
 const formatPercent = (value: number) =>
   `${(value * 100).toFixed(1)}%`
 
 export default function DashboardPage() {
-  const [sourceId, setSourceId] = useState<number | null>(null)
-
-  const { data: sources = [] } = useQuery(sourcesQueryOptions)
-
-  // Initialize sourceId if not set
-  if (sourceId === null && sources.length > 0) {
-    setSourceId(sources[0].id)
-  }
-
+  const sourceId = useActiveSourceId()
+  const { data: sources = [], isLoading: loadingSources } = useQuery(sourcesQueryOptions)
+  
   const { 
     data: overview, 
-    isLoading: loading, 
+    isLoading: loadingOverview, 
     error: queryError 
-  } = useQuery(overviewQueryOptions(sourceId))
+  } = useQuery({
+    ...overviewQueryOptions(sourceId),
+    enabled: !!sourceId
+  })
 
-  const error = queryError instanceof Error ? queryError.message : null
-
+  // Hook must be called unconditionally
   const chartMax = useMemo(() => {
     if (!overview) {
       return 0
@@ -44,26 +36,97 @@ export default function DashboardPage() {
     )
   }, [overview])
 
+  // 1. Loading State
+  if (loadingSources) {
+    return <div className="p-8 text-white/50">Loading...</div>
+  }
+
+  // 2. No Source Selected State
+  if (!sourceId) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-[#0B0C0E]">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            
+            <div className="max-w-4xl w-full">
+                <div className="mb-12">
+                   <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/10">
+                     <BarChart3 className="w-8 h-8 text-white/40" />
+                   </div>
+                   <h1 className="text-3xl font-display font-bold text-white mb-3">Select a Source</h1>
+                   <p className="text-lg text-white/60 max-w-lg mx-auto">
+                     Choose a source to view its dashboard, events, and metrics.
+                   </p>
+                </div>
+            
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+                    {sources.map((source) => (
+                        <Link 
+                            key={source.id}
+                            to="/s/$sourceId/events"
+                            params={{ sourceId: source.id.toString() }}
+                            className="group relative flex flex-col rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-all duration-200 overflow-hidden"
+                        >
+                            <div className="p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className={cn("w-3 h-3 rounded-full ring-2 ring-white/10", COLOR_STYLES[source.color])} />
+                                    <h2 className="text-lg font-semibold text-white group-hover:text-blue-200 transition-colors">
+                                        {source.name}
+                                    </h2>
+                                </div>
+                                <div className="text-sm text-white/40 mb-6">
+                                    Click to view dashboard & events
+                                </div>
+                                <div className="flex items-center text-sm font-medium text-white/40 group-hover:text-white transition-colors">
+                                    Select Source <ArrowRight className="w-4 h-4 ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                </div>
+                            </div>
+                            <div className="h-1 w-full mt-auto bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                    ))}
+                    
+                    <Link
+                        to="/sources"
+                        className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-transparent hover:bg-white/[0.02] hover:border-white/20 transition-all min-h-[160px] group"
+                    >
+                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:bg-white/10 transition-colors">
+                            <Plus className="w-5 h-5 text-white/40 group-hover:text-white/80" />
+                        </div>
+                        <span className="font-medium text-white/60 group-hover:text-white transition-colors">Create new source</span>
+                    </Link>
+                </div>
+            </div>
+
+        </div>
+      </div>
+    )
+  }
+
+  // 3. Active Dashboard State
+  const error = queryError instanceof Error ? queryError.message : null
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-[#0B0C0E] border-x border-white/10">
       <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
         <div>
           <h1 className="text-2xl font-display font-semibold tracking-tight text-white">Dashboard</h1>
+          <div className="flex items-center gap-2 mt-1">
+             <span className="text-sm text-white/40">Viewing data for</span>
+             {overview && ( // Wait for data or find source in list
+                 <span className="text-sm font-medium text-white/80 px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                    {sources.find(s => s.id === sourceId)?.name || 'Unknown Source'}
+                 </span>
+             )}
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           <Link 
-            to="/events"
-            className="text-sm font-medium text-white/60 hover:text-white transition-colors px-3 py-2"
+            to="/s/$sourceId/events"
+            params={{ sourceId: sourceId.toString() }}
+            className="text-sm font-medium text-white/60 hover:text-white transition-colors px-3 py-2 flex items-center gap-2"
           >
+            <Activity className="w-4 h-4" />
             Events
           </Link>
-          <Button variant="ghost"
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-9 px-4 py-2 shadow-sm"
-            type="button"
-            onClick={() => sourceId && setSourceId(sourceId)}
-          >
-            Refresh
-          </Button>
         </div>
       </header>
 
@@ -74,34 +137,12 @@ export default function DashboardPage() {
           <div className="flex items-center space-x-4">
             <h2 className="text-lg font-semibold text-white">Summary</h2>
             <span className="text-sm font-mono text-white/40 bg-white/5 px-2 py-0.5 rounded">
-              {loading
+              {loadingOverview
                 ? 'Loading…'
                 : overview
                 ? `${overview.range.from} → ${overview.range.to}`
                 : '—'}
             </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-white/60">Source:</span>
-            <Select
-              items={sources.map((source) => ({
-                label: source.name,
-                value: String(source.id),
-              }))}
-              value={sourceId ? String(sourceId) : ''}
-              onValueChange={(value) => setSourceId(Number(value))}
-            >
-              <SelectTrigger className="bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-white/30 transition-colors">
-                <SelectValue placeholder="Select source" />
-              </SelectTrigger>
-              <SelectContent>
-                {sources.map((source) => (
-                  <SelectItem key={source.id} value={String(source.id)}>
-                    {source.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
         

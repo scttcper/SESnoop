@@ -1,9 +1,10 @@
-import { Link, useParams } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { SourceSwitcher } from './SourceSwitcher'
+import { useActiveSourceId } from '../../lib/use-active-source'
 
 export function Navbar() {
-  // @ts-ignore
-  const { sourceId } = useParams({ strict: false })
+  const sourceId = useActiveSourceId()
+  const sourceIdStr = sourceId?.toString()
   
   return (
      <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B0C0E]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#0B0C0E]/60">
@@ -16,35 +17,57 @@ export function Navbar() {
             <SourceSwitcher />
           </div>
           <div className="flex items-center space-x-6 text-sm font-medium">
-             <Link
-              to="/dashboard"
-              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-            >
-              Dashboard
-            </Link>
-             {sourceId ? (
+             {sourceIdStr ? (
+                <Link
+                  to="/s/$sourceId/dashboard"
+                  params={{ sourceId: sourceIdStr }}
+                  className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+                >
+                  Dashboard
+                </Link>
+             ) : (
+                <Link
+                  to="/dashboard"
+                  className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+                >
+                  Dashboard
+                </Link>
+             )}
+             {sourceIdStr ? (
+                <>
                 <Link
                   to="/s/$sourceId/events"
-                  params={{ sourceId }}
+                  params={{ sourceId: sourceIdStr }}
                   className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
                 >
                   Events
                 </Link>
+                <Link
+                  to="/s/$sourceId/setup"
+                  params={{ sourceId: sourceIdStr }}
+                  className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+                >
+                  Setup
+                </Link>
+                <Link
+                  to="/s/$sourceId/settings"
+                  params={{ sourceId: sourceIdStr }}
+                  className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+                >
+                  Settings
+                </Link>
+                </>
              ) : (
-                <span className="text-white/20 cursor-not-allowed" title="Select a source to view events">Events</span>
+                <>
+                <Link
+                to="/sources"
+                className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+                >
+                Sources
+                </Link>
+                 <span className="text-white/20 cursor-not-allowed" title="Select a source to view events">Events</span>
+                </>
              )}
-            <Link
-              to="/sources"
-              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-            >
-              Sources
-            </Link>
-            <Link
-              to="/setup"
-              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-            >
-              Setup
-            </Link>
           </div>
         </div>
       </nav>

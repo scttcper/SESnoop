@@ -1,8 +1,10 @@
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Settings } from 'lucide-react'
 import { sourcesQueryOptions } from '../../lib/queries'
 import { cn, COLOR_STYLES } from '../../lib/utils'
+import { useActiveSourceId } from '../../lib/use-active-source'
+import { useSourceAwareNavigation } from '../../lib/use-source-navigation'
 import {
   Select,
   SelectContent,
@@ -13,20 +15,20 @@ import {
 
 export function SourceSwitcher() {
   const navigate = useNavigate()
-  // @ts-ignore
-  const { sourceId } = useParams({ strict: false })
-  const currentSourceId = sourceId ? Number(sourceId) : null
+  const { switchSource } = useSourceAwareNavigation()
+  const currentSourceId = useActiveSourceId()
   
   const { data: sources = [] } = useQuery(sourcesQueryOptions)
 
   const selectedSource = sources.find((s) => s.id === currentSourceId)
 
-  const handleSelect = (value: string) => {
-    if (value === 'manage') {
+  const handleSelect = (value: string | null) => {
+    if (!value) return
+    if (value === 'manage' || value === 'create') {
       navigate({ to: '/sources' })
-    } else {
-      navigate({ to: '/s/$sourceId/events', params: { sourceId: value } })
+      return
     }
+    switchSource(value)
   }
 
   return (
@@ -60,9 +62,15 @@ export function SourceSwitcher() {
             ))}
         </div>
         <SelectSeparator className="bg-white/10" />
-        <SelectItem value="manage" className="focus:bg-white/10 cursor-pointer">
+        <SelectItem value="create" className="focus:bg-white/10 cursor-pointer">
             <div className="flex items-center gap-2 text-white/60">
                 <Plus className="h-4 w-4" />
+                <span>Add Source</span>
+            </div>
+        </SelectItem>
+        <SelectItem value="manage" className="focus:bg-white/10 cursor-pointer">
+            <div className="flex items-center gap-2 text-white/60">
+                <Settings className="h-4 w-4" />
                 <span>Manage Sources</span>
             </div>
         </SelectItem>

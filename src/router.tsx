@@ -2,85 +2,27 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
   Outlet,
   HeadContent,
   Scripts,
+  redirect,
 } from '@tanstack/react-router'
+import { z } from 'zod'
 
-import App from './App'
+import { AppLayout } from './components/layout/AppLayout'
 import DashboardPage from './pages/Dashboard'
 import EventsPage from './pages/Events'
+import SourcesPage from './pages/Sources'
+import SourceSettingsPage from './pages/SourceSettings'
+import SourceSetupPage from './pages/SourceSetup'
 import MessageDetailPage from './pages/MessageDetail'
 
 const RootLayout = () => (
   <>
     <HeadContent />
-    <div className="flex flex-col min-h-screen font-sans selection:bg-white/20">
-      <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B0C0E]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#0B0C0E]/60">
-        <div className="flex h-14 items-center px-4 md:px-6 max-w-7xl mx-auto w-full">
-          <div className="mr-8 flex items-center space-x-2">
-            <span className="font-display font-bold text-lg tracking-tight">
-              SESnoop
-            </span>
-          </div>
-          <div className="flex items-center space-x-6 text-sm font-medium">
-            <Link
-              to="/dashboard"
-              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/events"
-              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-            >
-              Events
-            </Link>
-            <Link
-              to="/sources"
-              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-            >
-              Sources
-            </Link>
-            <Link
-              to="/setup"
-              className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
-            >
-              Setup
-            </Link>
-          </div>
-        </div>
-      </nav>
-      <main className="flex-1 max-w-7xl mx-auto w-full">
-        <Outlet />
-      </main>
-    </div>
+    <Outlet />
     <Scripts />
   </>
-)
-
-const SetupPage = () => (
-  <div className="container max-w-2xl mx-auto py-12 px-4">
-    <header className="mb-10">
-      <p className="text-sm text-blue-400 font-medium mb-2">Setup guidance</p>
-      <h1 className="text-3xl font-display font-bold tracking-tight">Connect SES + SNS</h1>
-    </header>
-    <section className="rounded-xl border border-white/10 bg-white/[0.02] p-6 md:p-8">
-      <h2 className="text-xl font-semibold mb-4">Where to start</h2>
-      <p className="text-white/60 leading-relaxed mb-6">
-        Setup instructions are specific to each source. Visit the Sources page,
-        select a source, then open the Setup tab to get the exact webhook URL
-        and SNS configuration values.
-      </p>
-      <Link 
-        to="/sources"
-        className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-10 px-4 py-2 shadow-sm"
-      >
-        Go to sources
-      </Link>
-    </section>
-  </div>
 )
 
 const rootRoute = createRootRoute({
@@ -94,8 +36,14 @@ const rootRoute = createRootRoute({
   component: RootLayout,
 })
 
-const indexRoute = createRoute({
+const appRoute = createRoute({
   getParentRoute: () => rootRoute,
+  id: 'app',
+  component: AppLayout,
+})
+
+const indexRoute = createRoute({
+  getParentRoute: () => appRoute,
   path: '/',
   component: DashboardPage,
   head: () => ({
@@ -103,26 +51,8 @@ const indexRoute = createRoute({
   }),
 })
 
-const sourcesRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/sources',
-  component: App,
-  head: () => ({
-    meta: [{ title: 'Sources | SESnoop' }],
-  }),
-})
-
-const eventsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/events',
-  component: EventsPage,
-  head: () => ({
-    meta: [{ title: 'Events | SESnoop' }],
-  }),
-})
-
 const dashboardRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appRoute,
   path: '/dashboard',
   component: DashboardPage,
   head: () => ({
@@ -130,31 +60,120 @@ const dashboardRoute = createRoute({
   }),
 })
 
+const sourcesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/sources',
+  component: SourcesPage,
+  head: () => ({
+    meta: [{ title: 'Sources | SESnoop' }],
+  }),
+})
+
+// New Source-scoped routes wrapper
+const sourceMonitorRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 's/$sourceId',
+})
+
+const sourceEventsRoute = createRoute({
+  getParentRoute: () => sourceMonitorRoute,
+  path: 'events',
+  validateSearch: (search) => {
+    return z.object({
+      search: z.string().optional(),
+      event_types: z.union([z.string(), z.array(z.string())]).transform((val) => 
+        Array.isArray(val) ? val : (val ? [val] : [])
+      ).optional(),
+      bounce_types: z.union([z.string(), z.array(z.string())]).transform((val) => 
+        Array.isArray(val) ? val : (val ? [val] : [])
+      ).optional(),
+      date_range: z.string().optional().catch('last_30_days'),
+      from: z.string().optional(),
+      to: z.string().optional(),
+      page: z.number().optional().catch(1),
+    }).parse(search)
+  },
+  component: EventsPage,
+  head: () => ({
+    meta: [{ title: `Events | SESnoop` }],
+  }),
+})
+
+const sourceSettingsRoute = createRoute({
+  getParentRoute: () => sourceMonitorRoute,
+  path: 'settings',
+  component: SourceSettingsPage,
+  head: () => ({
+    meta: [{ title: `Settings | SESnoop` }],
+  }),
+})
+
+const sourceSetupRoute = createRoute({
+  getParentRoute: () => sourceMonitorRoute,
+  path: 'setup',
+  component: SourceSetupPage,
+  head: () => ({
+    meta: [{ title: `Setup | SESnoop` }],
+  }),
+})
+
+const sourceDashboardRoute = createRoute({
+  getParentRoute: () => sourceMonitorRoute,
+  path: 'dashboard',
+  component: DashboardPage,
+  head: () => ({
+    meta: [{ title: `Dashboard | SESnoop` }],
+  }),
+})
+
 const messageDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appRoute,
   path: '/messages/$sesMessageId',
   component: MessageDetailPage,
-  head: ({ params }) => ({
+    head: ({ params }) => ({
     meta: [{ title: `Message ${params.sesMessageId} | SESnoop` }],
   }),
 })
 
-const setupRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/setup',
-  component: SetupPage,
-  head: () => ({
-    meta: [{ title: 'Setup | SESnoop' }],
-  }),
+// Legacy redirect for /events -> /sources (so user selects source)
+const eventsRedirectRoute = createRoute({
+    getParentRoute: () => appRoute,
+    path: '/events',
+    beforeLoad: () => {
+        throw redirect({
+            to: '/sources',
+        })
+    }
+})
+
+// Legacy global setup redirect might be needed? 
+// Or just let's remove it if user is fine. User said 'larger refactoring'
+// Let's redirect /setup to /sources for now to guide them
+const setupRedirectRoute = createRoute({
+    getParentRoute: () => appRoute,
+    path: '/setup',
+    beforeLoad: () => {
+        throw redirect({
+            to: '/sources',
+        })
+    }
 })
 
 const routeTree = rootRoute.addChildren([
-  indexRoute,
-  sourcesRoute,
-  eventsRoute,
-  dashboardRoute,
-  messageDetailRoute,
-  setupRoute,
+  appRoute.addChildren([
+      indexRoute,
+      dashboardRoute,
+      sourcesRoute,
+      sourceMonitorRoute.addChildren([
+          sourceEventsRoute,
+          sourceSettingsRoute,
+          sourceSetupRoute,
+          sourceDashboardRoute
+      ]),
+      messageDetailRoute,
+      eventsRedirectRoute,
+      setupRedirectRoute
+  ])
 ])
 
 export const router = createRouter({

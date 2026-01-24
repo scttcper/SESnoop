@@ -112,7 +112,7 @@ export const createSourceFn = async (payload: {
   if (!response.ok) {
     throw new Error('Failed to create source')
   }
-  return response.json()
+  return (await response.json()) as Source
 }
 
 export const updateSourceFn = async ({

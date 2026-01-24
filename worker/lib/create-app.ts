@@ -3,6 +3,7 @@ import { notFound, onError, serveEmojiFavicon } from 'stoker/middlewares'
 import { defaultHook } from 'stoker/openapi'
 
 import type { AppBindings, AppOpenAPI } from './types'
+import { basicAuth } from './auth'
 
 export function createRouter() {
   return new OpenAPIHono<AppBindings>({
@@ -14,6 +15,7 @@ export function createRouter() {
 export default function createApp() {
   const app = createRouter()
 
+  app.use('*', basicAuth())
   app.use(serveEmojiFavicon('🧭'))
   app.notFound(notFound)
   app.onError(onError)

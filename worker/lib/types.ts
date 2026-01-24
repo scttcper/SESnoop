@@ -5,6 +5,8 @@ export interface AppBindings {
     DB: D1Database
     SNS_DISABLE_SIGNATURE_VERIFY?: string
     DB_DISABLE_TRANSACTIONS?: string
+    HTTP_AUTH_USERNAME?: string
+    HTTP_AUTH_PASSWORD?: string
   }
 }
 

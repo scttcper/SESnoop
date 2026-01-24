@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 
 import App from './App'
+import EventsPage from './pages/Events'
 
 const RootLayout = () => (
   <div className="shell">
@@ -16,8 +17,8 @@ const RootLayout = () => (
         <span className="nav-subtitle">Sources</span>
       </div>
       <div className="nav-links">
-        <Link className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/">
-          Dashboard
+        <Link className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/events">
+          Events
         </Link>
         <Link
           className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
@@ -66,13 +67,19 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: App,
+  component: EventsPage,
 })
 
 const sourcesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sources',
   component: App,
+})
+
+const eventsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/events',
+  component: EventsPage,
 })
 
 const setupRoute = createRoute({
@@ -84,6 +91,7 @@ const setupRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   sourcesRoute,
+  eventsRoute,
   setupRoute,
 ])
 

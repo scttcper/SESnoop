@@ -121,6 +121,40 @@ h3 {
   font-size: 1.6rem;
 }
 
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.filter-groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.chip-btn {
+  border: 1px solid var(--outline);
+  background: var(--surface-strong);
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chip-btn.active {
+  background: #fef2e8;
+  border-color: #f9c9ad;
+  color: var(--accent-dark);
+}
+
 .meta {
   font-size: 0.9rem;
   color: var(--muted);
@@ -386,6 +420,87 @@ h3 {
   color: var(--muted);
 }
 
+.table {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.table-header,
+.table-row {
+  display: grid;
+  grid-template-columns: 160px minmax(160px, 1fr) 120px minmax(200px, 1.5fr) 80px;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.table-header {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.table-row {
+  padding: 0.8rem;
+  border-radius: 14px;
+  background: var(--surface-strong);
+  border: 1px solid var(--outline);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #fef2e8;
+  color: var(--accent-dark);
+}
+
+.badge-send,
+.badge-delivery {
+  background: rgba(30, 143, 111, 0.12);
+  color: #1e8f6f;
+}
+
+.badge-bounce,
+.badge-complaint,
+.badge-reject {
+  background: rgba(215, 72, 72, 0.12);
+  color: #b94236;
+}
+
+.badge-deliverydelay,
+.badge-renderingfailure {
+  background: rgba(246, 188, 98, 0.2);
+  color: #b36b12;
+}
+
+.badge-open,
+.badge-click {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+}
+
+.link {
+  color: var(--accent-dark);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
 .reveal {
   animation: rise 0.6s ease both;
   animation-delay: var(--delay);
@@ -423,5 +538,10 @@ h3 {
 
   .detail-panel {
     min-height: auto;
+  }
+
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr;
   }
 }

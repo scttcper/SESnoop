@@ -22,6 +22,9 @@ node_modules/
 .dev.vars
 .dev.vars*
 
+# drizzle
+drizzle/
+
 # logs
 logs/
 *.log

@@ -22,9 +22,6 @@ node_modules/
 .dev.vars
 .dev.vars*
 
-# drizzle
-drizzle/
-
 # logs
 logs/
 *.log
@@ -36,3 +33,4 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+tasks

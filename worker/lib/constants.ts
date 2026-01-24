@@ -13,3 +13,42 @@ export const ZOD_ERROR_CODES = {
 }
 
 export const notFoundSchema = createMessageObjectSchema(HttpStatusPhrases.NOT_FOUND)
+
+export const EVENT_TYPES = {
+  send: 'Send',
+  delivery: 'Delivery',
+  bounce: 'Bounce',
+  complaint: 'Complaint',
+  reject: 'Reject',
+  delivery_delay: 'DeliveryDelay',
+  rendering_failure: 'RenderingFailure',
+  subscription: 'Subscription',
+  open: 'Open',
+  click: 'Click',
+} as const
+
+export const EVENT_TYPE_VALUES = [
+  'Send',
+  'Delivery',
+  'Bounce',
+  'Complaint',
+  'Reject',
+  'DeliveryDelay',
+  'RenderingFailure',
+  'Subscription',
+  'Open',
+  'Click',
+] as const
+
+export const BOUNCE_TYPES = ['Permanent', 'Transient', 'Undetermined'] as const
+
+export const SOURCE_COLORS = [
+  'purple',
+  'blue',
+  'cyan',
+  'green',
+  'red',
+  'orange',
+  'yellow',
+  'gray',
+] as const

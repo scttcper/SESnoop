@@ -18,8 +18,8 @@ import type {
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const db = createDb(c.env)
-  const items = await db.query.tasks.findMany()
-  return c.json(items)
+  const tasks = await db.query.tasks.findMany()
+  return c.json(tasks)
 }
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
@@ -74,7 +74,8 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
     )
   }
 
-  const [task] = await db.update(tasks)
+  const [task] = await db
+    .update(tasks)
     .set(updates)
     .where(eq(tasks.id, id))
     .returning()
@@ -94,9 +95,12 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
 export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
   const db = createDb(c.env)
   const { id } = c.req.valid('param')
-  const result = await db.delete(tasks).where(eq(tasks.id, id))
+  const deleted = await db
+    .delete(tasks)
+    .where(eq(tasks.id, id))
+    .returning({ id: tasks.id })
 
-  if (result.rowsAffected === 0) {
+  if (deleted.length === 0) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,

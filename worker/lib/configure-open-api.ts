@@ -5,7 +5,7 @@ import type { AppOpenAPI } from './types'
 import packageJSON from '../../package.json'
 
 export default function configureOpenAPI(app: AppOpenAPI) {
-  app.doc('/doc', {
+  app.doc('/api/doc', {
     openapi: '3.0.0',
     info: {
       version: packageJSON.version,
@@ -14,17 +14,17 @@ export default function configureOpenAPI(app: AppOpenAPI) {
   })
 
   app.get(
-    '/reference',
+    '/api/reference',
     apiReference({
       theme: 'kepler',
       layout: 'classic',
       defaultHttpClient: {
-        targetKey: 'javascript',
+        targetKey: 'js',
         clientKey: 'fetch',
       },
       spec: {
         url: '/api/doc',
       },
-    })
+    } as Parameters<typeof apiReference>[0])
   )
 }

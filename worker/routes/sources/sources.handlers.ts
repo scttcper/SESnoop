@@ -1,0 +1,207 @@
+import { eq } from 'drizzle-orm'
+import * as HttpStatusCodes from 'stoker/http-status-codes'
+import * as HttpStatusPhrases from 'stoker/http-status-phrases'
+
+import type { AppRouteHandler } from '../../lib/types'
+
+import { createDb } from '../../db'
+import { sources } from '../../db/schema'
+import {
+  DEFAULT_SOURCE_COLOR,
+  ZOD_ERROR_CODES,
+  ZOD_ERROR_MESSAGES,
+} from '../../lib/constants'
+
+import type {
+  CreateRoute,
+  GetOneRoute,
+  ListRoute,
+  PatchRoute,
+  RemoveRoute,
+  SetupRoute,
+} from './sources.routes'
+
+const MAX_TOKEN_ATTEMPTS = 5
+
+const isUniqueConstraintError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false
+  }
+  return /unique/i.test(error.message)
+}
+
+const toSlug = (value: string): string => {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return slug.length > 0 ? slug : 'source'
+}
+
+export const list: AppRouteHandler<ListRoute> = async (c) => {
+  const db = createDb(c.env)
+  const sourcesList = await db.query.sources.findMany()
+  return c.json(sourcesList)
+}
+
+export const create: AppRouteHandler<CreateRoute> = async (c) => {
+  const db = createDb(c.env)
+  const payload = c.req.valid('json')
+  const color = payload.color ?? DEFAULT_SOURCE_COLOR
+  const retentionDays = payload.retention_days ?? undefined
+
+  for (let attempt = 0; attempt < MAX_TOKEN_ATTEMPTS; attempt += 1) {
+    const token = crypto.randomUUID()
+    try {
+      const [inserted] = await db
+        .insert(sources)
+        .values({
+          name: payload.name,
+          token,
+          color,
+          retention_days: retentionDays,
+        })
+        .returning()
+      return c.json(inserted, HttpStatusCodes.OK)
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) {
+        throw error
+      }
+    }
+  }
+
+  return c.json(
+    { message: 'Failed to create a unique token' },
+    HttpStatusCodes.INTERNAL_SERVER_ERROR
+  )
+}
+
+export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
+  const db = createDb(c.env)
+  const { id } = c.req.valid('param')
+  const source = await db.query.sources.findFirst({
+    where(fields, operators) {
+      return operators.eq(fields.id, id)
+    },
+  })
+
+  if (!source) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND
+    )
+  }
+
+  return c.json(source, HttpStatusCodes.OK)
+}
+
+export const patch: AppRouteHandler<PatchRoute> = async (c) => {
+  const db = createDb(c.env)
+  const { id } = c.req.valid('param')
+  const updates = c.req.valid('json')
+
+  if (Object.keys(updates).length === 0) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          issues: [
+            {
+              code: ZOD_ERROR_CODES.INVALID_UPDATES,
+              path: [],
+              message: ZOD_ERROR_MESSAGES.NO_UPDATES,
+            },
+          ],
+          name: 'ZodError',
+        },
+      },
+      HttpStatusCodes.UNPROCESSABLE_ENTITY
+    )
+  }
+
+  const [source] = await db
+    .update(sources)
+    .set({
+      ...updates,
+      updated_at: new Date(),
+    })
+    .where(eq(sources.id, id))
+    .returning()
+
+  if (!source) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND
+    )
+  }
+
+  return c.json(source, HttpStatusCodes.OK)
+}
+
+export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
+  const db = createDb(c.env)
+  const { id } = c.req.valid('param')
+  const deleted = await db
+    .delete(sources)
+    .where(eq(sources.id, id))
+    .returning({ id: sources.id })
+
+  if (deleted.length === 0) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND
+    )
+  }
+
+  return c.body(null, HttpStatusCodes.NO_CONTENT)
+}
+
+export const setup: AppRouteHandler<SetupRoute> = async (c) => {
+  const db = createDb(c.env)
+  const { id } = c.req.valid('param')
+  const source = await db.query.sources.findFirst({
+    where(fields, operators) {
+      return operators.eq(fields.id, id)
+    },
+  })
+
+  if (!source) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND
+    )
+  }
+
+  const slug = toSlug(source.name)
+  const configurationSetName = `sessy-${slug}-config`
+  const snsTopicName = `sessy-${slug}-sns`
+  const origin = new URL(c.req.url).origin
+  const webhookUrl = `${origin}/webhooks/${source.token}`
+
+  const steps = [
+    `Create an SNS topic named "${snsTopicName}".`,
+    `Create or choose an SES configuration set named "${configurationSetName}".`,
+    `Add an HTTPS subscription to the SNS topic using "${webhookUrl}".`,
+    'In SES, add an Event Destination that publishes delivery, bounce, complaint, reject, delivery delay, rendering failure, open, click, and subscription events to the SNS topic.',
+  ]
+
+  return c.json(
+    {
+      source,
+      configuration_set_name: configurationSetName,
+      sns_topic_name: snsTopicName,
+      webhook_url: webhookUrl,
+      steps,
+    },
+    HttpStatusCodes.OK
+  )
+}

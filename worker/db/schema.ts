@@ -8,6 +8,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
+import { SOURCE_COLORS } from '../lib/constants'
+
 const timestampMs = (name: string) =>
   integer(name, { mode: 'timestamp_ms' })
     .notNull()
@@ -147,6 +149,33 @@ export const eventsRelations = relations(events, ({ one }) => ({
 export const webhooksRelations = relations(webhooks, ({ many }) => ({
   events: many(events),
 }))
+
+const retentionDaysSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.number().int().positive().optional()
+)
+
+export const selectSourcesSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  token: z.string(),
+  color: z.enum(SOURCE_COLORS),
+  retention_days: z.number().int().positive().nullable(),
+  created_at: z.number(),
+  updated_at: z.number(),
+})
+
+export const insertSourcesSchema = z.object({
+  name: z.string().min(1).max(200),
+  color: z.enum(SOURCE_COLORS).optional(),
+  retention_days: retentionDaysSchema,
+})
+
+export const patchSourcesSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  color: z.enum(SOURCE_COLORS).optional(),
+  retention_days: retentionDaysSchema.optional(),
+})
 
 // Zod schemas for tasks (manually defined for better type inference)
 export const selectTasksSchema = z.object({

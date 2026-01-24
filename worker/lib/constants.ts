@@ -52,3 +52,5 @@ export const SOURCE_COLORS = [
   'yellow',
   'gray',
 ] as const
+
+export const DEFAULT_SOURCE_COLOR = 'blue' as const

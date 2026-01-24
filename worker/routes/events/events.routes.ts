@@ -38,6 +38,8 @@ const eventRowSchema = z.object({
   message_subject: z.string().nullable(),
 })
 
+export type EventRow = z.infer<typeof eventRowSchema>
+
 const responseSchema = z.object({
   data: z.array(eventRowSchema),
   pagination: z.object({
@@ -51,6 +53,9 @@ const responseSchema = z.object({
     bounce_types: z.record(z.string(), z.number()),
   }),
 })
+
+export type EventResponse = z.infer<typeof responseSchema>
+export type EventCounts = EventResponse['counts']
 
 export const list = createRoute({
   path: '/sources/{id}/events',

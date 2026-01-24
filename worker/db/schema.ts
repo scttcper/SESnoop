@@ -165,6 +165,8 @@ export const selectSourcesSchema = z.object({
   updated_at: z.number(),
 })
 
+export type Source = z.infer<typeof selectSourcesSchema>
+
 export const insertSourcesSchema = z.object({
   name: z.string().min(1).max(200),
   color: z.enum(SOURCE_COLORS).optional(),

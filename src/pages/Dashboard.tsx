@@ -1,97 +1,28 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-
-type Source = {
-  id: number
-  name: string
-}
-
-type OverviewResponse = {
-  source_id: number
-  range: {
-    from: string
-    to: string
-  }
-  metrics: {
-    sent: number
-    delivered: number
-    bounced: number
-    complaints: number
-    opens: number
-    clicks: number
-    sent_today: number
-    unique_opens: number
-    unique_clicks: number
-    bounce_rate: number
-    complaint_rate: number
-    open_rate: number
-    click_rate: number
-  }
-  chart: {
-    days: string[]
-    sent: number[]
-    delivered: number[]
-    bounced: number[]
-  }
-  bounce_breakdown: Array<{
-    bounce_type: string
-    count: number
-  }>
-}
+import { useMemo, useState } from 'react'
+import { overviewQueryOptions, sourcesQueryOptions } from '../lib/queries'
 
 const formatPercent = (value: number) =>
   `${(value * 100).toFixed(1)}%`
 
 export default function DashboardPage() {
-  const [sources, setSources] = useState<Source[]>([])
   const [sourceId, setSourceId] = useState<number | null>(null)
-  const [overview, setOverview] = useState<OverviewResponse | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const loadSources = async () => {
-      try {
-        const response = await fetch('/api/sources')
-        if (!response.ok) {
-          throw new Error('Failed to load sources')
-        }
-        const data = (await response.json()) as Source[]
-        setSources(data)
-        if (data.length > 0) {
-          setSourceId((prev) => prev ?? data[0].id)
-        }
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-      }
-    }
+  const { data: sources = [] } = useQuery(sourcesQueryOptions)
 
-    void loadSources()
-  }, [])
+  // Initialize sourceId if not set
+  if (sourceId === null && sources.length > 0) {
+    setSourceId(sources[0].id)
+  }
 
-  useEffect(() => {
-    const loadOverview = async () => {
-      if (!sourceId) {
-        return
-      }
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(`/api/sources/${sourceId}/overview`)
-        if (!response.ok) {
-          throw new Error('Failed to load overview')
-        }
-        const data = (await response.json()) as OverviewResponse
-        setOverview(data)
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
-    }
+  const { 
+    data: overview, 
+    isLoading: loading, 
+    error: queryError 
+  } = useQuery(overviewQueryOptions(sourceId))
 
-    void loadOverview()
-  }, [sourceId])
+  const error = queryError instanceof Error ? queryError.message : null
 
   const chartMax = useMemo(() => {
     if (!overview) {

@@ -32,6 +32,8 @@ const messageSchema = z.object({
   events: z.array(eventSchema),
 })
 
+export type MessageDetail = z.infer<typeof messageSchema>
+
 export const getOne = createRoute({
   path: '/sources/{id}/messages/{ses_message_id}',
   method: 'get',

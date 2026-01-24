@@ -1,36 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-
-type Source = {
-  id: number
-  name: string
-}
-
-type EventRow = {
-  id: number
-  event_type: string
-  recipient_email: string
-  event_at: number
-  ses_message_id: string
-  bounce_type: string | null
-  message_subject: string | null
-}
-
-type EventCounts = {
-  event_types: Record<string, number>
-  bounce_types: Record<string, number>
-}
-
-type EventResponse = {
-  data: EventRow[]
-  pagination: {
-    page: number
-    per_page: number
-    total: number
-    total_pages: number
-  }
-  counts: EventCounts
-}
+import { useMemo, useState } from 'react'
+import { eventsQueryOptions, sourcesQueryOptions } from '../lib/queries'
 
 const EVENT_TYPES = [
   'Send',
@@ -62,7 +33,6 @@ const formatDateTime = (value: number) =>
   new Date(value).toLocaleString()
 
 export default function EventsPage() {
-  const [sources, setSources] = useState<Source[]>([])
   const [sourceId, setSourceId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([])
@@ -70,15 +40,14 @@ export default function EventsPage() {
   const [datePreset, setDatePreset] = useState('last_30_days')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [events, setEvents] = useState<EventRow[]>([])
-  const [counts, setCounts] = useState<EventCounts>({
-    event_types: {},
-    bounce_types: {},
-  })
   const [page, setPage] = useState(1)
-  const [pagination, setPagination] = useState<EventResponse['pagination'] | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  const { data: sources = [] } = useQuery(sourcesQueryOptions)
+
+  // Initialize sourceId if not set
+  if (sourceId === null && sources.length > 0) {
+    setSourceId(sources[0].id)
+  }
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
@@ -104,51 +73,16 @@ export default function EventsPage() {
     return params.toString()
   }, [datePreset, from, page, search, selectedBounceTypes, selectedEventTypes, to])
 
-  useEffect(() => {
-    const loadSources = async () => {
-      try {
-        const response = await fetch('/api/sources')
-        if (!response.ok) {
-          throw new Error('Failed to load sources')
-        }
-        const data = (await response.json()) as Source[]
-        setSources(data)
-        if (data.length > 0) {
-          setSourceId((prev) => prev ?? data[0].id)
-        }
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-      }
-    }
+  const { 
+    data: eventsResponse, 
+    isLoading: loading, 
+    error: queryError 
+  } = useQuery(eventsQueryOptions(sourceId, queryString))
 
-    void loadSources()
-  }, [])
-
-  useEffect(() => {
-    const loadEvents = async () => {
-      if (!sourceId) {
-        return
-      }
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(`/api/sources/${sourceId}/events?${queryString}`)
-        if (!response.ok) {
-          throw new Error('Failed to load events')
-        }
-        const data = (await response.json()) as EventResponse
-        setEvents(data.data)
-        setCounts(data.counts)
-        setPagination(data.pagination)
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void loadEvents()
-  }, [queryString, sourceId])
+  const events = eventsResponse?.data ?? []
+  const counts = eventsResponse?.counts ?? { event_types: {}, bounce_types: {} }
+  const pagination = eventsResponse?.pagination ?? null
+  const error = queryError instanceof Error ? queryError.message : null
 
   const toggleEventType = (value: string) => {
     setPage(1)

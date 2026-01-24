@@ -1,30 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
-
-type Source = {
-  id: number
-  name: string
-}
-
-type MessageEvent = {
-  id: number
-  event_type: string
-  recipient_email: string
-  event_at: number
-}
-
-type MessageDetail = {
-  id: number
-  ses_message_id: string
-  subject: string | null
-  source_email: string | null
-  destination_emails: string[]
-  sent_at: number | null
-  tags: string[]
-  mail_metadata: Record<string, unknown>
-  events_count: number
-  events: MessageEvent[]
-}
+import { useEffect, useMemo, useState } from 'react'
+import {
+  messageQueryOptions,
+  sourcesQueryOptions,
+} from '../lib/queries'
 
 const formatDateTime = (value?: number | null) =>
   value ? new Date(value).toLocaleString() : '—'
@@ -34,68 +14,32 @@ const formatJson = (value: Record<string, unknown>) =>
 
 export default function MessageDetailPage() {
   const { sesMessageId } = useParams({ from: '/messages/$sesMessageId' })
-  const [sources, setSources] = useState<Source[]>([])
   const [sourceId, setSourceId] = useState<number | null>(null)
-  const [message, setMessage] = useState<MessageDetail | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const messageTitle = useMemo(
-    () => message?.subject ?? 'Message detail',
-    [message?.subject]
-  )
+  const { data: sources = [] } = useQuery(sourcesQueryOptions)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const sourceParam = params.get('sourceId')
     if (sourceParam) {
       setSourceId(Number(sourceParam))
+    } else if (sources.length > 0 && !sourceId) {
+      setSourceId(sources[0].id)
     }
-  }, [])
+  }, [sources, sourceId])
 
-  useEffect(() => {
-    const loadSources = async () => {
-      try {
-        const response = await fetch('/api/sources')
-        if (!response.ok) {
-          throw new Error('Failed to load sources')
-        }
-        const data = (await response.json()) as Source[]
-        setSources(data)
-        if (!sourceId && data.length > 0) {
-          setSourceId(data[0].id)
-        }
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-      }
-    }
+  const {
+    data: message,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery(messageQueryOptions(sourceId, sesMessageId))
 
-    void loadSources()
-  }, [sourceId])
+  const error = queryError instanceof Error ? queryError.message : null
 
-  useEffect(() => {
-    const loadMessage = async () => {
-      if (!sourceId) {
-        return
-      }
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(`/api/sources/${sourceId}/messages/${sesMessageId}`)
-        if (!response.ok) {
-          throw new Error('Failed to load message')
-        }
-        const data = (await response.json()) as MessageDetail
-        setMessage(data)
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void loadMessage()
-  }, [sesMessageId, sourceId])
+  const messageTitle = useMemo(
+    () => message?.subject ?? 'Message detail',
+    [message?.subject]
+  )
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] bg-[#0B0C0E] p-6 space-y-8 border-x border-white/10">

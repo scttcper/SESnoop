@@ -20,6 +20,8 @@ const setupSchema = z.object({
   steps: z.array(z.string()),
 })
 
+export type SetupInfo = z.infer<typeof setupSchema>
+
 export const list = createRoute({
   path: '/sources',
   method: 'get',

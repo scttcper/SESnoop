@@ -20,6 +20,9 @@ importers:
       '@scalar/hono-api-reference':
         specifier: ^0.9.13
         version: 0.9.36(hono@4.11.5)
+      '@tanstack/react-query':
+        specifier: ^5.90.20
+        version: 5.90.20(react@19.2.3)
       '@tanstack/react-router':
         specifier: ^1.156.0
         version: 1.156.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1367,6 +1370,14 @@ packages:
   '@tanstack/history@1.154.14':
     resolution: {integrity: sha512-xyIfof8eHBuub1CkBnbKNKQXeRZC4dClhmzePHVOEel4G7lk/dW+TQ16da7CFdeNLv6u6Owf5VoBQxoo6DFTSA==}
     engines: {node: '>=12'}
+
+  '@tanstack/query-core@5.90.20':
+    resolution: {integrity: sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==}
+
+  '@tanstack/react-query@5.90.20':
+    resolution: {integrity: sha512-vXBxa+qeyveVO7OA0jX1z+DeyCA4JKnThKv411jd5SORpBKgkcVnYKCiBgECvADvniBX7tobwBmg01qq9JmMJw==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@tanstack/react-router@1.156.0':
     resolution: {integrity: sha512-ET1MyOhLAWVYNE/6XQmIi1RNcmTVsN+rPAW7sjU7XDbQ62g4kAyK4sip2WkInYOHrB5iWktvqtjDsdErvGugVw==}
@@ -3178,6 +3189,13 @@ snapshots:
       vite: 7.3.1(@types/node@25.0.10)(jiti@2.6.1)(lightningcss@1.30.2)(yaml@2.8.2)
 
   '@tanstack/history@1.154.14': {}
+
+  '@tanstack/query-core@5.90.20': {}
+
+  '@tanstack/react-query@5.90.20(react@19.2.3)':
+    dependencies:
+      '@tanstack/query-core': 5.90.20
+      react: 19.2.3
 
   '@tanstack/react-router@1.156.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:

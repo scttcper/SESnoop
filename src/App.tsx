@@ -1,23 +1,13 @@
-import type { CSSProperties } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-
-type Source = {
-  id: number
-  name: string
-  token: string
-  color: string
-  retention_days: number | null
-  created_at: number
-  updated_at: number
-}
-
-type SetupInfo = {
-  source: Source
-  configuration_set_name: string
-  sns_topic_name: string
-  webhook_url: string
-  steps: string[]
-}
+import {
+  createSourceFn,
+  deleteSourceFn,
+  type Source,
+  sourcesQueryOptions,
+  sourceSetupQueryOptions,
+  updateSourceFn,
+} from './lib/queries'
 
 const COLORS = ['purple', 'blue', 'cyan', 'green', 'red', 'orange', 'yellow', 'gray']
 
@@ -29,68 +19,73 @@ const formatDate = (value?: number | null) => {
 }
 
 export default function App() {
-  const [sources, setSources] = useState<Source[]>([])
+  const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [panel, setPanel] = useState<'overview' | 'settings' | 'setup'>('overview')
   const [isCreating, setIsCreating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [setupInfo, setSetupInfo] = useState<SetupInfo | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     name: '',
     color: 'blue',
     retention_days: '',
   })
+  const [error, setError] = useState<string | null>(null)
+
+  const { data: sources = [], isLoading: loadingSources } = useQuery(sourcesQueryOptions)
 
   const selectedSource = useMemo(
     () => sources.find((source) => source.id === selectedId) ?? null,
     [selectedId, sources]
   )
 
-  const loadSources = async (keepSelection = false) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch('/api/sources')
-      if (!response.ok) {
-        throw new Error('Failed to load sources')
-      }
-      const data = (await response.json()) as Source[]
-      setSources(data)
-      if (!keepSelection && data.length > 0) {
-        setSelectedId(data[0].id)
-      }
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadSetup = async (sourceId: number) => {
-    setSetupInfo(null)
-    try {
-      const response = await fetch(`/api/sources/${sourceId}/setup`)
-      if (!response.ok) {
-        throw new Error('Failed to load setup instructions')
-      }
-      const data = (await response.json()) as SetupInfo
-      setSetupInfo(data)
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-    }
-  }
-
+  // Sync selectedId with first source if not set
   useEffect(() => {
-    void loadSources()
-  }, [])
-
-  useEffect(() => {
-    if (panel === 'setup' && selectedSource) {
-      void loadSetup(selectedSource.id)
+    if (!selectedId && sources.length > 0) {
+      setSelectedId(sources[0].id)
     }
-  }, [panel, selectedSource])
+  }, [sources, selectedId])
+
+  const { data: setupInfo, isLoading: loadingSetup } = useQuery(
+    sourceSetupQueryOptions(selectedSource?.id)
+  )
+
+  const createMutation = useMutation({
+    mutationFn: createSourceFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] })
+      setIsCreating(false)
+      resetForm()
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: updateSourceFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] })
+      setIsEditing(false)
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteSourceFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sources'] })
+      // If we deleted the selected source, the useEffect above will handle re-selection
+      // or we can explicitly check here. For simplicity, let the effect handle it.
+      if (selectedSource) {
+         setSelectedId(null)
+      }
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    },
+  })
 
   const resetForm = (source?: Source) => {
     if (source) {
@@ -108,35 +103,20 @@ export default function App() {
     })
   }
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     setError(null)
     const retentionValue = form.retention_days.trim()
       ? Number(form.retention_days)
       : undefined
-    const payload = {
+    
+    createMutation.mutate({
       name: form.name.trim(),
       color: form.color,
       ...(retentionValue ? { retention_days: retentionValue } : {}),
-    }
-
-    try {
-      const response = await fetch('/api/sources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!response.ok) {
-        throw new Error('Failed to create source')
-      }
-      await loadSources()
-      setIsCreating(false)
-      resetForm()
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-    }
+    })
   }
 
-  const handleUpdate = async () => {
+  const handleUpdate = () => {
     if (!selectedSource) {
       return
     }
@@ -144,29 +124,18 @@ export default function App() {
     const retentionValue = form.retention_days.trim()
       ? Number(form.retention_days)
       : undefined
-    const payload = {
-      name: form.name.trim(),
-      color: form.color,
-      ...(retentionValue ? { retention_days: retentionValue } : {}),
-    }
-
-    try {
-      const response = await fetch(`/api/sources/${selectedSource.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!response.ok) {
-        throw new Error('Failed to update source')
-      }
-      await loadSources(true)
-      setIsEditing(false)
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-    }
+    
+    updateMutation.mutate({
+      id: selectedSource.id,
+      payload: {
+        name: form.name.trim(),
+        color: form.color,
+        ...(retentionValue ? { retention_days: retentionValue } : {}),
+      },
+    })
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedSource) {
       return
     }
@@ -174,17 +143,7 @@ export default function App() {
       return
     }
     setError(null)
-    try {
-      const response = await fetch(`/api/sources/${selectedSource.id}`, {
-        method: 'DELETE',
-      })
-      if (!response.ok) {
-        throw new Error('Failed to delete source')
-      }
-      await loadSources()
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-    }
+    deleteMutation.mutate(selectedSource.id)
   }
 
   const startCreate = () => {
@@ -220,7 +179,7 @@ export default function App() {
           <button 
              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-9 px-4 py-2 shadow-sm"
             type="button" 
-            onClick={() => loadSources(true)}
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['sources'] })}
           >
             Refresh
           </button>
@@ -233,7 +192,7 @@ export default function App() {
           <div className="flex items-center justify-between p-4 border-b border-white/5">
             <h2 className="text-sm font-semibold text-white">Sources</h2>
             <span className="text-xs text-white/40 font-mono">
-              {loading ? 'Loading...' : `${sources.length} total`}
+              {loadingSources ? 'Loading...' : `${sources.length} total`}
             </span>
           </div>
           {error ? <p className="px-4 py-3 text-sm text-red-400 bg-red-400/10 border-b border-red-400/20">{error}</p> : null}
@@ -274,7 +233,7 @@ export default function App() {
                 </div>
               </button>
             ))}
-            {!loading && sources.length === 0 ? (
+            {!loadingSources && sources.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <p className="text-sm text-white/40 mb-4">No sources yet.</p>
                 <button 
@@ -358,9 +317,11 @@ export default function App() {
                     className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-white/10 text-white hover:bg-white/20 border border-white/10 h-10 px-4 py-2 shadow-sm"
                     type="button"
                     onClick={isEditing ? handleUpdate : handleCreate}
-                    disabled={!form.name.trim()}
+                    disabled={!form.name.trim() || createMutation.isPending || updateMutation.isPending}
                   >
-                    {isEditing ? 'Save changes' : 'Create source'}
+                    {createMutation.isPending || updateMutation.isPending 
+                      ? 'Saving...' 
+                      : isEditing ? 'Save changes' : 'Create source'}
                   </button>
                 </div>
               </div>
@@ -389,8 +350,9 @@ export default function App() {
                     className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-500/20 bg-red-500/5 rounded-md hover:bg-red-500/10 transition-colors" 
                     type="button" 
                     onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
                   >
-                    Delete
+                    {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>
@@ -502,12 +464,12 @@ export default function App() {
                           ))}
                         </div>
                       </div>
-                    ) : (
+                    ) : loadingSetup ? (
                       <div className="flex items-center space-x-2 text-white/40">
                         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                         <span>Loading setup instructions...</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 ) : null}
               </div>

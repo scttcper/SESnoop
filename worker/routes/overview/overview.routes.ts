@@ -47,6 +47,8 @@ const responseSchema = z.object({
   ),
 })
 
+export type OverviewResponse = z.infer<typeof responseSchema>
+
 export const get = createRoute({
   path: '/sources/{id}/overview',
   method: 'get',

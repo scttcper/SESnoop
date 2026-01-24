@@ -1,6 +1,7 @@
 import { SELF } from 'cloudflare:test'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { MessageDetail } from '@/routes/messages/messages.routes'
 import { insertEvent, insertMessage, insertSource, resetDb } from './helpers/db'
 
 const firstEventAt = Date.UTC(2025, 0, 1, 8, 0, 0)
@@ -46,7 +47,7 @@ describe('messages routes', () => {
       'http://example.com/api/sources/1/messages/ses-1'
     )
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as MessageDetail
     expect(json.ses_message_id).toBe('ses-1')
     expect(json.destination_emails).toEqual(['a@example.com', 'b@example.com'])
     expect(json.tags).toEqual(['campaign:spring'])

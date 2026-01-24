@@ -1,6 +1,7 @@
 import { SELF } from 'cloudflare:test'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { EventResponse } from '@/routes/events/events.routes'
 import { insertEvent, insertMessage, insertSource, resetDb } from './helpers/db'
 
 const day = Date.UTC(2025, 0, 1, 12, 0, 0)
@@ -38,7 +39,7 @@ describe('events routes', () => {
       'http://example.com/api/sources/1/events?date_range=all_time'
     )
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as EventResponse
     expect(json.data).toHaveLength(2)
     expect(json.pagination.total).toBe(2)
     expect(json.counts.event_types.Bounce).toBe(1)
@@ -52,7 +53,7 @@ describe('events routes', () => {
       'http://example.com/api/sources/1/events?event_types=Bounce&date_range=all_time'
     )
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as EventResponse
     expect(json.data).toHaveLength(1)
     expect(json.data[0]?.event_type).toBe('Bounce')
   })

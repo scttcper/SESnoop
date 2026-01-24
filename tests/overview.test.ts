@@ -1,6 +1,7 @@
 import { SELF } from 'cloudflare:test'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { OverviewResponse } from '@/routes/overview/overview.routes'
 import { insertEvent, insertMessage, insertSource, resetDb } from './helpers/db'
 
 const rangeDate = Date.UTC(2025, 0, 1, 12, 0, 0)
@@ -73,7 +74,7 @@ describe('overview routes', () => {
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01'
     )
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as OverviewResponse
     expect(json.metrics.sent).toBe(1)
     expect(json.metrics.delivered).toBe(1)
     expect(json.metrics.bounced).toBe(1)

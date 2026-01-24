@@ -1,6 +1,8 @@
 import { SELF } from 'cloudflare:test'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { Task } from '@/db/schema'
+import type { ValidationErrorResponse } from '@/lib/types'
 import { resetDb } from './helpers/db'
 
 beforeEach(async () => {
@@ -11,7 +13,7 @@ describe('tasks routes', () => {
   it('lists tasks', async () => {
     const response = await SELF.fetch('http://example.com/api/tasks')
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Task[]
     expect(json).toEqual([])
   })
 
@@ -22,7 +24,7 @@ describe('tasks routes', () => {
       body: JSON.stringify({ name: 'First task', done: false }),
     })
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Task
     expect(json.name).toBe('First task')
     expect(json.done).toBe(false)
     expect(json.id).toBeTypeOf('number')
@@ -43,13 +45,13 @@ describe('tasks routes', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Lookup', done: false }),
     })
-    const createdJson = await created.json()
+    const createdJson = (await created.json()) as Task
 
     const response = await SELF.fetch(
       `http://example.com/api/tasks/${createdJson.id}`
     )
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Task
     expect(json.name).toBe('Lookup')
   })
 
@@ -69,7 +71,7 @@ describe('tasks routes', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Needs update', done: false }),
     })
-    const createdJson = await created.json()
+    const createdJson = (await created.json()) as Task
 
     const response = await SELF.fetch(
       `http://example.com/api/tasks/${createdJson.id}`,
@@ -80,7 +82,7 @@ describe('tasks routes', () => {
       }
     )
     expect(response.status).toBe(422)
-    const json = await response.json()
+    const json = (await response.json()) as ValidationErrorResponse
     expect(json.success).toBe(false)
   })
 
@@ -90,7 +92,7 @@ describe('tasks routes', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Update me', done: false }),
     })
-    const createdJson = await created.json()
+    const createdJson = (await created.json()) as Task
 
     const response = await SELF.fetch(
       `http://example.com/api/tasks/${createdJson.id}`,
@@ -101,7 +103,7 @@ describe('tasks routes', () => {
       }
     )
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Task
     expect(json.done).toBe(true)
   })
 
@@ -120,7 +122,7 @@ describe('tasks routes', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Delete me', done: false }),
     })
-    const createdJson = await created.json()
+    const createdJson = (await created.json()) as Task
 
     const response = await SELF.fetch(
       `http://example.com/api/tasks/${createdJson.id}`,

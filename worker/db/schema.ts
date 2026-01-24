@@ -186,6 +186,8 @@ export const selectTasksSchema = z.object({
   done: z.boolean(),
 })
 
+export type Task = z.infer<typeof selectTasksSchema>
+
 export const insertTasksSchema = z.object({
   name: z.string().min(1).max(500),
   done: z.boolean(),

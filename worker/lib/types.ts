@@ -13,3 +13,27 @@ export interface AppBindings {
 export type AppOpenAPI = OpenAPIHono<AppBindings>
 
 export type AppRouteHandler<R extends RouteConfig> = RouteHandler<R, AppBindings>
+
+export type ApiIndexResponse = {
+  name: string
+}
+
+export type OpenApiDocument = {
+  openapi: string
+  info?: {
+    title?: string
+    version?: string
+  }
+}
+
+export type ValidationErrorResponse = {
+  success: boolean
+  error: {
+    name: string
+    issues: Array<{
+      code: string
+      path: Array<string | number>
+      message?: string
+    }>
+  }
+}

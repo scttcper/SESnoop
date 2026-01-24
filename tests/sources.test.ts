@@ -1,6 +1,9 @@
 import { SELF } from 'cloudflare:test'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { Source } from '@/db/schema'
+import type { SetupInfo } from '@/routes/sources/sources.routes'
+import type { ValidationErrorResponse } from '@/lib/types'
 import { insertSource, resetDb } from './helpers/db'
 
 beforeEach(async () => {
@@ -13,7 +16,7 @@ describe('sources routes', () => {
 
     const response = await SELF.fetch('http://example.com/api/sources')
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Source[]
     expect(json).toHaveLength(1)
     expect(json[0]?.name).toBe('Alpha')
   })
@@ -25,7 +28,7 @@ describe('sources routes', () => {
       body: JSON.stringify({ name: 'New Source' }),
     })
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Source
     expect(json.name).toBe('New Source')
     expect(json.color).toBe('blue')
     expect(json.token).toBeTypeOf('string')
@@ -44,7 +47,7 @@ describe('sources routes', () => {
     await insertSource({ id: 1, name: 'Bravo', token: 'bravo-token' })
     const response = await SELF.fetch('http://example.com/api/sources/1')
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Source
     expect(json.name).toBe('Bravo')
   })
 
@@ -66,7 +69,7 @@ describe('sources routes', () => {
       body: JSON.stringify({}),
     })
     expect(response.status).toBe(422)
-    const json = await response.json()
+    const json = (await response.json()) as ValidationErrorResponse
     expect(json.success).toBe(false)
   })
 
@@ -78,7 +81,7 @@ describe('sources routes', () => {
       body: JSON.stringify({ name: 'Delta Updated', retention_days: 30 }),
     })
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as Source
     expect(json.name).toBe('Delta Updated')
     expect(json.retention_days).toBe(30)
   })
@@ -95,7 +98,7 @@ describe('sources routes', () => {
     await insertSource({ id: 1, name: 'My Source', token: 'tok-1' })
     const response = await SELF.fetch('http://example.com/api/sources/1/setup')
     expect(response.status).toBe(200)
-    const json = await response.json()
+    const json = (await response.json()) as SetupInfo
     expect(json.configuration_set_name).toBe('sesnoop-my-source-config')
     expect(json.sns_topic_name).toBe('sesnoop-my-source-sns')
     expect(json.webhook_url).toBe('http://example.com/webhooks/tok-1')

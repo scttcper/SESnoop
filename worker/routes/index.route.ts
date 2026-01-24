@@ -20,7 +20,7 @@ const router = createRouter()
     }),
     (c) => {
       return c.json({
-        message: "Tasks API on Cloudflare",
+        name: "Cloudflare",
       }, HttpStatusCodes.OK);
     },
   );

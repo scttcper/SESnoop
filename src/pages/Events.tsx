@@ -331,7 +331,9 @@ export default function EventsPage() {
               <span>{event.message_subject ?? '—'}</span>
               <Link
                 className="link"
-                to={`/messages/${event.ses_message_id}?sourceId=${sourceId ?? ''}`}
+                to="/messages/$sesMessageId"
+                params={{ sesMessageId: event.ses_message_id }}
+                search={{ sourceId: sourceId ?? undefined }}
               >
                 View
               </Link>

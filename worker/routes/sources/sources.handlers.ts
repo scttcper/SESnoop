@@ -8,6 +8,7 @@ import { createDb } from '../../db'
 import { sources } from '../../db/schema'
 import {
   DEFAULT_SOURCE_COLOR,
+  SOURCE_COLORS,
   ZOD_ERROR_CODES,
   ZOD_ERROR_MESSAGES,
 } from '../../lib/constants'
@@ -22,6 +23,28 @@ import type {
 } from './sources.routes'
 
 const MAX_TOKEN_ATTEMPTS = 5
+
+type SourceColor = (typeof SOURCE_COLORS)[number]
+
+type DbSource = {
+  id: number
+  name: string
+  token: string
+  color: string
+  retention_days: number | null
+  created_at: Date
+  updated_at: Date
+}
+
+const serializeSource = (source: DbSource) => ({
+  id: source.id,
+  name: source.name,
+  token: source.token,
+  color: source.color as SourceColor,
+  retention_days: source.retention_days,
+  created_at: source.created_at.getTime(),
+  updated_at: source.updated_at.getTime(),
+})
 
 const isUniqueConstraintError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
@@ -42,7 +65,7 @@ const toSlug = (value: string): string => {
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const db = createDb(c.env)
   const sourcesList = await db.query.sources.findMany()
-  return c.json(sourcesList)
+  return c.json(sourcesList.map(serializeSource))
 }
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
@@ -63,7 +86,7 @@ export const create: AppRouteHandler<CreateRoute> = async (c) => {
           retention_days: retentionDays,
         })
         .returning()
-      return c.json(inserted, HttpStatusCodes.OK)
+      return c.json(serializeSource(inserted), HttpStatusCodes.OK)
     } catch (error) {
       if (!isUniqueConstraintError(error)) {
         throw error
@@ -95,7 +118,7 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
     )
   }
 
-  return c.json(source, HttpStatusCodes.OK)
+  return c.json(serializeSource(source), HttpStatusCodes.OK)
 }
 
 export const patch: AppRouteHandler<PatchRoute> = async (c) => {
@@ -140,7 +163,7 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
     )
   }
 
-  return c.json(source, HttpStatusCodes.OK)
+  return c.json(serializeSource(source), HttpStatusCodes.OK)
 }
 
 export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
@@ -196,7 +219,7 @@ export const setup: AppRouteHandler<SetupRoute> = async (c) => {
 
   return c.json(
     {
-      source,
+      source: serializeSource(source),
       configuration_set_name: configurationSetName,
       sns_topic_name: snsTopicName,
       webhook_url: webhookUrl,

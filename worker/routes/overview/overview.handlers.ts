@@ -89,18 +89,22 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   }
 
   const { start, end } = resolveRange(from, to)
+  const startMs = start.getTime()
+  const endMs = end.getTime()
   const dayKeys = buildDayRange(start, end)
 
   const rangeFilter = and(
     eq(messages.source_id, source.id),
-    sql`${events.event_at} >= ${start}`,
-    sql`${events.event_at} <= ${end}`
+    sql`${events.event_at} >= ${startMs}`,
+    sql`${events.event_at} <= ${endMs}`
   )
 
   const todayRange = {
     start: startOfDayUtc(new Date()),
     end: endOfDayUtc(new Date()),
   }
+  const todayStartMs = todayRange.start.getTime()
+  const todayEndMs = todayRange.end.getTime()
 
   const sentRow = await db
     .select({
@@ -124,8 +128,8 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     .where(
       and(
         eq(messages.source_id, source.id),
-        sql`${events.event_at} >= ${todayRange.start}`,
-        sql`${events.event_at} <= ${todayRange.end}`
+        sql`${events.event_at} >= ${todayStartMs}`,
+        sql`${events.event_at} <= ${todayEndMs}`
       )
     )
 
@@ -138,9 +142,11 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter)
 
+  const dayExpr = sql<string>`strftime('%Y-%m-%d', ${events.event_at} / 1000, 'unixepoch')`
+
   const dailyRows = await db
     .select({
-      day: sql<string>`strftime('%Y-%m-%d', ${events.event_at} / 1000, 'unixepoch')`,
+      day: dayExpr,
       sent: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.send} then 1 else 0 end)`,
       delivered: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.delivery} then 1 else 0 end)`,
       bounced: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.bounce} then 1 else 0 end)`,
@@ -148,7 +154,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter)
-    .groupBy(sql`day`)
+    .groupBy(dayExpr)
 
   const bounceRows = await db
     .select({

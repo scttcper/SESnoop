@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import * as HttpStatusCodes from 'stoker/http-status-codes'
 import * as HttpStatusPhrases from 'stoker/http-status-phrases'
 
@@ -78,11 +78,14 @@ const resolveDateRange = (preset?: string, from?: string, to?: string) => {
 
 const buildSearchFilter = (search?: string) => {
   if (!search) {
-    return null
+    return undefined
   }
   const normalized = `%${search.trim().toLowerCase()}%`
   return sql`(lower(${events.recipient_email}) like ${normalized} or lower(${messages.subject}) like ${normalized})`
 }
+
+const filterSql = (items: (SQL | undefined | null)[]): SQL[] =>
+  items.filter((item): item is SQL => item != null)
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const db = createDb(c.env)
@@ -116,19 +119,21 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   )
 
   const { start, end } = resolveDateRange(query.date_range, query.from, query.to)
+  const startMs = start ? start.getTime() : null
+  const endMs = end ? end.getTime() : null
 
-  const baseFilters = [
+  const baseFilters = filterSql([
     eq(messages.source_id, source.id),
     buildSearchFilter(query.search),
-    start ? sql`${events.event_at} >= ${start}` : null,
-    end ? sql`${events.event_at} <= ${end}` : null,
-  ].filter(Boolean)
+    startMs ? sql`${events.event_at} >= ${startMs}` : undefined,
+    endMs ? sql`${events.event_at} <= ${endMs}` : undefined,
+  ])
 
-  const listFilters = [
+  const listFilters = filterSql([
     ...baseFilters,
-    eventTypes.length ? inArray(events.event_type, eventTypes) : null,
-    bounceTypes.length ? inArray(events.bounce_type, bounceTypes) : null,
-  ].filter(Boolean)
+    eventTypes.length ? inArray(events.event_type, eventTypes) : undefined,
+    bounceTypes.length ? inArray(events.bounce_type, bounceTypes) : undefined,
+  ])
 
   const [{ total }] = await db
     .select({ total: sql<number>`count(*)` })
@@ -177,7 +182,10 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
 
   return c.json(
     {
-      data: rows,
+      data: rows.map((row) => ({
+        ...row,
+        event_at: row.event_at.getTime(),
+      })),
       pagination: {
         page,
         per_page: perPage,

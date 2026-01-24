@@ -47,8 +47,8 @@ const responseSchema = z.object({
     total_pages: z.number(),
   }),
   counts: z.object({
-    event_types: z.record(z.number()),
-    bounce_types: z.record(z.number()),
+    event_types: z.record(z.string(), z.number()),
+    bounce_types: z.record(z.string(), z.number()),
   }),
 })
 

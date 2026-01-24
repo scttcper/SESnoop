@@ -98,11 +98,14 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
       subject: message.subject,
       source_email: message.source_email,
       destination_emails: extractDestinations(mailMetadata),
-      sent_at: message.sent_at,
+      sent_at: message.sent_at?.getTime() ?? null,
       tags: normalizeTags(mailMetadata),
       mail_metadata: mailMetadata,
       events_count: message.events_count,
-      events: messageEvents,
+      events: messageEvents.map((event) => ({
+        ...event,
+        event_at: event.event_at.getTime(),
+      })),
     },
     HttpStatusCodes.OK
   )

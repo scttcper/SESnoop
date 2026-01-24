@@ -19,20 +19,22 @@ const RootLayout = () => (
         <span className="nav-subtitle">Sources</span>
       </div>
       <div className="nav-links">
-        <Link className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/dashboard">
+        <Link className="nav-link" activeProps={{ className: 'nav-link active' }} to="/dashboard">
           Dashboard
         </Link>
-        <Link className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/events">
+        <Link className="nav-link" activeProps={{ className: 'nav-link active' }} to="/events">
           Events
         </Link>
         <Link
-          className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+          className="nav-link"
+          activeProps={{ className: 'nav-link active' }}
           to="/sources"
         >
           Sources
         </Link>
         <Link
-          className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+          className="nav-link"
+          activeProps={{ className: 'nav-link active' }}
           to="/setup"
         >
           Setup

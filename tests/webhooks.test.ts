@@ -1,86 +1,11 @@
 import { SELF, env } from 'cloudflare:test'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-const schemaSql = `
-CREATE TABLE IF NOT EXISTS sources (
-  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  name text NOT NULL,
-  token text NOT NULL,
-  color text NOT NULL,
-  retention_days integer,
-  created_at integer DEFAULT (unixepoch() * 1000) NOT NULL,
-  updated_at integer DEFAULT (unixepoch() * 1000) NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS sources_token_unique ON sources (token);
-
-CREATE TABLE IF NOT EXISTS messages (
-  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  source_id integer NOT NULL,
-  ses_message_id text NOT NULL,
-  source_email text,
-  subject text,
-  sent_at integer,
-  mail_metadata text DEFAULT '{}' NOT NULL,
-  events_count integer DEFAULT 0 NOT NULL,
-  created_at integer DEFAULT (unixepoch() * 1000) NOT NULL,
-  updated_at integer DEFAULT (unixepoch() * 1000) NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS messages_ses_message_id_unique ON messages (ses_message_id);
-
-CREATE TABLE IF NOT EXISTS webhooks (
-  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  sns_message_id text NOT NULL,
-  sns_type text NOT NULL,
-  sns_timestamp integer NOT NULL,
-  raw_payload text DEFAULT '{}' NOT NULL,
-  processed_at integer,
-  created_at integer DEFAULT (unixepoch() * 1000) NOT NULL,
-  updated_at integer DEFAULT (unixepoch() * 1000) NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS webhooks_sns_message_id_unique ON webhooks (sns_message_id);
-
-CREATE TABLE IF NOT EXISTS events (
-  id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  message_id integer NOT NULL,
-  webhook_id integer,
-  event_type text NOT NULL,
-  recipient_email text NOT NULL,
-  event_at integer NOT NULL,
-  ses_message_id text NOT NULL,
-  event_data text DEFAULT '{}' NOT NULL,
-  raw_payload text DEFAULT '{}' NOT NULL,
-  bounce_type text,
-  created_at integer DEFAULT (unixepoch() * 1000) NOT NULL,
-  updated_at integer DEFAULT (unixepoch() * 1000) NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS events_dedupe_unique ON events (
-  ses_message_id,
-  event_type,
-  recipient_email,
-  event_at
-);
-`
-
-const runStatements = async (sql: string) => {
-  const statements = sql
-    .split(';')
-    .map((statement) => statement.trim())
-    .filter(Boolean)
-
-  for (const statement of statements) {
-    await env.DB.prepare(statement).run()
-  }
-}
+import { insertSource, resetDb } from './helpers/db'
 
 beforeEach(async () => {
-  await runStatements(schemaSql)
-  await runStatements(
-    'DELETE FROM events; DELETE FROM messages; DELETE FROM webhooks; DELETE FROM sources;'
-  )
-  await env.DB.prepare(
-    "INSERT INTO sources (name, token, color, created_at, updated_at) VALUES ('Test', 'token-123', 'blue', unixepoch() * 1000, unixepoch() * 1000);"
-  ).run()
-
+  await resetDb()
+  await insertSource({ name: 'Test', token: 'token-123', color: 'blue' })
 })
 
 describe('webhooks ingestion', () => {

@@ -32,6 +32,10 @@ export const list = createRoute({
   },
 })
 
+const internalErrorSchema = z.object({
+  message: z.string(),
+})
+
 export const create = createRoute({
   path: '/sources',
   method: 'post',
@@ -50,6 +54,10 @@ export const create = createRoute({
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(insertSourcesSchema),
       'The validation error(s)'
+    ),
+    [HttpStatusCodes.INTERNAL_SERVER_ERROR]: jsonContent(
+      internalErrorSchema,
+      'Internal server error'
     ),
   },
 })

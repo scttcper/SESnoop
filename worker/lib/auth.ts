@@ -1,6 +1,6 @@
 import { verify } from '@tsndr/cloudflare-worker-jwt';
-import { getCookie } from 'hono/cookie';
 import type { MiddlewareHandler } from 'hono';
+import { getCookie } from 'hono/cookie';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 
 import type { AppBindings } from './types';

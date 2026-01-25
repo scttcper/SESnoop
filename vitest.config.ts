@@ -11,7 +11,6 @@ export default defineWorkersConfig({
           },
           bindings: {
             SNS_DISABLE_SIGNATURE_VERIFY: 'true',
-            DB_DISABLE_TRANSACTIONS: 'true',
           },
         },
       },

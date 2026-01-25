@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sesnoop",
-  "compatibility_date": "2025-04-03",
+  "compatibility_date": "2025-12-20",
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],
@@ -23,6 +23,9 @@
       "enabled": true,
       "invocation_logs": true,
     },
+  },
+  "placement": {
+    "mode": "smart",
   },
   "main": "./worker/index.ts",
 }

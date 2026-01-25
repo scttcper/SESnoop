@@ -1,6 +1,6 @@
 # SESnoop
 
-SESnoop is a self-hosted dashboard for Amazon SES delivery events. It ingests SNS notifications (deliveries, bounces, complaints) via webhooks and provides a modern React UI to explore message history and delivery metrics.
+SESnoop is a cloudflare worker dashboard for Amazon SES delivery events. It ingests SNS notifications (deliveries, bounces, complaints) via webhooks and provides a modern React UI to explore message history and delivery metrics.
 
 Built on Cloudflare Workers and D1, it offers a serverless, low-cost alternative to third-party email monitoring tools.
 

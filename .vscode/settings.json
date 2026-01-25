@@ -1,0 +1,7 @@
+{
+  "oxc.fmt.configPath": ".oxfmtrc.json",
+  "[typescript][typescriptreact][json][markdown]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true
+  }
+}

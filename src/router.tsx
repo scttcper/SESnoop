@@ -7,9 +7,11 @@ import {
   Scripts,
   redirect,
 } from '@tanstack/react-router';
+import { fallback, zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 
 import { AppLayout } from './components/layout/AppLayout';
+import { DEFAULT_DATE_RANGE, DEFAULT_PAGE } from './lib/constants';
 import DashboardPage from './pages/Dashboard';
 import EventsPage from './pages/Events';
 import MessageDetailPage from './pages/MessageDetail';
@@ -75,28 +77,22 @@ const sourceMonitorRoute = createRoute({
   path: 's/$sourceId',
 });
 
+const eventsSearchSchema = z.object({
+  search: fallback(z.string(), '').default(''),
+  event_types: fallback(z.array(z.string()), []).default([]),
+  bounce_types: fallback(z.array(z.string()), []).default([]),
+  date_range: fallback(z.string(), DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
+  from: fallback(z.string(), '').default(''),
+  to: fallback(z.string(), '').default(''),
+  page: fallback(z.number(), DEFAULT_PAGE).default(DEFAULT_PAGE),
+});
+
+export type EventsSearchParams = z.infer<typeof eventsSearchSchema>;
+
 const sourceEventsRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
   path: 'events',
-  validateSearch: (search) => {
-    return z
-      .object({
-        search: z.string().optional(),
-        event_types: z
-          .union([z.string(), z.array(z.string())])
-          .transform((val) => (Array.isArray(val) ? val : val ? [val] : []))
-          .optional(),
-        bounce_types: z
-          .union([z.string(), z.array(z.string())])
-          .transform((val) => (Array.isArray(val) ? val : val ? [val] : []))
-          .optional(),
-        date_range: z.string().optional().catch('last_30_days'),
-        from: z.string().optional(),
-        to: z.string().optional(),
-        page: z.number().optional().catch(1),
-      })
-      .parse(search);
-  },
+  validateSearch: zodValidator(eventsSearchSchema),
   component: EventsPage,
   head: () => ({
     meta: [{ title: `Events | SESnoop` }],
@@ -130,9 +126,16 @@ const sourceDashboardRoute = createRoute({
   }),
 });
 
+const messageDetailSearchSchema = z.object({
+  sourceId: z.number().optional().catch(undefined),
+});
+
+export type MessageDetailSearchParams = z.infer<typeof messageDetailSearchSchema>;
+
 const messageDetailRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/messages/$sesMessageId',
+  validateSearch: zodValidator(messageDetailSearchSchema),
   component: MessageDetailPage,
   head: ({ params }) => ({
     meta: [{ title: `Message ${params.sesMessageId} | SESnoop` }],

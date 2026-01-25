@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams, useSearch, useNavigate } from '@tanstack/react-router';
+import { Link, useParams, useSearch, useNavigate, getRouteApi } from '@tanstack/react-router';
 import { useMemo } from 'react';
 
 import { Button } from '../components/ui/button';
@@ -11,33 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import { BOUNCE_TYPES, DATE_PRESETS, EVENT_TYPES } from '../lib/constants';
 import { eventsQueryOptions, sourcesQueryOptions } from '../lib/queries';
+import type { EventsSearchParams } from '../router';
 
-const EVENT_TYPES = [
-  'Send',
-  'Delivery',
-  'Bounce',
-  'Complaint',
-  'Reject',
-  'DeliveryDelay',
-  'RenderingFailure',
-  'Subscription',
-  'Open',
-  'Click',
-];
-
-const BOUNCE_TYPES = ['Permanent', 'Transient', 'Undetermined'];
-
-const DATE_PRESETS = [
-  { value: 'last_30_days', label: 'Last 30 days' },
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'last_7_days', label: 'Last 7 days' },
-  { value: 'last_45_days', label: 'Last 45 days' },
-  { value: 'last_90_days', label: 'Last 90 days' },
-  { value: 'all_time', label: 'All time' },
-  { value: 'custom', label: 'Custom range' },
-];
+const routeApi = getRouteApi('/app/s/$sourceId/events');
 
 const formatDateTime = (value: number) => new Date(value).toLocaleString();
 
@@ -45,27 +23,27 @@ export default function EventsPage() {
   const { sourceId: sourceIdStr } = useParams({ strict: false });
   const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
 
-  const searchParams = useSearch({ strict: false });
-  const navigate = useNavigate({ strict: false });
+  const searchParams = routeApi.useSearch();
+  const navigate = routeApi.useNavigate();
 
-  const search = searchParams.search || '';
-  const selectedEventTypes = searchParams.event_types || [];
-  const selectedBounceTypes = searchParams.bounce_types || [];
-  const datePreset = searchParams.date_range || 'last_30_days';
-  const from = searchParams.from || '';
-  const to = searchParams.to || '';
-  const page = searchParams.page || 1;
+  const search = searchParams.search;
+  const selectedEventTypes = searchParams.event_types;
+  const selectedBounceTypes = searchParams.bounce_types;
+  const datePreset = searchParams.date_range;
+  const from = searchParams.from;
+  const to = searchParams.to;
+  const page = searchParams.page;
 
-  const updateFilter = (updates: any) => {
+  const updateFilter = (updates: Partial<EventsSearchParams>) => {
     navigate({
-      search: (prev: any) => ({ ...prev, ...updates, page: 1 }),
+      search: (prev) => ({ ...prev, ...updates, page: 1 }),
       replace: true,
     });
   };
 
   const updatePage = (newPage: number) => {
     navigate({
-      search: (prev: any) => ({ ...prev, page: newPage }),
+      search: (prev) => ({ ...prev, page: newPage }),
       replace: true,
     });
   };
@@ -185,7 +163,7 @@ export default function EventsPage() {
               <Select
                 value={datePreset}
                 onValueChange={(value) => {
-                  updateFilter({ date_range: value });
+                  updateFilter({ date_range: value ?? undefined });
                 }}
               >
                 <SelectTrigger className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors focus:border-white/30 focus:outline-none">

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, getRouteApi } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -11,25 +11,30 @@ import {
 } from '../components/ui/select';
 import { messageQueryOptions, sourcesQueryOptions } from '../lib/queries';
 
+const routeApi = getRouteApi('/app/messages/$sesMessageId');
+
 const formatDateTime = (value?: number | null) => (value ? new Date(value).toLocaleString() : '—');
 
 const formatJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
 
 export default function MessageDetailPage() {
-  const { sesMessageId } = useParams({ from: '/app/messages/$sesMessageId' });
-  const [sourceId, setSourceId] = useState<number | null>(null);
+  const { sesMessageId } = routeApi.useParams();
+  const searchParams = routeApi.useSearch();
+  const navigate = routeApi.useNavigate();
+
+  const [sourceId, setSourceId] = useState<number | null>(searchParams.sourceId ?? null);
 
   const { data: sources = [] } = useQuery(sourcesQueryOptions);
 
+  // Initialize sourceId from first source if not provided in URL
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sourceParam = params.get('sourceId');
-    if (sourceParam) {
-      setSourceId(Number(sourceParam));
-    } else if (sources.length > 0 && !sourceId) {
-      setSourceId(sources[0].id);
+    if (!sourceId && sources.length > 0) {
+      const firstSourceId = sources[0].id;
+      setSourceId(firstSourceId);
+      // Update URL with the selected sourceId
+      navigate({ search: { sourceId: firstSourceId }, replace: true });
     }
-  }, [sources, sourceId]);
+  }, [sources, sourceId, navigate]);
 
   const {
     data: message,

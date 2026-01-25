@@ -21,14 +21,17 @@ importers:
         specifier: ^0.17.0
         version: 0.17.0
       '@scalar/hono-api-reference':
-        specifier: ^0.9.36
-        version: 0.9.36(hono@4.11.5)
+        specifier: ^0.9.37
+        version: 0.9.37(hono@4.11.5)
       '@tanstack/react-query':
         specifier: ^5.90.20
         version: 5.90.20(react@19.2.3)
       '@tanstack/react-router':
-        specifier: ^1.157.2
-        version: 1.157.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^1.157.5
+        version: 1.157.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tanstack/zod-adapter':
+        specifier: ^1.157.5
+        version: 1.157.5(@tanstack/react-router@1.157.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(zod@4.3.6)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -38,15 +41,9 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      dotenv-expand:
-        specifier: ^12.0.3
-        version: 12.0.3
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@cloudflare/workers-types@4.20260124.0)(@libsql/client@0.17.0)
-      drizzle-zod:
-        specifier: ^0.8.3
-        version: 0.8.3(drizzle-orm@0.45.1(@cloudflare/workers-types@4.20260124.0)(@libsql/client@0.17.0))(zod@4.3.6)
       hono:
         specifier: ^4.11.5
         version: 4.11.5
@@ -90,6 +87,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20260124.0
         version: 4.20260124.0
+      '@ctrl/oxlint-config':
+        specifier: ^1.3.3
+        version: 1.3.3
       '@tailwindcss/vite':
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.0.10)(jiti@2.6.1)(lightningcss@1.30.2)(yaml@2.8.2))
@@ -111,6 +111,9 @@ importers:
       oxfmt:
         specifier: ^0.26.0
         version: 0.26.0
+      oxlint:
+        specifier: ^1.41.0
+        version: 1.41.0
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
@@ -366,6 +369,10 @@ packages:
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
+
+  '@ctrl/oxlint-config@1.3.3':
+    resolution: {integrity: sha512-rH3VdmHBGm5F6uojudd9+2Aac7qWLwATNKapUp1UVEnbVuuHrzgf7eTl736aPgHLv4KSFPt1FbYg6b0FRbwpwA==}
+    engines: {node: '>=20'}
 
   '@dotenvx/dotenvx@1.52.0':
     resolution: {integrity: sha512-CaQcc8JvtzQhUSm9877b6V4Tb7HCotkcyud9X2YwdqtQKwgljkMRwU96fVYKnzN3V0Hj74oP7Es+vZ0mS+Aa1w==}
@@ -1374,6 +1381,46 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@oxlint/darwin-arm64@1.41.0':
+    resolution: {integrity: sha512-K0Bs0cNW11oWdSrKmrollKF44HMM2HKr4QidZQHMlhJcSX8pozxv0V5FLdqB4sddzCY0J9Wuuw+oRAfR8sdRwA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxlint/darwin-x64@1.41.0':
+    resolution: {integrity: sha512-1LCCXCe9nN8LbrJ1QOGari2HqnxrZrveYKysWDIg8gFsQglIg00XF/8lRbA0kWHMdLgt4X0wfNYhhFz+c3XXLQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxlint/linux-arm64-gnu@1.41.0':
+    resolution: {integrity: sha512-Fow7H84Bs8XxuaK1yfSEWBC8HI7rfEQB9eR2A0J61un1WgCas7jNrt1HbT6+p6KmUH2bhR+r/RDu/6JFAvvj4g==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxlint/linux-arm64-musl@1.41.0':
+    resolution: {integrity: sha512-WoRRDNwgP5W3rjRh42Zdx8ferYnqpKoYCv2QQLenmdrLjRGYwAd52uywfkcS45mKEWHeY1RPwPkYCSROXiGb2w==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxlint/linux-x64-gnu@1.41.0':
+    resolution: {integrity: sha512-75k3CKj3fOc/a/2aSgO81s3HsTZOFROthPJ+UI2Oatic1LhvH6eKjKfx3jDDyVpzeDS2qekPlc/y3N33iZz5Og==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxlint/linux-x64-musl@1.41.0':
+    resolution: {integrity: sha512-8r82eBwGPoAPn67ZvdxTlX/Z3gVb+ZtN6nbkyFzwwHWAh8yGutX+VBcVkyrePSl6XgBP4QAaddPnHmkvJjqY0g==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxlint/win32-arm64@1.41.0':
+    resolution: {integrity: sha512-aK+DAcckQsNCOXKruatyYuY/ROjNiRejQB1PeJtkZwM21+8rV9ODYbvKNvt0pW+YCws7svftBSFMCpl3ke2unw==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxlint/win32-x64@1.41.0':
+    resolution: {integrity: sha512-dVBXkZ6MGLd3owV7jvuqJsZwiF3qw7kEkDVsYVpS/O96eEvlHcxVbaPjJjrTBgikXqyC22vg3dxBU7MW0utGfw==}
+    cpu: [x64]
+    os: [win32]
+
   '@poppinss/colors@4.1.6':
     resolution: {integrity: sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg==}
 
@@ -1511,22 +1558,22 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@scalar/core@0.3.33':
-    resolution: {integrity: sha512-eEnj3Xl66VhD5h+Py+r3k3C5GuXucfUNc9o6XfGU/lKJTN9foEa9wgwyH2Lr6IHCtn+SoIgCn3ZS9g1REcXeZQ==}
+  '@scalar/core@0.3.34':
+    resolution: {integrity: sha512-dZnpkrnjiPvPLa/sIdjoaxdVoYowWUqC5nCCXJI+29laMIII6dCze8ThxLPGN1b9gJ8cYcQwBrwr+RNCjqJgdQ==}
     engines: {node: '>=20'}
 
-  '@scalar/helpers@0.2.8':
-    resolution: {integrity: sha512-aXXRF4sCaiGZIRpZ1MUcnl8y0Q9pPG1VXqQMWacVWDh6zQN9cuayTC/TbODzWeldp50sgJ1E8MpHvpeV7CEF9g==}
+  '@scalar/helpers@0.2.9':
+    resolution: {integrity: sha512-Y4ffJF0yELdwZ0BKgonqn3SumIgRn1WKyYCVHD+TDM7qRFChdGRypyt20+efHs26fmJeyBAIIv2laICj5uimiw==}
     engines: {node: '>=20'}
 
-  '@scalar/hono-api-reference@0.9.36':
-    resolution: {integrity: sha512-fh1U0vsZfPvhqtjhhVm1JORdDaCNfWmUilb0PsWNsAO/uTdYArFZqVT3eTkMR4KOF56jfey0k0rkPUaVeLSSUw==}
+  '@scalar/hono-api-reference@0.9.37':
+    resolution: {integrity: sha512-eprpFplQoirRmfC5fWo90jLQX5x01H7QS2XrRDmNES207eaEvtUZHyW9vPV7Bi9ltjrnqG8WK2oPMd/uZClptg==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4.10.3
 
-  '@scalar/types@0.5.9':
-    resolution: {integrity: sha512-aj3Zju0HsyI2SCIPPejRGLsGCfkf5CRv4QLHcZB36uUo5WuzQ/PN4wxJPc5JpT0t+gLNj7lWjv/+RxDR0w57OA==}
+  '@scalar/types@0.5.10':
+    resolution: {integrity: sha512-37qAHQC2J7O+Mt8u0HOZttTQPQ1OEWKWxo9SMbahYKTosL9k1KtTG2F3EB33EkW3WqEVQitkUKrM0+MVM2HeYQ==}
     engines: {node: '>=20'}
 
   '@sec-ant/readable-stream@0.4.1':
@@ -1645,8 +1692,8 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
-  '@tanstack/react-router@1.157.2':
-    resolution: {integrity: sha512-Qt/McqRNnkQuRowZx/+ShOVY47xfPo+ZKIXqEo9Oh6Qk2p2Sl1cBRhOxbeyOcHf5ZwGwys8rkitM/6gelYjmDQ==}
+  '@tanstack/react-router@1.157.5':
+    resolution: {integrity: sha512-14vuNCiYoGVEP+gmsUjDR41G1YbVYY/qId4MKjGl2fujNj6d9wnSJZ7VhI8Fx6y9efn6Eqwq2lsuLtZJbA9OOA==}
     engines: {node: '>=12'}
     peerDependencies:
       react: '>=18.0.0 || >=19.0.0'
@@ -1658,12 +1705,19 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  '@tanstack/router-core@1.157.1':
-    resolution: {integrity: sha512-aHLPIXqojpUoWjYUQgEVN53xFbfLIshfgUSJe9sxKkfwzc32aidQA0ZG0VWrxl5u1klFPcA5WgfDuoNkkDHDVw==}
+  '@tanstack/router-core@1.157.5':
+    resolution: {integrity: sha512-lReeuQOknxtLKUvI6QDyDWzN41/Jhh7/CXhvwZC74poZq3H1o6q/RR1kkCo3jLnHvZzQ5gKE2vYCmBBPXVBWxQ==}
     engines: {node: '>=12'}
 
   '@tanstack/store@0.8.0':
     resolution: {integrity: sha512-Om+BO0YfMZe//X2z0uLF2j+75nQga6TpTJgLJQBiq85aOyZNIhkCgleNcud2KQg4k4v9Y9l+Uhru3qWMPGTOzQ==}
+
+  '@tanstack/zod-adapter@1.157.5':
+    resolution: {integrity: sha512-1ZHNGxyXvVHECc7XAjLBITPES8aPAIhA1XP+HITNObUbNx2eV1hSTW0v7kihUCka/N1NlxkvGzuLu93I3Ov68A==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      '@tanstack/react-router': '>=1.43.2'
+      zod: ^3.23.8
 
   '@ts-morph/common@0.27.0':
     resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
@@ -2014,14 +2068,6 @@ packages:
     resolution: {integrity: sha512-qejHi7bcSD4hQAZE0tNAawRK1ZtafHDmMTMkrrIGgSLl7hTnQHmKCeB45xAcbfTqK2zowkM3j3bHt/4b/ARbYQ==}
     engines: {node: '>=0.3.1'}
 
-  dotenv-expand@12.0.3:
-    resolution: {integrity: sha512-uc47g4b+4k/M/SeaW1y4OApx+mtLWl92l5LMPP0GNXctZqELk+YGgOPIIC5elYmUH4OuoK3JLhuRUYegeySiFA==}
-    engines: {node: '>=12'}
-
-  dotenv@16.6.1:
-    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
-    engines: {node: '>=12'}
-
   dotenv@17.2.3:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
@@ -2121,12 +2167,6 @@ packages:
         optional: true
       sqlite3:
         optional: true
-
-  drizzle-zod@0.8.3:
-    resolution: {integrity: sha512-66yVOuvGhKJnTdiqj1/Xaaz9/qzOdRJADpDa68enqS6g3t0kpNkwNYjUuaeXgZfO/UWuIM9HIhSlJ6C5ZraMww==}
-    peerDependencies:
-      drizzle-orm: '>=0.36.0'
-      zod: ^3.25.0 || ^4.0.0
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -2820,6 +2860,16 @@ packages:
     resolution: {integrity: sha512-UDD1wFNwfeorMm2ZY0xy1KRAAvJ5NjKBfbDmiMwGP7baEHTq65cYpC0aPP+BGHc8weXUbSZaK8MdGyvuRUvS4Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
+
+  oxlint@1.41.0:
+    resolution: {integrity: sha512-Dyaoup82uhgAgp5xLNt4dPdvl5eSJTIzqzL7DcKbkooUE4PDViWURIPlSUF8hu5a+sCnNIp/LlQMDsKoyaLTBA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
+    peerDependencies:
+      oxlint-tsgolint: '>=0.11.1'
+    peerDependenciesMeta:
+      oxlint-tsgolint:
+        optional: true
 
   package-manager-detector@1.6.0:
     resolution: {integrity: sha512-61A5ThoTiDG/C8s8UMZwSorAGwMJ0ERVGj2OjoW5pAalsNOg15+iQiPzrLJ4jhZ1HJzmC2PIHT2oEiH3R5fzNA==}
@@ -3789,6 +3839,8 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
+  '@ctrl/oxlint-config@1.3.3': {}
+
   '@dotenvx/dotenvx@1.52.0':
     dependencies:
       commander: 11.1.0
@@ -4460,6 +4512,30 @@ snapshots:
   '@oxfmt/win32-x64@0.26.0':
     optional: true
 
+  '@oxlint/darwin-arm64@1.41.0':
+    optional: true
+
+  '@oxlint/darwin-x64@1.41.0':
+    optional: true
+
+  '@oxlint/linux-arm64-gnu@1.41.0':
+    optional: true
+
+  '@oxlint/linux-arm64-musl@1.41.0':
+    optional: true
+
+  '@oxlint/linux-x64-gnu@1.41.0':
+    optional: true
+
+  '@oxlint/linux-x64-musl@1.41.0':
+    optional: true
+
+  '@oxlint/win32-arm64@1.41.0':
+    optional: true
+
+  '@oxlint/win32-x64@1.41.0':
+    optional: true
+
   '@poppinss/colors@4.1.6':
     dependencies:
       kleur: 4.1.5
@@ -4549,20 +4625,20 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.56.0':
     optional: true
 
-  '@scalar/core@0.3.33':
+  '@scalar/core@0.3.34':
     dependencies:
-      '@scalar/types': 0.5.9
+      '@scalar/types': 0.5.10
 
-  '@scalar/helpers@0.2.8': {}
+  '@scalar/helpers@0.2.9': {}
 
-  '@scalar/hono-api-reference@0.9.36(hono@4.11.5)':
+  '@scalar/hono-api-reference@0.9.37(hono@4.11.5)':
     dependencies:
-      '@scalar/core': 0.3.33
+      '@scalar/core': 0.3.34
       hono: 4.11.5
 
-  '@scalar/types@0.5.9':
+  '@scalar/types@0.5.10':
     dependencies:
-      '@scalar/helpers': 0.2.8
+      '@scalar/helpers': 0.2.9
       nanoid: 5.1.6
       type-fest: 5.4.1
       zod: 4.3.6
@@ -4652,11 +4728,11 @@ snapshots:
       '@tanstack/query-core': 5.90.20
       react: 19.2.3
 
-  '@tanstack/react-router@1.157.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@tanstack/react-router@1.157.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tanstack/history': 1.154.14
       '@tanstack/react-store': 0.8.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tanstack/router-core': 1.157.1
+      '@tanstack/router-core': 1.157.5
       isbot: 5.1.33
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -4670,7 +4746,7 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       use-sync-external-store: 1.6.0(react@19.2.3)
 
-  '@tanstack/router-core@1.157.1':
+  '@tanstack/router-core@1.157.5':
     dependencies:
       '@tanstack/history': 1.154.14
       '@tanstack/store': 0.8.0
@@ -4681,6 +4757,11 @@ snapshots:
       tiny-warning: 1.0.3
 
   '@tanstack/store@0.8.0': {}
+
+  '@tanstack/zod-adapter@1.157.5(@tanstack/react-router@1.157.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(zod@4.3.6)':
+    dependencies:
+      '@tanstack/react-router': 1.157.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      zod: 4.3.6
 
   '@ts-morph/common@0.27.0':
     dependencies:
@@ -5009,12 +5090,6 @@ snapshots:
 
   diff@8.0.3: {}
 
-  dotenv-expand@12.0.3:
-    dependencies:
-      dotenv: 16.6.1
-
-  dotenv@16.6.1: {}
-
   dotenv@17.2.3: {}
 
   drizzle-kit@0.31.8:
@@ -5030,11 +5105,6 @@ snapshots:
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260124.0
       '@libsql/client': 0.17.0
-
-  drizzle-zod@0.8.3(drizzle-orm@0.45.1(@cloudflare/workers-types@4.20260124.0)(@libsql/client@0.17.0))(zod@4.3.6):
-    dependencies:
-      drizzle-orm: 0.45.1(@cloudflare/workers-types@4.20260124.0)(@libsql/client@0.17.0)
-      zod: 4.3.6
 
   dunder-proto@1.0.1:
     dependencies:
@@ -5780,6 +5850,17 @@ snapshots:
       '@oxfmt/linux-x64-musl': 0.26.0
       '@oxfmt/win32-arm64': 0.26.0
       '@oxfmt/win32-x64': 0.26.0
+
+  oxlint@1.41.0:
+    optionalDependencies:
+      '@oxlint/darwin-arm64': 1.41.0
+      '@oxlint/darwin-x64': 1.41.0
+      '@oxlint/linux-arm64-gnu': 1.41.0
+      '@oxlint/linux-arm64-musl': 1.41.0
+      '@oxlint/linux-x64-gnu': 1.41.0
+      '@oxlint/linux-x64-musl': 1.41.0
+      '@oxlint/win32-arm64': 1.41.0
+      '@oxlint/win32-x64': 1.41.0
 
   package-manager-detector@1.6.0: {}
 

@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 export const COLOR_STYLES: Record<string, string> = {
@@ -14,7 +14,6 @@ export const COLOR_STYLES: Record<string, string> = {
   orange: 'bg-orange-500/80 shadow-[0_0_8px_rgba(var(--color-orange-500),0.5)]',
   yellow: 'bg-yellow-500/80 shadow-[0_0_8px_rgba(var(--color-yellow-500),0.5)]',
   gray: 'bg-gray-500/80 shadow-[0_0_8px_rgba(var(--color-gray-500),0.5)]',
-}
+};
 
-export const COLORS = Object.keys(COLOR_STYLES)
-
+export const COLORS = Object.keys(COLOR_STYLES);

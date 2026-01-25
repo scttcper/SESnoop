@@ -1,8 +1,8 @@
-import { apiReference } from '@scalar/hono-api-reference'
+import { apiReference } from '@scalar/hono-api-reference';
 
-import type { AppOpenAPI } from './types'
+import packageJSON from '../../package.json';
 
-import packageJSON from '../../package.json'
+import type { AppOpenAPI } from './types';
 
 export default function configureOpenAPI(app: AppOpenAPI) {
   app.doc('/api/doc', {
@@ -11,7 +11,7 @@ export default function configureOpenAPI(app: AppOpenAPI) {
       version: packageJSON.version,
       title: 'SESnoop API',
     },
-  })
+  });
 
   app.get(
     '/api/reference',
@@ -25,6 +25,6 @@ export default function configureOpenAPI(app: AppOpenAPI) {
       spec: {
         url: '/api/doc',
       },
-    } as Parameters<typeof apiReference>[0])
-  )
+    } as Parameters<typeof apiReference>[0]),
+  );
 }

@@ -1,4 +1,4 @@
-import { QueryClient, QueryCache } from '@tanstack/react-query'
+import { QueryClient, QueryCache } from '@tanstack/react-query';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -6,8 +6,8 @@ export const queryClient = new QueryClient({
       staleTime: 0,
       gcTime: 5 * 60_000,
       retry: (failureCount, error: any) => {
-        if (error?.response?.status === 401) return false
-        return failureCount < 3
+        if (error?.response?.status === 401) return false;
+        return failureCount < 3;
       },
     },
   },
@@ -15,7 +15,7 @@ export const queryClient = new QueryClient({
     onError: (error, query) => {
       // Logic for global error handling can go here (e.g. toasts)
       // For now we will just log it
-      console.error('Background error:', error)
+      console.error('Background error:', error);
     },
   }),
-})
+});

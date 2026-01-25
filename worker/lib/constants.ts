@@ -1,20 +1,20 @@
-import { z } from '@hono/zod-openapi'
-import * as HttpStatusPhrases from 'stoker/http-status-phrases'
+import { z } from '@hono/zod-openapi';
+import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 export const ZOD_ERROR_MESSAGES = {
   REQUIRED: 'Required',
   EXPECTED_NUMBER: 'Invalid input: expected number, received NaN',
   NO_UPDATES: 'No updates provided',
   EXPECTED_STRING: 'Invalid input: expected string, received undefined',
-}
+};
 
 export const ZOD_ERROR_CODES = {
   INVALID_UPDATES: 'invalid_updates',
-}
+};
 
 export const notFoundSchema = z.object({
   message: z.string().openapi({ example: HttpStatusPhrases.NOT_FOUND }),
-})
+});
 
 export const EVENT_TYPES = {
   send: 'Send',
@@ -27,7 +27,7 @@ export const EVENT_TYPES = {
   subscription: 'Subscription',
   open: 'Open',
   click: 'Click',
-} as const
+} as const;
 
 export const EVENT_TYPE_VALUES = [
   'Send',
@@ -40,9 +40,9 @@ export const EVENT_TYPE_VALUES = [
   'Subscription',
   'Open',
   'Click',
-] as const
+] as const;
 
-export const BOUNCE_TYPES = ['Permanent', 'Transient', 'Undetermined'] as const
+export const BOUNCE_TYPES = ['Permanent', 'Transient', 'Undetermined'] as const;
 
 export const SOURCE_COLORS = [
   'purple',
@@ -53,6 +53,6 @@ export const SOURCE_COLORS = [
   'orange',
   'yellow',
   'gray',
-] as const
+] as const;
 
-export const DEFAULT_SOURCE_COLOR = 'blue' as const
+export const DEFAULT_SOURCE_COLOR = 'blue' as const;

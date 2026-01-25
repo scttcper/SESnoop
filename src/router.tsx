@@ -6,16 +6,16 @@ import {
   HeadContent,
   Scripts,
   redirect,
-} from '@tanstack/react-router'
-import { z } from 'zod'
+} from '@tanstack/react-router';
+import { z } from 'zod';
 
-import { AppLayout } from './components/layout/AppLayout'
-import DashboardPage from './pages/Dashboard'
-import EventsPage from './pages/Events'
-import SourcesPage from './pages/Sources'
-import SourceSettingsPage from './pages/SourceSettings'
-import SourceSetupPage from './pages/SourceSetup'
-import MessageDetailPage from './pages/MessageDetail'
+import { AppLayout } from './components/layout/AppLayout';
+import DashboardPage from './pages/Dashboard';
+import EventsPage from './pages/Events';
+import MessageDetailPage from './pages/MessageDetail';
+import SourcesPage from './pages/Sources';
+import SourceSettingsPage from './pages/SourceSettings';
+import SourceSetupPage from './pages/SourceSetup';
 
 const RootLayout = () => (
   <>
@@ -23,7 +23,7 @@ const RootLayout = () => (
     <Outlet />
     <Scripts />
   </>
-)
+);
 
 const rootRoute = createRootRoute({
   head: () => ({
@@ -34,13 +34,13 @@ const rootRoute = createRootRoute({
     ],
   }),
   component: RootLayout,
-})
+});
 
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'app',
   component: AppLayout,
-})
+});
 
 const indexRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -49,7 +49,7 @@ const indexRoute = createRoute({
   head: () => ({
     meta: [{ title: 'Dashboard | SESnoop' }],
   }),
-})
+});
 
 const dashboardRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -58,7 +58,7 @@ const dashboardRoute = createRoute({
   head: () => ({
     meta: [{ title: 'Dashboard | SESnoop' }],
   }),
-})
+});
 
 const sourcesRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -67,37 +67,41 @@ const sourcesRoute = createRoute({
   head: () => ({
     meta: [{ title: 'Sources | SESnoop' }],
   }),
-})
+});
 
 // New Source-scoped routes wrapper
 const sourceMonitorRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 's/$sourceId',
-})
+});
 
 const sourceEventsRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
   path: 'events',
   validateSearch: (search) => {
-    return z.object({
-      search: z.string().optional(),
-      event_types: z.union([z.string(), z.array(z.string())]).transform((val) => 
-        Array.isArray(val) ? val : (val ? [val] : [])
-      ).optional(),
-      bounce_types: z.union([z.string(), z.array(z.string())]).transform((val) => 
-        Array.isArray(val) ? val : (val ? [val] : [])
-      ).optional(),
-      date_range: z.string().optional().catch('last_30_days'),
-      from: z.string().optional(),
-      to: z.string().optional(),
-      page: z.number().optional().catch(1),
-    }).parse(search)
+    return z
+      .object({
+        search: z.string().optional(),
+        event_types: z
+          .union([z.string(), z.array(z.string())])
+          .transform((val) => (Array.isArray(val) ? val : val ? [val] : []))
+          .optional(),
+        bounce_types: z
+          .union([z.string(), z.array(z.string())])
+          .transform((val) => (Array.isArray(val) ? val : val ? [val] : []))
+          .optional(),
+        date_range: z.string().optional().catch('last_30_days'),
+        from: z.string().optional(),
+        to: z.string().optional(),
+        page: z.number().optional().catch(1),
+      })
+      .parse(search);
   },
   component: EventsPage,
   head: () => ({
     meta: [{ title: `Events | SESnoop` }],
   }),
-})
+});
 
 const sourceSettingsRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
@@ -106,7 +110,7 @@ const sourceSettingsRoute = createRoute({
   head: () => ({
     meta: [{ title: `Settings | SESnoop` }],
   }),
-})
+});
 
 const sourceSetupRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
@@ -115,7 +119,7 @@ const sourceSetupRoute = createRoute({
   head: () => ({
     meta: [{ title: `Setup | SESnoop` }],
   }),
-})
+});
 
 const sourceDashboardRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
@@ -124,65 +128,65 @@ const sourceDashboardRoute = createRoute({
   head: () => ({
     meta: [{ title: `Dashboard | SESnoop` }],
   }),
-})
+});
 
 const messageDetailRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/messages/$sesMessageId',
   component: MessageDetailPage,
-    head: ({ params }) => ({
+  head: ({ params }) => ({
     meta: [{ title: `Message ${params.sesMessageId} | SESnoop` }],
   }),
-})
+});
 
 // Legacy redirect for /events -> /sources (so user selects source)
 const eventsRedirectRoute = createRoute({
-    getParentRoute: () => appRoute,
-    path: '/events',
-    beforeLoad: () => {
-        throw redirect({
-            to: '/sources',
-        })
-    }
-})
+  getParentRoute: () => appRoute,
+  path: '/events',
+  beforeLoad: () => {
+    throw redirect({
+      to: '/sources',
+    });
+  },
+});
 
-// Legacy global setup redirect might be needed? 
+// Legacy global setup redirect might be needed?
 // Or just let's remove it if user is fine. User said 'larger refactoring'
 // Let's redirect /setup to /sources for now to guide them
 const setupRedirectRoute = createRoute({
-    getParentRoute: () => appRoute,
-    path: '/setup',
-    beforeLoad: () => {
-        throw redirect({
-            to: '/sources',
-        })
-    }
-})
+  getParentRoute: () => appRoute,
+  path: '/setup',
+  beforeLoad: () => {
+    throw redirect({
+      to: '/sources',
+    });
+  },
+});
 
 const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
-      indexRoute,
-      dashboardRoute,
-      sourcesRoute,
-      sourceMonitorRoute.addChildren([
-          sourceEventsRoute,
-          sourceSettingsRoute,
-          sourceSetupRoute,
-          sourceDashboardRoute
-      ]),
-      messageDetailRoute,
-      eventsRedirectRoute,
-      setupRedirectRoute
-  ])
-])
+    indexRoute,
+    dashboardRoute,
+    sourcesRoute,
+    sourceMonitorRoute.addChildren([
+      sourceEventsRoute,
+      sourceSettingsRoute,
+      sourceSetupRoute,
+      sourceDashboardRoute,
+    ]),
+    messageDetailRoute,
+    eventsRedirectRoute,
+    setupRedirectRoute,
+  ]),
+]);
 
 export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
-})
+});
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: typeof router
+    router: typeof router;
   }
 }

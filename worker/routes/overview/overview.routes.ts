@@ -1,16 +1,16 @@
-import { createRoute, z } from '@hono/zod-openapi'
-import * as HttpStatusCodes from 'stoker/http-status-codes'
-import { jsonContent } from 'stoker/openapi/helpers'
-import { createErrorSchema, IdParamsSchema } from 'stoker/openapi/schemas'
+import { createRoute, z } from '@hono/zod-openapi';
+import * as HttpStatusCodes from 'stoker/http-status-codes';
+import { jsonContent } from 'stoker/openapi/helpers';
+import { createErrorSchema, IdParamsSchema } from 'stoker/openapi/schemas';
 
-import { notFoundSchema } from '../../lib/constants'
+import { notFoundSchema } from '../../lib/constants';
 
-const tags = ['Overview']
+const tags = ['Overview'];
 
 const querySchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
-})
+});
 
 const responseSchema = z.object({
   source_id: z.number(),
@@ -43,11 +43,11 @@ const responseSchema = z.object({
     z.object({
       bounce_type: z.string(),
       count: z.number(),
-    })
+    }),
   ),
-})
+});
 
-export type OverviewResponse = z.infer<typeof responseSchema>
+export type OverviewResponse = z.infer<typeof responseSchema>;
 
 export const get = createRoute({
   path: '/sources/{id}/overview',
@@ -58,19 +58,13 @@ export const get = createRoute({
   },
   tags,
   responses: {
-    [HttpStatusCodes.OK]: jsonContent(
-      responseSchema,
-      'Overview metrics for the source'
-    ),
-    [HttpStatusCodes.NOT_FOUND]: jsonContent(
-      notFoundSchema,
-      'Source not found'
-    ),
+    [HttpStatusCodes.OK]: jsonContent(responseSchema, 'Overview metrics for the source'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(notFoundSchema, 'Source not found'),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(querySchema).or(createErrorSchema(IdParamsSchema)),
-      'Invalid parameter error'
+      'Invalid parameter error',
     ),
   },
-})
+});
 
-export type GetRoute = typeof get
+export type GetRoute = typeof get;

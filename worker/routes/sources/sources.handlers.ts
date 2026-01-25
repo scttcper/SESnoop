@@ -1,17 +1,16 @@
-import { eq } from 'drizzle-orm'
-import * as HttpStatusCodes from 'stoker/http-status-codes'
-import * as HttpStatusPhrases from 'stoker/http-status-phrases'
+import { eq } from 'drizzle-orm';
+import * as HttpStatusCodes from 'stoker/http-status-codes';
+import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
-import type { AppRouteHandler } from '../../lib/types'
-
-import { createDb } from '../../db'
-import { sources } from '../../db/schema'
+import { createDb } from '../../db';
+import { sources } from '../../db/schema';
 import {
   DEFAULT_SOURCE_COLOR,
   SOURCE_COLORS,
   ZOD_ERROR_CODES,
   ZOD_ERROR_MESSAGES,
-} from '../../lib/constants'
+} from '../../lib/constants';
+import type { AppRouteHandler } from '../../lib/types';
 
 import type {
   CreateRoute,
@@ -20,21 +19,21 @@ import type {
   PatchRoute,
   RemoveRoute,
   SetupRoute,
-} from './sources.routes'
+} from './sources.routes';
 
-const MAX_TOKEN_ATTEMPTS = 5
+const MAX_TOKEN_ATTEMPTS = 5;
 
-type SourceColor = (typeof SOURCE_COLORS)[number]
+type SourceColor = (typeof SOURCE_COLORS)[number];
 
 type DbSource = {
-  id: number
-  name: string
-  token: string
-  color: string
-  retention_days: number | null
-  created_at: Date
-  updated_at: Date
-}
+  id: number;
+  name: string;
+  token: string;
+  color: string;
+  retention_days: number | null;
+  created_at: Date;
+  updated_at: Date;
+};
 
 const serializeSource = (source: DbSource) => ({
   id: source.id,
@@ -44,38 +43,38 @@ const serializeSource = (source: DbSource) => ({
   retention_days: source.retention_days,
   created_at: source.created_at.getTime(),
   updated_at: source.updated_at.getTime(),
-})
+});
 
 const isUniqueConstraintError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
-    return false
+    return false;
   }
-  return /unique/i.test(error.message)
-}
+  return /unique/i.test(error.message);
+};
 
 const toSlug = (value: string): string => {
   const slug = value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return slug.length > 0 ? slug : 'source'
-}
+    .replace(/^-+|-+$/g, '');
+  return slug.length > 0 ? slug : 'source';
+};
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
-  const db = createDb(c.env)
-  const sourcesList = await db.query.sources.findMany()
-  return c.json(sourcesList.map(serializeSource))
-}
+  const db = createDb(c.env);
+  const sourcesList = await db.query.sources.findMany();
+  return c.json(sourcesList.map(serializeSource));
+};
 
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
-  const db = createDb(c.env)
-  const payload = c.req.valid('json')
-  const color = payload.color ?? DEFAULT_SOURCE_COLOR
-  const retentionDays = payload.retention_days ?? undefined
+  const db = createDb(c.env);
+  const payload = c.req.valid('json');
+  const color = payload.color ?? DEFAULT_SOURCE_COLOR;
+  const retentionDays = payload.retention_days ?? undefined;
 
   for (let attempt = 0; attempt < MAX_TOKEN_ATTEMPTS; attempt += 1) {
-    const token = crypto.randomUUID()
+    const token = crypto.randomUUID();
     try {
       const [inserted] = await db
         .insert(sources)
@@ -85,46 +84,46 @@ export const create: AppRouteHandler<CreateRoute> = async (c) => {
           color,
           retention_days: retentionDays,
         })
-        .returning()
-      return c.json(serializeSource(inserted), HttpStatusCodes.OK)
+        .returning();
+      return c.json(serializeSource(inserted), HttpStatusCodes.OK);
     } catch (error) {
       if (!isUniqueConstraintError(error)) {
-        throw error
+        throw error;
       }
     }
   }
 
   return c.json(
     { message: 'Failed to create a unique token' },
-    HttpStatusCodes.INTERNAL_SERVER_ERROR
-  )
-}
+    HttpStatusCodes.INTERNAL_SERVER_ERROR,
+  );
+};
 
 export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
-  const db = createDb(c.env)
-  const { id } = c.req.valid('param')
+  const db = createDb(c.env);
+  const { id } = c.req.valid('param');
   const source = await db.query.sources.findFirst({
     where(fields, operators) {
-      return operators.eq(fields.id, id)
+      return operators.eq(fields.id, id);
     },
-  })
+  });
 
   if (!source) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,
       },
-      HttpStatusCodes.NOT_FOUND
-    )
+      HttpStatusCodes.NOT_FOUND,
+    );
   }
 
-  return c.json(serializeSource(source), HttpStatusCodes.OK)
-}
+  return c.json(serializeSource(source), HttpStatusCodes.OK);
+};
 
 export const patch: AppRouteHandler<PatchRoute> = async (c) => {
-  const db = createDb(c.env)
-  const { id } = c.req.valid('param')
-  const updates = c.req.valid('json')
+  const db = createDb(c.env);
+  const { id } = c.req.valid('param');
+  const updates = c.req.valid('json');
 
   if (Object.keys(updates).length === 0) {
     return c.json(
@@ -141,8 +140,8 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
           name: 'ZodError',
         },
       },
-      HttpStatusCodes.UNPROCESSABLE_ENTITY
-    )
+      HttpStatusCodes.UNPROCESSABLE_ENTITY,
+    );
   }
 
   const [source] = await db
@@ -152,70 +151,67 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
       updated_at: new Date(),
     })
     .where(eq(sources.id, id))
-    .returning()
+    .returning();
 
   if (!source) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,
       },
-      HttpStatusCodes.NOT_FOUND
-    )
+      HttpStatusCodes.NOT_FOUND,
+    );
   }
 
-  return c.json(serializeSource(source), HttpStatusCodes.OK)
-}
+  return c.json(serializeSource(source), HttpStatusCodes.OK);
+};
 
 export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
-  const db = createDb(c.env)
-  const { id } = c.req.valid('param')
-  const deleted = await db
-    .delete(sources)
-    .where(eq(sources.id, id))
-    .returning({ id: sources.id })
+  const db = createDb(c.env);
+  const { id } = c.req.valid('param');
+  const deleted = await db.delete(sources).where(eq(sources.id, id)).returning({ id: sources.id });
 
   if (deleted.length === 0) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,
       },
-      HttpStatusCodes.NOT_FOUND
-    )
+      HttpStatusCodes.NOT_FOUND,
+    );
   }
 
-  return c.body(null, HttpStatusCodes.NO_CONTENT)
-}
+  return c.body(null, HttpStatusCodes.NO_CONTENT);
+};
 
 export const setup: AppRouteHandler<SetupRoute> = async (c) => {
-  const db = createDb(c.env)
-  const { id } = c.req.valid('param')
+  const db = createDb(c.env);
+  const { id } = c.req.valid('param');
   const source = await db.query.sources.findFirst({
     where(fields, operators) {
-      return operators.eq(fields.id, id)
+      return operators.eq(fields.id, id);
     },
-  })
+  });
 
   if (!source) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,
       },
-      HttpStatusCodes.NOT_FOUND
-    )
+      HttpStatusCodes.NOT_FOUND,
+    );
   }
 
-  const slug = toSlug(source.name)
-  const configurationSetName = `sesnoop-${slug}-config`
-  const snsTopicName = `sesnoop-${slug}-sns`
-  const origin = new URL(c.req.url).origin
-  const webhookUrl = `${origin}/webhooks/${source.token}`
+  const slug = toSlug(source.name);
+  const configurationSetName = `sesnoop-${slug}-config`;
+  const snsTopicName = `sesnoop-${slug}-sns`;
+  const origin = new URL(c.req.url).origin;
+  const webhookUrl = `${origin}/webhooks/${source.token}`;
 
   const steps = [
     `Create an SNS topic named "${snsTopicName}".`,
     `Create or choose an SES configuration set named "${configurationSetName}".`,
     `Add an HTTPS subscription to the SNS topic using "${webhookUrl}".`,
     'In SES, add an Event Destination that publishes delivery, bounce, complaint, reject, delivery delay, rendering failure, open, click, and subscription events to the SNS topic.',
-  ]
+  ];
 
   return c.json(
     {
@@ -225,6 +221,6 @@ export const setup: AppRouteHandler<SetupRoute> = async (c) => {
       webhook_url: webhookUrl,
       steps,
     },
-    HttpStatusCodes.OK
-  )
-}
+    HttpStatusCodes.OK,
+  );
+};

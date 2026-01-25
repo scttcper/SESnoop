@@ -1,13 +1,12 @@
-import { and, eq, sql } from 'drizzle-orm'
-import * as HttpStatusCodes from 'stoker/http-status-codes'
-import * as HttpStatusPhrases from 'stoker/http-status-phrases'
+import { and, eq, sql } from 'drizzle-orm';
+import * as HttpStatusCodes from 'stoker/http-status-codes';
+import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
-import type { AppRouteHandler } from '../../lib/types'
+import { createDb } from '../../db';
+import { events, messages, sources } from '../../db/schema';
+import type { AppRouteHandler } from '../../lib/types';
 
-import { createDb } from '../../db'
-import { events, messages, sources } from '../../db/schema'
-
-import type { GetRoute } from './overview.routes'
+import type { GetRoute } from './overview.routes';
 
 const EVENT_TYPES = {
   send: 'Send',
@@ -16,95 +15,86 @@ const EVENT_TYPES = {
   complaint: 'Complaint',
   open: 'Open',
   click: 'Click',
-}
+};
 
 const startOfDayUtc = (value: Date) =>
-  new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()))
+  new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
 
 const endOfDayUtc = (value: Date) =>
   new Date(
-    Date.UTC(
-      value.getUTCFullYear(),
-      value.getUTCMonth(),
-      value.getUTCDate(),
-      23,
-      59,
-      59,
-      999
-    )
-  )
+    Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 23, 59, 59, 999),
+  );
 
 const parseDateInput = (value?: string) => {
   if (!value) {
-    return null
+    return null;
   }
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
 
 const resolveRange = (from?: string, to?: string) => {
-  const parsedFrom = parseDateInput(from)
-  const parsedTo = parseDateInput(to)
+  const parsedFrom = parseDateInput(from);
+  const parsedTo = parseDateInput(to);
   if (parsedFrom || parsedTo) {
-    const start = parsedFrom ? startOfDayUtc(parsedFrom) : startOfDayUtc(new Date())
-    const end = parsedTo ? endOfDayUtc(parsedTo) : endOfDayUtc(new Date())
-    return { start, end }
+    const start = parsedFrom ? startOfDayUtc(parsedFrom) : startOfDayUtc(new Date());
+    const end = parsedTo ? endOfDayUtc(parsedTo) : endOfDayUtc(new Date());
+    return { start, end };
   }
-  const today = new Date()
-  const start = startOfDayUtc(new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000))
-  const end = endOfDayUtc(today)
-  return { start, end }
-}
+  const today = new Date();
+  const start = startOfDayUtc(new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000));
+  const end = endOfDayUtc(today);
+  return { start, end };
+};
 
-const formatDay = (value: Date) =>
-  value.toISOString().slice(0, 10)
+const formatDay = (value: Date) => value.toISOString().slice(0, 10);
 
 const buildDayRange = (start: Date, end: Date) => {
-  const days: string[] = []
-  const cursor = startOfDayUtc(start)
-  const endDay = startOfDayUtc(end)
+  const days: string[] = [];
+  const cursor = startOfDayUtc(start);
+  const endDay = startOfDayUtc(end);
   while (cursor <= endDay) {
-    days.push(formatDay(cursor))
-    cursor.setUTCDate(cursor.getUTCDate() + 1)
+    days.push(formatDay(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
-  return days
-}
+  return days;
+};
 
 export const get: AppRouteHandler<GetRoute> = async (c) => {
-  const db = createDb(c.env)
-  const { id } = c.req.valid('param')
-  const { from, to } = c.req.valid('query')
+  const db = createDb(c.env);
+  const { id } = c.req.valid('param');
+  const { from, to } = c.req.valid('query');
 
   const source = await db.query.sources.findFirst({
     where: eq(sources.id, id),
-  })
+  });
 
   if (!source) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,
       },
-      HttpStatusCodes.NOT_FOUND
-    )
+      HttpStatusCodes.NOT_FOUND,
+    );
   }
 
-  const { start, end } = resolveRange(from, to)
-  const startMs = start.getTime()
-  const endMs = end.getTime()
-  const dayKeys = buildDayRange(start, end)
+  const { start, end } = resolveRange(from, to);
+  const startMs = start.getTime();
+  const endMs = end.getTime();
+  const dayKeys = buildDayRange(start, end);
 
   const rangeFilter = and(
     eq(messages.source_id, source.id),
     sql`${events.event_at} >= ${startMs}`,
-    sql`${events.event_at} <= ${endMs}`
-  )
+    sql`${events.event_at} <= ${endMs}`,
+  );
 
   const todayRange = {
     start: startOfDayUtc(new Date()),
     end: endOfDayUtc(new Date()),
-  }
-  const todayStartMs = todayRange.start.getTime()
-  const todayEndMs = todayRange.end.getTime()
+  };
+  const todayStartMs = todayRange.start.getTime();
+  const todayEndMs = todayRange.end.getTime();
 
   const sentRow = await db
     .select({
@@ -117,7 +107,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(rangeFilter)
+    .where(rangeFilter);
 
   const sentTodayRow = await db
     .select({
@@ -129,9 +119,9 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       and(
         eq(messages.source_id, source.id),
         sql`${events.event_at} >= ${todayStartMs}`,
-        sql`${events.event_at} <= ${todayEndMs}`
-      )
-    )
+        sql`${events.event_at} <= ${todayEndMs}`,
+      ),
+    );
 
   const uniqueRow = await db
     .select({
@@ -140,9 +130,9 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(rangeFilter)
+    .where(rangeFilter);
 
-  const dayExpr = sql<string>`strftime('%Y-%m-%d', ${events.event_at} / 1000, 'unixepoch')`
+  const dayExpr = sql<string>`strftime('%Y-%m-%d', ${events.event_at} / 1000, 'unixepoch')`;
 
   const dailyRows = await db
     .select({
@@ -154,7 +144,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter)
-    .groupBy(dayExpr)
+    .groupBy(dayExpr);
 
   const bounceRows = await db
     .select({
@@ -167,19 +157,19 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       and(
         rangeFilter,
         sql`${events.event_type} = ${EVENT_TYPES.bounce}`,
-        sql`${events.bounce_type} is not null`
-      )
+        sql`${events.bounce_type} is not null`,
+      ),
     )
-    .groupBy(events.bounce_type)
+    .groupBy(events.bounce_type);
 
-  const dailyMap = new Map<string, { sent: number; delivered: number; bounced: number }>()
+  const dailyMap = new Map<string, { sent: number; delivered: number; bounced: number }>();
   for (const row of dailyRows) {
     if (row.day) {
       dailyMap.set(row.day, {
         sent: row.sent ?? 0,
         delivered: row.delivered ?? 0,
         bounced: row.bounced ?? 0,
-      })
+      });
     }
   }
 
@@ -188,9 +178,9 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     sent: dayKeys.map((day) => dailyMap.get(day)?.sent ?? 0),
     delivered: dayKeys.map((day) => dailyMap.get(day)?.delivered ?? 0),
     bounced: dayKeys.map((day) => dailyMap.get(day)?.bounced ?? 0),
-  }
+  };
 
-  const sent = sentRow[0]?.sent ?? 0
+  const sent = sentRow[0]?.sent ?? 0;
   const metrics = {
     sent,
     delivered: sentRow[0]?.delivered ?? 0,
@@ -205,7 +195,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     complaint_rate: sent ? (sentRow[0]?.complaints ?? 0) / sent : 0,
     open_rate: sent ? (uniqueRow[0]?.unique_opens ?? 0) / sent : 0,
     click_rate: sent ? (uniqueRow[0]?.unique_clicks ?? 0) / sent : 0,
-  }
+  };
 
   return c.json(
     {
@@ -223,6 +213,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
           count: row.count ?? 0,
         })),
     },
-    HttpStatusCodes.OK
-  )
-}
+    HttpStatusCodes.OK,
+  );
+};

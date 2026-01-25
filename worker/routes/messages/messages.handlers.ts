@@ -1,81 +1,80 @@
-import { desc, eq } from 'drizzle-orm'
-import * as HttpStatusCodes from 'stoker/http-status-codes'
-import * as HttpStatusPhrases from 'stoker/http-status-phrases'
+import { desc, eq } from 'drizzle-orm';
+import * as HttpStatusCodes from 'stoker/http-status-codes';
+import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
-import type { AppRouteHandler } from '../../lib/types'
+import { createDb } from '../../db';
+import { events, messages } from '../../db/schema';
+import type { AppRouteHandler } from '../../lib/types';
 
-import { createDb } from '../../db'
-import { events, messages } from '../../db/schema'
-
-import type { GetOneRoute } from './messages.routes'
+import type { GetOneRoute } from './messages.routes';
 
 const parseJsonRecord = (value: unknown): Record<string, unknown> => {
   if (!value) {
-    return {}
+    return {};
   }
   if (typeof value === 'object') {
-    return value as Record<string, unknown>
+    return value as Record<string, unknown>;
   }
   if (typeof value === 'string') {
     try {
-      const parsed = JSON.parse(value) as Record<string, unknown>
-      return typeof parsed === 'object' && parsed ? parsed : {}
+      const parsed = JSON.parse(value) as Record<string, unknown>;
+      return typeof parsed === 'object' && parsed ? parsed : {};
     } catch {
-      return {}
+      return {};
     }
   }
-  return {}
-}
+  return {};
+};
 
 const normalizeTags = (mail: Record<string, unknown>): string[] => {
-  const tagsValue = mail.tags
+  const tagsValue = mail.tags;
   if (!tagsValue || typeof tagsValue !== 'object') {
-    return []
+    return [];
   }
-  const tags = tagsValue as Record<string, unknown>
+  const tags = tagsValue as Record<string, unknown>;
   return Object.entries(tags)
     .filter(([key]) => !key.toLowerCase().startsWith('ses:'))
     .flatMap(([key, value]) => {
       if (Array.isArray(value)) {
         return value
           .map((entry) => (typeof entry === 'string' ? `${key}:${entry}` : null))
-          .filter((entry): entry is string => Boolean(entry))
+          .filter((entry): entry is string => Boolean(entry));
       }
       if (typeof value === 'string') {
-        return [`${key}:${value}`]
+        return [`${key}:${value}`];
       }
-      return [key]
-    })
-}
+      return [key];
+    });
+};
 
 const extractDestinations = (mail: Record<string, unknown>): string[] => {
-  const destination = mail.destination
+  const destination = mail.destination;
   if (!Array.isArray(destination)) {
-    return []
+    return [];
   }
-  return destination.filter((entry): entry is string => typeof entry === 'string')
-}
+  return destination.filter((entry): entry is string => typeof entry === 'string');
+};
 
 export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
-  const db = createDb(c.env)
-  const { id, ses_message_id } = c.req.valid('param')
+  const db = createDb(c.env);
+  const { id, ses_message_id } = c.req.valid('param');
 
   const message = await db.query.messages.findFirst({
     where(fields, operators) {
       return operators.and(
         operators.eq(fields.source_id, id),
-        operators.eq(fields.ses_message_id, ses_message_id)
-      )
+        operators.eq(fields.ses_message_id, ses_message_id),
+      );
     },
-  })
+  });
 
   if (!message) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,
       },
-      HttpStatusCodes.NOT_FOUND
-    )
+      HttpStatusCodes.NOT_FOUND,
+    );
   }
 
   const messageEvents = await db
@@ -87,9 +86,9 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
     })
     .from(events)
     .where(eq(events.message_id, message.id))
-    .orderBy(desc(events.event_at))
+    .orderBy(desc(events.event_at));
 
-  const mailMetadata = parseJsonRecord(message.mail_metadata)
+  const mailMetadata = parseJsonRecord(message.mail_metadata);
 
   return c.json(
     {
@@ -107,6 +106,6 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
         event_at: event.event_at.getTime(),
       })),
     },
-    HttpStatusCodes.OK
-  )
-}
+    HttpStatusCodes.OK,
+  );
+};

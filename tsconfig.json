@@ -9,20 +9,12 @@
     "paths": {
       "@/*": ["./worker/*"]
     },
-    "types": [
-      "@cloudflare/workers-types/latest",
-      "vite/client"
-    ],
+    "types": ["@cloudflare/workers-types/latest", "vite/client"],
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": [
-    "src",
-    "worker",
-    "vite.config.ts",
-    "worker-configuration.d.ts"
-  ],
+  "include": ["src", "worker", "vite.config.ts", "worker-configuration.d.ts"],
   "exclude": ["dist"]
 }

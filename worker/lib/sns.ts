@@ -1,4 +1,4 @@
-import { z } from '@hono/zod-openapi'
+import { z } from '@hono/zod-openapi';
 
 const snsMessageSchema = z.object({
   Type: z.string(),
@@ -12,19 +12,12 @@ const snsMessageSchema = z.object({
   SigningCertURL: z.string().optional(),
   Signature: z.string().optional(),
   SignatureVersion: z.string().optional(),
-})
+});
 
-export type SnsMessage = z.infer<typeof snsMessageSchema>
+export type SnsMessage = z.infer<typeof snsMessageSchema>;
 
 const signingFields = {
-  Notification: [
-    'Message',
-    'MessageId',
-    'Subject',
-    'Timestamp',
-    'TopicArn',
-    'Type',
-  ],
+  Notification: ['Message', 'MessageId', 'Subject', 'Timestamp', 'TopicArn', 'Type'],
   SubscriptionConfirmation: [
     'Message',
     'MessageId',
@@ -43,118 +36,115 @@ const signingFields = {
     'TopicArn',
     'Type',
   ],
-} as const
+} as const;
 
 export function parseSnsMessage(payload: unknown): SnsMessage {
-  return snsMessageSchema.parse(payload)
+  return snsMessageSchema.parse(payload);
 }
 
 export function shouldVerifySnsSignature(disableFlag?: string): boolean {
-  return disableFlag !== 'true'
+  return disableFlag !== 'true';
 }
 
 export async function verifySnsSignature(snsMessage: SnsMessage): Promise<boolean> {
   if (!snsMessage.SignatureVersion || snsMessage.SignatureVersion !== '1') {
-    return false
+    return false;
   }
 
-  const certUrl = snsMessage.SigningCertURL
+  const certUrl = snsMessage.SigningCertURL;
   if (!certUrl || !snsMessage.Signature) {
-    return false
+    return false;
   }
 
   if (!isValidCertUrl(certUrl)) {
-    return false
+    return false;
   }
 
-  const toSign = buildStringToSign(snsMessage)
+  const toSign = buildStringToSign(snsMessage);
   if (!toSign) {
-    return false
+    return false;
   }
 
-  const certPem = await fetchCert(certUrl)
+  const certPem = await fetchCert(certUrl);
   if (!certPem) {
-    return false
+    return false;
   }
 
-  const publicKey = getPublicKeyFromCert(certPem)
+  const publicKey = getPublicKeyFromCert(certPem);
   if (!publicKey) {
-    return false
+    return false;
   }
 
-  const signatureBytes = Uint8Array.from(
-    atob(snsMessage.Signature),
-    (char) => char.charCodeAt(0)
-  )
-  const dataBytes = new TextEncoder().encode(toSign)
+  const signatureBytes = Uint8Array.from(atob(snsMessage.Signature), (char) => char.charCodeAt(0));
+  const dataBytes = new TextEncoder().encode(toSign);
 
   return crypto.subtle.verify(
     { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-1' },
     publicKey,
     signatureBytes,
-    dataBytes
-  )
+    dataBytes,
+  );
 }
 
 function buildStringToSign(snsMessage: SnsMessage): string | null {
-  const fields = signingFields[snsMessage.Type as keyof typeof signingFields]
+  const fields = signingFields[snsMessage.Type as keyof typeof signingFields];
   if (!fields) {
-    return null
+    return null;
   }
 
-  let output = ''
+  let output = '';
   for (const field of fields) {
-    const value = snsMessage[field as keyof SnsMessage]
+    const value = snsMessage[field as keyof SnsMessage];
     if (value === undefined) {
-      continue
+      continue;
     }
-    output += `${field}\n${value}\n`
+    output += `${field}\n${value}\n`;
   }
-  return output
+  return output;
 }
 
 function isValidCertUrl(url: string): boolean {
   try {
-    const parsed = new URL(url)
+    const parsed = new URL(url);
     return (
       parsed.protocol === 'https:' &&
       parsed.hostname.endsWith('.amazonaws.com') &&
       parsed.pathname.endsWith('.pem')
-    )
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
 async function fetchCert(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url)
+    const response = await fetch(url);
     if (!response.ok) {
-      return null
+      return null;
     }
-    return await response.text()
+    return await response.text();
   } catch {
-    return null
+    return null;
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type X509CertificateConstructor = new (cert: string) => { publicKey: CryptoKey }
+type X509CertificateConstructor = new (cert: string) => { publicKey: CryptoKey };
 
 function getPublicKeyFromCert(certPem: string): CryptoKey | null {
   // X509Certificate may be available on crypto or globalThis depending on the runtime
   const X509Certificate =
     (crypto as unknown as { X509Certificate?: X509CertificateConstructor }).X509Certificate ??
-    (globalThis as unknown as { X509Certificate?: X509CertificateConstructor }).X509Certificate
+    (globalThis as unknown as { X509Certificate?: X509CertificateConstructor }).X509Certificate;
 
   if (!X509Certificate) {
-    return null
+    return null;
   }
 
   try {
-    const cert = new X509Certificate(certPem)
-    return cert.publicKey
+    const cert = new X509Certificate(certPem);
+    return cert.publicKey;
   } catch {
-    return null
+    return null;
   }
 }

@@ -99,40 +99,27 @@
       "indexes": {
         "events_dedupe_unique": {
           "name": "events_dedupe_unique",
-          "columns": [
-            "ses_message_id",
-            "event_type",
-            "recipient_email",
-            "event_at"
-          ],
+          "columns": ["ses_message_id", "event_type", "recipient_email", "event_at"],
           "isUnique": true
         },
         "events_event_type_index": {
           "name": "events_event_type_index",
-          "columns": [
-            "event_type"
-          ],
+          "columns": ["event_type"],
           "isUnique": false
         },
         "events_recipient_email_index": {
           "name": "events_recipient_email_index",
-          "columns": [
-            "recipient_email"
-          ],
+          "columns": ["recipient_email"],
           "isUnique": false
         },
         "events_event_at_index": {
           "name": "events_event_at_index",
-          "columns": [
-            "event_at"
-          ],
+          "columns": ["event_at"],
           "isUnique": false
         },
         "events_bounce_type_index": {
           "name": "events_bounce_type_index",
-          "columns": [
-            "bounce_type"
-          ],
+          "columns": ["bounce_type"],
           "isUnique": false
         }
       },
@@ -141,12 +128,8 @@
           "name": "events_message_id_messages_id_fk",
           "tableFrom": "events",
           "tableTo": "messages",
-          "columnsFrom": [
-            "message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -154,12 +137,8 @@
           "name": "events_webhook_id_webhooks_id_fk",
           "tableFrom": "events",
           "tableTo": "webhooks",
-          "columnsFrom": [
-            "webhook_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["webhook_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -249,23 +228,17 @@
       "indexes": {
         "messages_ses_message_id_unique": {
           "name": "messages_ses_message_id_unique",
-          "columns": [
-            "ses_message_id"
-          ],
+          "columns": ["ses_message_id"],
           "isUnique": true
         },
         "messages_sent_at_index": {
           "name": "messages_sent_at_index",
-          "columns": [
-            "sent_at"
-          ],
+          "columns": ["sent_at"],
           "isUnique": false
         },
         "messages_source_email_index": {
           "name": "messages_source_email_index",
-          "columns": [
-            "source_email"
-          ],
+          "columns": ["source_email"],
           "isUnique": false
         }
       },
@@ -274,12 +247,8 @@
           "name": "messages_source_id_sources_id_fk",
           "tableFrom": "messages",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -346,9 +315,7 @@
       "indexes": {
         "sources_token_unique": {
           "name": "sources_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": true
         }
       },
@@ -455,16 +422,12 @@
       "indexes": {
         "webhooks_sns_message_id_unique": {
           "name": "webhooks_sns_message_id_unique",
-          "columns": [
-            "sns_message_id"
-          ],
+          "columns": ["sns_message_id"],
           "isUnique": true
         },
         "webhooks_processed_at_index": {
           "name": "webhooks_processed_at_index",
-          "columns": [
-            "processed_at"
-          ],
+          "columns": ["processed_at"],
           "isUnique": false
         }
       },

@@ -1,11 +1,11 @@
-import { createRoute, z } from '@hono/zod-openapi'
-import * as HttpStatusCodes from 'stoker/http-status-codes'
-import { jsonContent } from 'stoker/openapi/helpers'
-import { createErrorSchema, IdParamsSchema } from 'stoker/openapi/schemas'
+import { createRoute, z } from '@hono/zod-openapi';
+import * as HttpStatusCodes from 'stoker/http-status-codes';
+import { jsonContent } from 'stoker/openapi/helpers';
+import { createErrorSchema, IdParamsSchema } from 'stoker/openapi/schemas';
 
-import { notFoundSchema } from '../../lib/constants'
+import { notFoundSchema } from '../../lib/constants';
 
-const tags = ['Events']
+const tags = ['Events'];
 
 const datePresetSchema = z.enum([
   'today',
@@ -15,7 +15,7 @@ const datePresetSchema = z.enum([
   'last_45_days',
   'last_90_days',
   'all_time',
-])
+]);
 
 const listQuerySchema = z.object({
   search: z.string().optional(),
@@ -26,7 +26,7 @@ const listQuerySchema = z.object({
   to: z.string().optional(),
   page: z.string().optional(),
   per_page: z.string().optional(),
-})
+});
 
 const eventRowSchema = z.object({
   id: z.number(),
@@ -36,9 +36,9 @@ const eventRowSchema = z.object({
   ses_message_id: z.string(),
   bounce_type: z.string().nullable(),
   message_subject: z.string().nullable(),
-})
+});
 
-export type EventRow = z.infer<typeof eventRowSchema>
+export type EventRow = z.infer<typeof eventRowSchema>;
 
 const responseSchema = z.object({
   data: z.array(eventRowSchema),
@@ -52,10 +52,10 @@ const responseSchema = z.object({
     event_types: z.record(z.string(), z.number()),
     bounce_types: z.record(z.string(), z.number()),
   }),
-})
+});
 
-export type EventResponse = z.infer<typeof responseSchema>
-export type EventCounts = EventResponse['counts']
+export type EventResponse = z.infer<typeof responseSchema>;
+export type EventCounts = EventResponse['counts'];
 
 export const list = createRoute({
   path: '/sources/{id}/events',
@@ -66,19 +66,13 @@ export const list = createRoute({
   },
   tags,
   responses: {
-    [HttpStatusCodes.OK]: jsonContent(
-      responseSchema,
-      'Filtered events for the source'
-    ),
-    [HttpStatusCodes.NOT_FOUND]: jsonContent(
-      notFoundSchema,
-      'Source not found'
-    ),
+    [HttpStatusCodes.OK]: jsonContent(responseSchema, 'Filtered events for the source'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(notFoundSchema, 'Source not found'),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
       createErrorSchema(listQuerySchema).or(createErrorSchema(IdParamsSchema)),
-      'The validation error(s)'
+      'The validation error(s)',
     ),
   },
-})
+});
 
-export type ListRoute = typeof list
+export type ListRoute = typeof list;

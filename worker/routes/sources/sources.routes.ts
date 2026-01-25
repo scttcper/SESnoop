@@ -122,9 +122,36 @@ export const setup = createRoute({
   },
 });
 
+const cleanupResultSchema = z.object({
+  source_id: z.number(),
+  retention_days: z.number().int().positive().nullable(),
+  messages_deleted: z.number().int().nonnegative(),
+  events_deleted: z.number().int().nonnegative(),
+});
+
+export type CleanupResult = z.infer<typeof cleanupResultSchema>;
+
+export const cleanup = createRoute({
+  path: '/sources/{id}/cleanup',
+  method: 'post',
+  request: {
+    params: IdParamsSchema,
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(cleanupResultSchema, 'Retention cleanup result'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(notFoundSchema, 'Source not found'),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(IdParamsSchema),
+      'Invalid id error',
+    ),
+  },
+});
+
 export type ListRoute = typeof list;
 export type CreateRoute = typeof create;
 export type GetOneRoute = typeof getOne;
 export type PatchRoute = typeof patch;
 export type RemoveRoute = typeof remove;
 export type SetupRoute = typeof setup;
+export type CleanupRoute = typeof cleanup;

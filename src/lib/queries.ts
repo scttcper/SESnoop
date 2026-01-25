@@ -8,9 +8,10 @@ import type {
 } from '../../worker/routes/events/events.routes';
 import type { MessageDetail } from '../../worker/routes/messages/messages.routes';
 import type { OverviewResponse } from '../../worker/routes/overview/overview.routes';
-import type { SetupInfo } from '../../worker/routes/sources/sources.routes';
+import type { CleanupResult, SetupInfo } from '../../worker/routes/sources/sources.routes';
 
 export type {
+  CleanupResult,
   EventCounts,
   EventResponse,
   EventRow,
@@ -136,4 +137,12 @@ export const deleteSourceFn = async (id: number) => {
     return null;
   }
   return response.json();
+};
+
+export const runSourceCleanupFn = async (id: number) => {
+  const response = await fetch(`/api/sources/${id}/cleanup`, {
+    method: 'POST',
+  });
+  await ensureOk(response, 'Failed to run retention cleanup');
+  return (await response.json()) as CleanupResult;
 };

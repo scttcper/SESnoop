@@ -1,11 +1,11 @@
-import { SELF } from 'cloudflare:test';
+import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Source } from '@/db/schema';
 import type { ValidationErrorResponse } from '@/lib/types';
 import type { SetupInfo } from '@/routes/sources/sources.routes';
 
-import { insertSource, resetDb } from './helpers/db';
+import { insertEvent, insertMessage, insertSource, resetDb } from './helpers/db';
 
 beforeEach(async () => {
   await resetDb();
@@ -104,5 +104,63 @@ describe('sources routes', () => {
     expect(json.sns_topic_name).toBe('sesnoop-my-source-sns');
     expect(json.webhook_url).toBe('http://example.com/api/webhooks/tok-1');
     expect(json.steps).toHaveLength(4);
+  });
+
+  it('runs retention cleanup for a source', async () => {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    await insertSource({
+      id: 1,
+      name: 'Cleanup Source',
+      token: 'cleanup-token',
+      retention_days: 30,
+    });
+    await insertMessage({
+      id: 1,
+      source_id: 1,
+      ses_message_id: 'old-message',
+      sent_at: now - 31 * dayMs,
+    });
+    await insertMessage({
+      id: 2,
+      source_id: 1,
+      ses_message_id: 'new-message',
+      sent_at: now - dayMs,
+    });
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Delivery',
+      recipient_email: 'old@example.com',
+      event_at: now - 31 * dayMs,
+      ses_message_id: 'old-message',
+    });
+    await insertEvent({
+      message_id: 2,
+      event_type: 'Delivery',
+      recipient_email: 'new@example.com',
+      event_at: now - dayMs,
+      ses_message_id: 'new-message',
+    });
+
+    const response = await SELF.fetch('http://example.com/api/sources/1/cleanup', {
+      method: 'POST',
+    });
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as {
+      source_id: number;
+      retention_days: number | null;
+      messages_deleted: number;
+      events_deleted: number;
+    };
+    expect(json.source_id).toBe(1);
+    expect(json.retention_days).toBe(30);
+    expect(json.messages_deleted).toBe(1);
+    expect(json.events_deleted).toBe(1);
+
+    const messages = await env.DB.prepare('SELECT id FROM messages').all();
+    expect(messages.results).toHaveLength(1);
+    const events = await env.DB.prepare('SELECT id FROM events').all();
+    expect(events.results).toHaveLength(1);
   });
 });

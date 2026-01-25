@@ -11,7 +11,12 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '../components/ui/input-group';
-import { deleteSourceFn, sourcesQueryOptions, updateSourceFn } from '../lib/queries';
+import {
+  deleteSourceFn,
+  runSourceCleanupFn,
+  sourcesQueryOptions,
+  updateSourceFn,
+} from '../lib/queries';
 import { COLORS } from '../lib/utils';
 
 export default function SourceSettingsPage() {
@@ -70,6 +75,24 @@ export default function SourceSettingsPage() {
     },
   });
 
+  const cleanupMutation = useMutation({
+    mutationFn: runSourceCleanupFn,
+    onSuccess: (result) => {
+      if (result.messages_deleted === 0 && result.events_deleted === 0) {
+        toast.success('Cleanup complete. Nothing to delete.');
+        return;
+      }
+
+      toast.success(
+        `Cleanup complete. Deleted ${result.messages_deleted} messages and ${result.events_deleted} events.`,
+      );
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Failed to run cleanup: ${message}`);
+    },
+  });
+
   const handleUpdate = () => {
     if (!source) {
       return;
@@ -98,6 +121,19 @@ export default function SourceSettingsPage() {
       )
     ) {
       deleteMutation.mutate(source.id);
+    }
+  };
+
+  const handleCleanup = () => {
+    if (!source) {
+      return;
+    }
+    if (
+      window.confirm(
+        `Run retention cleanup now for "${source.name}"?\nThis will delete messages and events older than the retention period.`,
+      )
+    ) {
+      cleanupMutation.mutate(source.id);
     }
   };
 
@@ -300,6 +336,22 @@ export default function SourceSettingsPage() {
         {/* Danger Zone */}
         <section className="space-y-4 border-t border-white/10 pt-10">
           <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
+          <div className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/10 p-4">
+            <div>
+              <h3 className="font-medium text-white">Run Retention Cleanup</h3>
+              <p className="mt-1 text-sm text-white/60">
+                Manually delete messages and events older than the retention period.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              className="rounded-md border border-sky-500/30 bg-sky-500/20 px-4 py-2 text-sm font-medium text-sky-200 transition-colors hover:bg-sky-500/30"
+              disabled={cleanupMutation.isPending}
+              onClick={handleCleanup}
+            >
+              {cleanupMutation.isPending ? 'Running...' : 'Run Cleanup'}
+            </Button>
+          </div>
           <div className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/5 p-4">
             <div>
               <h3 className="font-medium text-white">Delete Source</h3>

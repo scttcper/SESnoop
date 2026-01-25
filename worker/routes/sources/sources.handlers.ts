@@ -10,9 +10,11 @@ import {
   ZOD_ERROR_CODES,
   ZOD_ERROR_MESSAGES,
 } from '../../lib/constants';
+import { runRetentionCleanupForSource } from '../../lib/retention';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type {
+  CleanupRoute,
   CreateRoute,
   GetOneRoute,
   ListRoute,
@@ -223,4 +225,30 @@ export const setup: AppRouteHandler<SetupRoute> = async (c) => {
     },
     HttpStatusCodes.OK,
   );
+};
+
+export const cleanup: AppRouteHandler<CleanupRoute> = async (c) => {
+  const db = createDb(c.env);
+  const { id } = c.req.valid('param');
+  const source = await db.query.sources.findFirst({
+    where(fields, operators) {
+      return operators.eq(fields.id, id);
+    },
+  });
+
+  if (!source) {
+    return c.json(
+      {
+        message: HttpStatusPhrases.NOT_FOUND,
+      },
+      HttpStatusCodes.NOT_FOUND,
+    );
+  }
+
+  const result = await runRetentionCleanupForSource(c.env, {
+    id: source.id,
+    retention_days: source.retention_days,
+  });
+
+  return c.json(result, HttpStatusCodes.OK);
 };

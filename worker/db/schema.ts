@@ -52,9 +52,13 @@ export const messages = sqliteTable(
     updated_at: timestampMs('updated_at'),
   },
   (table) => ({
+    // Webhook ingestion + message detail lookup by SES message id.
     sesMessageIdUnique: uniqueIndex('messages_ses_message_id_unique').on(table.ses_message_id),
-    sentAtIndex: index('messages_sent_at_index').on(table.sent_at),
-    sourceEmailIndex: index('messages_source_email_index').on(table.source_email),
+    // Retention cleanup: WHERE source_id = ? AND sent_at < ?
+    sourceIdSentAtIndex: index('messages_source_id_sent_at_index').on(
+      table.source_id,
+      table.sent_at,
+    ),
   }),
 );
 
@@ -73,8 +77,8 @@ export const webhooks = sqliteTable(
     updated_at: timestampMs('updated_at'),
   },
   (table) => ({
+    // Webhook dedupe/lookup by SNS message id.
     snsMessageIdUnique: uniqueIndex('webhooks_sns_message_id_unique').on(table.sns_message_id),
-    processedAtIndex: index('webhooks_processed_at_index').on(table.processed_at),
   }),
 );
 
@@ -103,16 +107,19 @@ export const events = sqliteTable(
     updated_at: timestampMs('updated_at'),
   },
   (table) => ({
+    // Dedupe webhook inserts with onConflictDoNothing.
     dedupeUnique: uniqueIndex('events_dedupe_unique').on(
       table.ses_message_id,
       table.event_type,
       table.recipient_email,
       table.event_at,
     ),
-    eventTypeIndex: index('events_event_type_index').on(table.event_type),
-    recipientEmailIndex: index('events_recipient_email_index').on(table.recipient_email),
-    eventAtIndex: index('events_event_at_index').on(table.event_at),
-    bounceTypeIndex: index('events_bounce_type_index').on(table.bounce_type),
+    // Message detail + event count: WHERE message_id = ? ORDER BY event_at DESC.
+    // Also supports the join path from messages for events list/overview queries.
+    messageIdEventAtIndex: index('events_message_id_event_at_index').on(
+      table.message_id,
+      table.event_at,
+    ),
   }),
 );
 

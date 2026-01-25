@@ -8,6 +8,13 @@
       "when": 1769227567462,
       "tag": "0000_familiar_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769369008140,
+      "tag": "0001_careless_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

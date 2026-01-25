@@ -204,7 +204,7 @@ export const setup: AppRouteHandler<SetupRoute> = async (c) => {
   const configurationSetName = `sesnoop-${slug}-config`;
   const snsTopicName = `sesnoop-${slug}-sns`;
   const origin = new URL(c.req.url).origin;
-  const webhookUrl = `${origin}/webhooks/${source.token}`;
+  const webhookUrl = `${origin}/api/webhooks/${source.token}`;
 
   const steps = [
     `Create an SNS topic named "${snsTopicName}".`,

@@ -10,7 +10,7 @@ beforeEach(async () => {
 
 describe('webhooks ingestion', () => {
   it('returns 400 for invalid JSON', async () => {
-    const response = await SELF.fetch('http://example.com/webhooks/token-123', {
+    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: 'not-json',
     });
@@ -46,14 +46,14 @@ describe('webhooks ingestion', () => {
       SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
     };
 
-    const response = await SELF.fetch('http://example.com/webhooks/token-123', {
+    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage),
       headers: { 'content-type': 'application/json' },
     });
     expect(response.status).toBe(200);
 
-    const secondResponse = await SELF.fetch('http://example.com/webhooks/token-123', {
+    const secondResponse = await SELF.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage),
       headers: { 'content-type': 'application/json' },

@@ -102,7 +102,7 @@ describe('sources routes', () => {
     const json = (await response.json()) as SetupInfo;
     expect(json.configuration_set_name).toBe('sesnoop-my-source-config');
     expect(json.sns_topic_name).toBe('sesnoop-my-source-sns');
-    expect(json.webhook_url).toBe('http://example.com/webhooks/tok-1');
+    expect(json.webhook_url).toBe('http://example.com/api/webhooks/tok-1');
     expect(json.steps).toHaveLength(4);
   });
 });

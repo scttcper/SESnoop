@@ -78,7 +78,7 @@ Once deployed, you need to tell Amazon SES where to send events.
 2.  Navigate to **Sources** and create a new source.
 3.  Click **Setup** on the new source to view detailed instructions.
 4.  The guide will provide:
-    - A unique Webhook URL: `https://<your-worker>/webhooks/<source_token>`
+    - A unique Webhook URL: `https://<your-worker>/api/webhooks/<source_token>`
     - Instructions for creating an SES Configuration Set and SNS Topic.
     - Steps to subscribe your unique URL to the SNS Topic.
 
@@ -118,7 +118,7 @@ The application includes a fully documented OpenAPI specification.
 - `GET /api/sources/:id/events` - Search and filter events.
 - `GET /api/sources/:id/overview` - Aggregate dashboard metrics.
 - `GET /api/sources/:id/messages/:id` - Detailed message view.
-- `POST /webhooks/:source_token` - Public endpoint for SNS ingestion.
+- `POST /api/webhooks/:source_token` - Public endpoint for SNS ingestion.
 
 ## Development Scripts
 

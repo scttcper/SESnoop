@@ -22,7 +22,7 @@ const runWithOptionalTransaction = async <T>(
   return await db.transaction(async (tx) => fn(tx as any));
 };
 
-router.post('/webhooks/:source_token', async (c) => {
+router.post('/api/webhooks/:source_token', async (c) => {
   const sourceToken = c.req.param('source_token');
   const db = createDb(c.env);
 

@@ -56,7 +56,7 @@ const unauthorized = () =>
   });
 
 export const authMiddleware = (): MiddlewareHandler<AppBindings> => async (c, next) => {
-  if (c.req.path.startsWith('/webhooks')) {
+  if (c.req.path.startsWith('/api/webhooks')) {
     return next();
   }
 

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["./worker/*"]
+    },
+    "types": ["@cloudflare/workers-types/latest", "vite/client"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "composite": true
+  },
+  "include": ["src", "worker", "vite.config.ts", "worker-configuration.d.ts"],
+  "exclude": ["dist"]
+}

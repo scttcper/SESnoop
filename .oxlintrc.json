@@ -7,6 +7,7 @@
   "extends": ["./node_modules/@ctrl/oxlint-config/.oxlintrc.json"],
   "rules": {
     "no-bitwise": "off",
-    "no-alert": "off"
+    "no-alert": "off",
+    "unicorn/no-useless-undefined": "off"
   }
 }

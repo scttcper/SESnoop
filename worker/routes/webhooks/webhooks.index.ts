@@ -97,10 +97,11 @@ async function insertEvents(
   message: Message,
   webhook: Webhook,
   eventPayload: EventPayload,
-): Promise<void> {
+): Promise<number> {
+  let insertedCount = 0;
   for (const recipient of eventPayload.recipients) {
     const normalizedRecipient = recipient.trim().toLowerCase();
-    await db
+    const result = await db
       .insert(events)
       .values({
         message_id: message.id,
@@ -114,18 +115,20 @@ async function insertEvents(
         bounce_type: eventPayload.bounceType,
       })
       .onConflictDoNothing();
+    if (result.meta.changes > 0) {
+      insertedCount += 1;
+    }
   }
+  return insertedCount;
 }
 
-async function updateMessageEventCount(db: Db, messageId: number): Promise<void> {
-  const [countRow] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(events)
-    .where(eq(events.message_id, messageId));
-
+async function updateMessageEventCount(db: Db, messageId: number, delta: number): Promise<void> {
+  if (delta <= 0) {
+    return;
+  }
   await db
     .update(messages)
-    .set({ events_count: countRow?.count ?? 0 })
+    .set({ events_count: sql`${messages.events_count} + ${delta}` })
     .where(eq(messages.id, messageId));
 }
 
@@ -147,8 +150,8 @@ async function ingestNotification(
   }
 
   const message = await findOrCreateMessage(db, source, eventPayload);
-  await insertEvents(db, message, webhook, eventPayload);
-  await updateMessageEventCount(db, message.id);
+  const insertedCount = await insertEvents(db, message, webhook, eventPayload);
+  await updateMessageEventCount(db, message.id, insertedCount);
   await markWebhookProcessed(db, webhook.id);
 }
 
@@ -189,7 +192,13 @@ router.post('/api/webhooks/:source_token', async (c) => {
     return c.json({ message: 'Not Found' }, HttpStatusCodes.NOT_FOUND);
   }
 
-  const snsPayload = await c.req.json();
+  let snsPayload: unknown;
+  try {
+    snsPayload = await c.req.json();
+  } catch {
+    return c.json({ message: 'Invalid JSON' }, HttpStatusCodes.BAD_REQUEST);
+  }
+
   const snsMessage = parseSnsMessage(snsPayload);
 
   // Verify SNS signature (disabled for local/dev)

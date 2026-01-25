@@ -1,8 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Activity, Plus, BarChart3, ArrowRight } from 'lucide-react';
-import { useMemo } from 'react';
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '../components/ui/chart';
 import { overviewQueryOptions, sourcesQueryOptions } from '../lib/queries';
 import { useActiveSourceId } from '../lib/use-active-source';
 import { cn, COLOR_STYLES } from '../lib/utils';
@@ -219,56 +227,67 @@ function SummarySection({
   );
 }
 
-function DailyVolumeSection({ overview, chartMax }: { overview: OverviewData; chartMax: number }) {
+function DailyVolumeSection({ overview }: { overview: OverviewData }) {
+  const chartData = overview.chart.days.map((day, index) => ({
+    day,
+    sent: overview.chart.sent[index] ?? 0,
+    delivered: overview.chart.delivered[index] ?? 0,
+    bounced: overview.chart.bounced[index] ?? 0,
+  }));
+
+  const chartConfig = {
+    sent: {
+      label: 'Sent',
+      color: '#60a5fa',
+    },
+    delivered: {
+      label: 'Delivered',
+      color: '#4ade80',
+    },
+    bounced: {
+      label: 'Bounced',
+      color: '#f87171',
+    },
+  } satisfies ChartConfig;
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <h2 className="text-lg font-semibold text-white">Daily volume</h2>
       </div>
-      <div className="flex h-64 items-end justify-between space-x-1 pt-4">
-        {overview.chart.days.map((day, index) => (
-          <div
-            key={day}
-            className="group group relative flex h-full flex-1 flex-col items-center justify-end"
-          >
-            <div className="absolute bottom-full z-10 mb-2 hidden w-32 flex-col rounded border border-white/10 bg-[#1A1B1E] p-2 text-xs shadow-xl group-hover:flex">
-              <div className="flex justify-between">
-                <span className="text-white/60">Sent</span>{' '}
-                <span className="text-white">{overview.chart.sent[index]}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-green-400/80">Delivered</span>{' '}
-                <span className="text-green-400">{overview.chart.delivered[index]}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-red-400/80">Bounced</span>{' '}
-                <span className="text-red-400">{overview.chart.bounced[index]}</span>
-              </div>
-              <div className="mt-1 border-t border-white/10 pt-1 text-center text-[10px] text-white/40">
-                {day}
-              </div>
-            </div>
-
-            <div className="relative flex h-full w-full max-w-[40px] flex-col-reverse overflow-hidden rounded-t-sm bg-white/[0.02]">
-              <div
-                className="w-full bg-red-500/80 transition-all duration-300"
-                style={{ height: `${(overview.chart.bounced[index] / chartMax) * 100}%` }}
-              />
-              <div
-                className="w-full bg-green-500/60 transition-all duration-300"
-                style={{ height: `${(overview.chart.delivered[index] / chartMax) * 100}%` }}
-              />
-              <div
-                className="absolute right-0 bottom-0 left-0 w-full bg-blue-500/20 transition-all duration-300"
-                style={{ height: `${(overview.chart.sent[index] / chartMax) * 100}%`, zIndex: 0 }}
-              />
-            </div>
-            <span className="mt-2 hidden font-mono text-[10px] text-white/30 md:block">
-              {day.slice(5)}
-            </span>
-          </div>
-        ))}
-      </div>
+      <ChartContainer config={chartConfig} className="min-h-[260px] w-full aspect-auto">
+        <BarChart
+          data={chartData}
+          accessibilityLayer
+          barGap={6}
+          barCategoryGap="22%"
+          margin={{ top: 8, right: 12, bottom: 8 }}
+        >
+          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+          <XAxis
+            dataKey="day"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(value) => (typeof value === 'string' ? value.slice(5) : value)}
+          />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <ChartLegend content={<ChartLegendContent />} />
+          <Bar dataKey="sent" fill="var(--color-sent)" radius={[4, 4, 0, 0]} maxBarSize={18} />
+          <Bar
+            dataKey="delivered"
+            fill="var(--color-delivered)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={18}
+          />
+          <Bar
+            dataKey="bounced"
+            fill="var(--color-bounced)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={18}
+          />
+        </BarChart>
+      </ChartContainer>
     </section>
   );
 }
@@ -356,19 +375,6 @@ export default function DashboardPage() {
     enabled: !!sourceId,
   });
 
-  // Hook must be called unconditionally
-  const chartMax = useMemo(() => {
-    if (!overview) {
-      return 0;
-    }
-    return Math.max(
-      ...overview.chart.sent,
-      ...overview.chart.delivered,
-      ...overview.chart.bounced,
-      1,
-    );
-  }, [overview]);
-
   // 1. Loading State
   if (loadingSources) {
     return <LoadingState />;
@@ -389,7 +395,7 @@ export default function DashboardPage() {
       <div className="flex-1 space-y-8 overflow-y-auto p-6">
         <SummarySection overview={overview} loadingOverview={loadingOverview} error={error} />
 
-        {overview ? <DailyVolumeSection overview={overview} chartMax={chartMax} /> : null}
+        {overview ? <DailyVolumeSection overview={overview} /> : null}
 
         {overview ? (
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">

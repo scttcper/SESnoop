@@ -167,7 +167,7 @@ export default function SourceSetupPage() {
           <h3 className="mb-6 text-lg font-semibold text-white">Step-by-step Instructions</h3>
           <div className="space-y-0">
             {setupInfo.steps.map((step, i) => (
-              <div key={i} className="group relative pb-8 pl-10 last:pb-0">
+              <div key={step} className="group relative pb-8 pl-10 last:pb-0">
                 {/* Connecting line */}
                 {i !== setupInfo.steps.length - 1 && (
                   <div className="absolute top-6 bottom-0 left-3 w-px -translate-x-1/2 bg-white/10 transition-colors group-hover:bg-white/20" />

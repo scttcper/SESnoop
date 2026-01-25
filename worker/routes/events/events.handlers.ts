@@ -79,13 +79,13 @@ const resolveDateRange = (preset?: string, from?: string, to?: string) => {
 
 const buildSearchFilter = (search?: string) => {
   if (!search) {
-    return undefined;
+    return;
   }
   const normalized = `%${search.trim().toLowerCase()}%`;
   return sql`(lower(${events.recipient_email}) like ${normalized} or lower(${messages.subject}) like ${normalized})`;
 };
 
-const filterSql = (items: (SQL | undefined | null)[]): SQL[] =>
+const filterSql = (items: Array<SQL | undefined | null>): SQL[] =>
   items.filter((item): item is SQL => item != null);
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
@@ -129,8 +129,8 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
 
   const listFilters = filterSql([
     ...baseFilters,
-    eventTypes.length ? inArray(events.event_type, eventTypes) : undefined,
-    bounceTypes.length ? inArray(events.bounce_type, bounceTypes) : undefined,
+    eventTypes.length > 0 ? inArray(events.event_type, eventTypes) : undefined,
+    bounceTypes.length > 0 ? inArray(events.bounce_type, bounceTypes) : undefined,
   ]);
 
   const [{ total }] = await db

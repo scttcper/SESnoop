@@ -1,5 +1,4 @@
-import { sql } from 'drizzle-orm';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 
 import { createDb } from '../../db';
@@ -185,8 +184,9 @@ router.post('/webhooks/:source_token', async (c) => {
       });
       return c.json({ ok: true }, HttpStatusCodes.OK);
     }
-    default:
+    default: {
       return c.json({ message: 'Unknown SNS message type' }, HttpStatusCodes.BAD_REQUEST);
+    }
   }
 });
 

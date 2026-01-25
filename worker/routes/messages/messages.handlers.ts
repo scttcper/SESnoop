@@ -3,7 +3,7 @@ import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 import { createDb } from '../../db';
-import { events, messages } from '../../db/schema';
+import { events } from '../../db/schema';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetOneRoute } from './messages.routes';

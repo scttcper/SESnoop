@@ -127,7 +127,7 @@ const sourceDashboardRoute = createRoute({
 });
 
 const messageDetailSearchSchema = z.object({
-  sourceId: z.number().optional().catch(undefined),
+  sourceId: z.number().optional().catch(),
 });
 
 export type MessageDetailSearchParams = z.infer<typeof messageDetailSearchSchema>;

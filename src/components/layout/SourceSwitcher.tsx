@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useLocation } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { Plus, Settings } from 'lucide-react';
 
 import { sourcesQueryOptions } from '../../lib/queries';
@@ -18,7 +18,9 @@ export function SourceSwitcher() {
   const selectedSource = sources.find((s) => s.id === currentSourceId);
 
   const handleSelect = (value: string | null) => {
-    if (!value) return;
+    if (!value) {
+      return;
+    }
     if (value === 'manage' || value === 'create') {
       navigate({ to: '/sources' });
       return;

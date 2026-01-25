@@ -238,6 +238,7 @@ export default function SourcesPage() {
             {/* Empty State Card */}
             {sources.length === 0 && (
               <button
+                type="button"
                 onClick={() => setIsCreating(true)}
                 className="group flex h-64 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-transparent transition-all hover:border-white/20 hover:bg-white/[0.02]"
               >

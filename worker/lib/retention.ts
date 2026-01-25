@@ -14,7 +14,7 @@ export async function runRetentionCleanup(env: AppBindings['Bindings']) {
     'SELECT id, retention_days FROM sources WHERE retention_days IS NOT NULL',
   ).all<RetentionSource>();
 
-  if (!sourcesResult.results.length) {
+  if (sourcesResult.results.length === 0) {
     return;
   }
 

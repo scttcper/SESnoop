@@ -12,7 +12,7 @@ import {
   InputGroupInput,
 } from '../components/ui/input-group';
 import { deleteSourceFn, sourcesQueryOptions, updateSourceFn } from '../lib/queries';
-import { COLOR_STYLES, COLORS } from '../lib/utils';
+import { COLORS } from '../lib/utils';
 
 export default function SourceSettingsPage() {
   const navigate = useNavigate();
@@ -71,7 +71,9 @@ export default function SourceSettingsPage() {
   });
 
   const handleUpdate = () => {
-    if (!source) return;
+    if (!source) {
+      return;
+    }
     setError(null);
     const retentionValue = form.retention_days.trim() ? Number(form.retention_days) : undefined; // send undefined if empty to potentially clear? Or assume API handles it.
     // Based on previous code, update payload allows undefined.
@@ -87,7 +89,9 @@ export default function SourceSettingsPage() {
   };
 
   const handleDelete = () => {
-    if (!source) return;
+    if (!source) {
+      return;
+    }
     if (
       window.confirm(
         `Are you sure you want to delete "${source.name}"?\nAll associated events and messages will be permanently removed.`,

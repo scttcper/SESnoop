@@ -149,7 +149,7 @@ export default function MessageDetailPage() {
                   Tags
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {message.tags.length ? (
+                  {message.tags.length > 0 ? (
                     message.tags.map((tag) => (
                       <span
                         key={tag}

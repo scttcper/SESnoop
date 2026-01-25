@@ -1,16 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams, useSearch, useNavigate, getRouteApi } from '@tanstack/react-router';
+import { Link, useParams, getRouteApi } from '@tanstack/react-router';
 import { useMemo } from 'react';
 
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
 import { BOUNCE_TYPES, DATE_PRESETS, EVENT_TYPES } from '../lib/constants';
 import { eventsQueryOptions, sourcesQueryOptions } from '../lib/queries';
 import type { EventsSearchParams } from '../router';
@@ -56,10 +50,10 @@ export default function EventsPage() {
     if (search.trim()) {
       params.set('search', search.trim());
     }
-    if (selectedEventTypes.length) {
+    if (selectedEventTypes.length > 0) {
       params.set('event_types', selectedEventTypes.join(','));
     }
-    if (selectedBounceTypes.length) {
+    if (selectedBounceTypes.length > 0) {
       params.set('bounce_types', selectedBounceTypes.join(','));
     }
     if (datePreset && datePreset !== 'custom') {

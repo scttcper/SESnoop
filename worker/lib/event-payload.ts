@@ -56,70 +56,89 @@ export class EventPayload {
 
   get timestamp(): Date {
     switch (this.eventType) {
-      case 'Bounce':
+      case 'Bounce': {
         return parseDate(this.bounce?.timestamp);
-      case 'Complaint':
+      }
+      case 'Complaint': {
         return parseDate(this.complaint?.timestamp);
-      case 'Delivery':
+      }
+      case 'Delivery': {
         return parseDate(this.delivery?.timestamp);
-      case 'DeliveryDelay':
+      }
+      case 'DeliveryDelay': {
         return parseDate(this.deliveryDelay?.timestamp);
-      case 'Subscription':
+      }
+      case 'Subscription': {
         return parseDate(this.subscription?.timestamp);
-      default:
+      }
+      default: {
         return parseDate(this.mail.timestamp);
+      }
     }
   }
 
   get recipients(): string[] {
     switch (this.eventType) {
-      case 'Bounce':
+      case 'Bounce': {
         return (
           this.bounce?.bouncedRecipients
             ?.map((recipient) => recipient?.emailAddress)
             .filter((value): value is string => typeof value === 'string') ?? []
         );
-      case 'Complaint':
+      }
+      case 'Complaint': {
         return (
           this.complaint?.complainedRecipients
             ?.map((recipient) => recipient?.emailAddress)
             .filter((value): value is string => typeof value === 'string') ?? []
         );
-      case 'Delivery':
+      }
+      case 'Delivery': {
         return (this.delivery?.recipients ?? []).filter(
           (value): value is string => typeof value === 'string',
         );
-      case 'DeliveryDelay':
+      }
+      case 'DeliveryDelay': {
         return (
           this.deliveryDelay?.delayedRecipients
             ?.map((recipient) => recipient?.emailAddress)
             .filter((value): value is string => typeof value === 'string') ?? []
         );
-      default:
+      }
+      default: {
         return (Array.isArray(this.mail.destination) ? this.mail.destination : []).filter(
           (value): value is string => typeof value === 'string',
         );
+      }
     }
   }
 
   get eventData(): Record<string, unknown> {
     switch (this.eventType) {
-      case 'Bounce':
+      case 'Bounce': {
         return this.bounce ?? {};
-      case 'Complaint':
+      }
+      case 'Complaint': {
         return this.complaint ?? {};
-      case 'Delivery':
+      }
+      case 'Delivery': {
         return this.delivery ?? {};
-      case 'DeliveryDelay':
+      }
+      case 'DeliveryDelay': {
         return this.deliveryDelay ?? {};
-      case 'RenderingFailure':
+      }
+      case 'RenderingFailure': {
         return this.renderingFailure ?? {};
-      case 'Reject':
+      }
+      case 'Reject': {
         return this.reject ?? {};
-      case 'Subscription':
+      }
+      case 'Subscription': {
         return this.subscription ?? {};
-      default:
+      }
+      default: {
         return {};
+      }
     }
   }
 

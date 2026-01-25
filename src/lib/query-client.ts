@@ -6,13 +6,15 @@ export const queryClient = new QueryClient({
       staleTime: 0,
       gcTime: 5 * 60_000,
       retry: (failureCount, error: any) => {
-        if (error?.response?.status === 401) return false;
+        if (error?.response?.status === 401) {
+          return false;
+        }
         return failureCount < 3;
       },
     },
   },
   queryCache: new QueryCache({
-    onError: (error, query) => {
+    onError: (error, _query) => {
       // Logic for global error handling can go here (e.g. toasts)
       // For now we will just log it
       console.error('Background error:', error);

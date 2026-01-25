@@ -60,6 +60,25 @@ Before deploying, you need to set up the D1 database.
     wrangler d1 migrations apply sesnoop
     ```
 
+#### Clone remote D1 to local (for testing)
+
+If you want a local copy of production data for testing, export the remote DB, rebuild the local DB from schema first, then import data.
+
+```bash
+# 1) Export remote DB to SQL
+wrangler d1 export sesnoop --remote --output dump.sql
+
+# 2) Split schema and data (the export interleaves CREATE/INSERT)
+awk 'BEGIN{in_create=0} { if ($0 ~ /^PRAGMA/) { print > "schema.sql"; print > "data.sql"; next } if ($0 ~ /^CREATE/) { in_create=1; print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if (in_create) { print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if ($0 ~ /^INSERT/) { print > "data.sql"; next } }' dump.sql
+
+# 3) Reset local DB (destructive for local dev data)
+rm -f .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite*
+
+# 4) Import schema, then data
+wrangler d1 execute sesnoop --local --file schema.sql
+wrangler d1 execute sesnoop --local --file data.sql
+```
+
 ### 2. Deploy Worker
 
 Build the UI and deploy the worker to Cloudflare:

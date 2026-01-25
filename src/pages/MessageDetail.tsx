@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, getRouteApi } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '../components/ui/input-group';
 import { messageQueryOptions, sourcesQueryOptions } from '../lib/queries';
 
 const routeApi = getRouteApi('/app/messages/$sesMessageId');
@@ -23,6 +23,8 @@ export default function MessageDetailPage() {
   const navigate = routeApi.useNavigate();
 
   const [sourceId, setSourceId] = useState<number | null>(searchParams.sourceId ?? null);
+  const [toCopied, setToCopied] = useState(false);
+  const toCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: sources = [] } = useQuery(sourcesQueryOptions);
 
@@ -81,31 +83,6 @@ export default function MessageDetailPage() {
             </p>
           ) : null}
 
-          <div className="mb-6 w-full md:w-1/3">
-            <label className="flex flex-col space-y-2">
-              <span className="text-sm font-medium text-white/60">Source</span>
-              <Select
-                items={sources.map((source) => ({
-                  label: source.name,
-                  value: String(source.id),
-                }))}
-                value={sourceId ? String(sourceId) : ''}
-                onValueChange={(value) => setSourceId(Number(value))}
-              >
-                <SelectTrigger className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors focus:border-white/30 focus:outline-none">
-                  <SelectValue placeholder="Select source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sources.map((source) => (
-                    <SelectItem key={source.id} value={String(source.id)}>
-                      {source.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
-
           {message ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
@@ -118,9 +95,38 @@ export default function MessageDetailPage() {
                 <span className="mb-2 block text-xs font-semibold tracking-wider text-white/40 uppercase">
                   To
                 </span>
-                <span className="text-sm break-all text-white">
-                  {message.destination_emails.join(', ') || '—'}
-                </span>
+                <InputGroup className="h-10 border-white/10 bg-black/30 text-white">
+                  <InputGroupInput
+                    className="h-10 py-0 text-sm leading-10 text-white"
+                    readOnly
+                    value={message.destination_emails.join(', ')}
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      size="sm"
+                      className="text-white/60 hover:text-white"
+                      onClick={() => {
+                        const text = message.destination_emails.join(', ');
+                        if (!text) {
+                          return;
+                        }
+                        navigator.clipboard.writeText(text);
+                        if (toCopyTimeoutRef.current) {
+                          clearTimeout(toCopyTimeoutRef.current);
+                        }
+                        setToCopied(true);
+                        toast.success('Copied to clipboard');
+                        toCopyTimeoutRef.current = setTimeout(() => {
+                          setToCopied(false);
+                          toCopyTimeoutRef.current = null;
+                        }, 2000);
+                      }}
+                    >
+                      {toCopied ? '✓ Copied' : 'Copy'}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
                 <span className="mb-2 block text-xs font-semibold tracking-wider text-white/40 uppercase">
@@ -172,11 +178,17 @@ export default function MessageDetailPage() {
             <h2 className="text-lg font-semibold text-white">Event timeline</h2>
           </div>
           {message?.events.length ? (
-            <div className="relative ml-2 flex flex-col space-y-4 border-l border-white/10 pl-4">
-              {message.events.map((event) => (
-                <div key={event.id} className="relative pl-6">
+            <div className="ml-2 flex flex-col">
+              {message.events.map((event, index) => (
+                <div key={event.id} className="group relative pb-8 pl-10 last:pb-0">
+                  {index > 0 && (
+                    <div className="absolute top-0 left-4 h-5 w-px -translate-x-1/2 bg-white/10" />
+                  )}
+                  {index < message.events.length - 1 && (
+                    <div className="absolute top-5 bottom-0 left-4 w-px -translate-x-1/2 bg-white/10" />
+                  )}
                   <div
-                    className={`absolute top-1.5 -left-[21px] h-3 w-3 rounded-full border-2 border-[#0B0C0E] ${
+                    className={`absolute top-5 left-4 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0B0C0E] ${
                       event.event_type === 'Bounce'
                         ? 'bg-red-500'
                         : event.event_type === 'Delivery'

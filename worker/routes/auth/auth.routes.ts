@@ -35,18 +35,9 @@ export const login = createRoute({
   },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(loginResponseSchema, 'Login succeeded'),
-    [HttpStatusCodes.UNAUTHORIZED]: jsonContent(
-      errorSchema,
-      'Invalid credentials',
-    ),
-    [HttpStatusCodes.BAD_REQUEST]: jsonContent(
-      errorSchema,
-      'Auth not configured',
-    ),
-    [HttpStatusCodes.INTERNAL_SERVER_ERROR]: jsonContent(
-      errorSchema,
-      'Auth misconfigured',
-    ),
+    [HttpStatusCodes.UNAUTHORIZED]: jsonContent(errorSchema, 'Invalid credentials'),
+    [HttpStatusCodes.BAD_REQUEST]: jsonContent(errorSchema, 'Auth not configured'),
+    [HttpStatusCodes.INTERNAL_SERVER_ERROR]: jsonContent(errorSchema, 'Auth misconfigured'),
   },
 });
 
@@ -67,10 +58,7 @@ export const session = createRoute({
   tags,
   responses: {
     [HttpStatusCodes.OK]: jsonContent(sessionSchema, 'Current auth session'),
-    [HttpStatusCodes.INTERNAL_SERVER_ERROR]: jsonContent(
-      errorSchema,
-      'Auth misconfigured',
-    ),
+    [HttpStatusCodes.INTERNAL_SERVER_ERROR]: jsonContent(errorSchema, 'Auth misconfigured'),
   },
 });
 

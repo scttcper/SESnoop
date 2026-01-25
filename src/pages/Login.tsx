@@ -1,6 +1,5 @@
 import { getRouteApi } from '@tanstack/react-router';
-import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -71,7 +70,7 @@ export default function LoginPage() {
 
       const target = safeRedirectPath(redirect);
       navigate({ to: target, replace: true });
-    } catch (err) {
+    } catch {
       setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -83,16 +82,14 @@ export default function LoginPage() {
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-16">
         <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0B0C0E] p-8 shadow-[0_20px_80px_rgba(0,0,0,0.4)]">
           <div className="mb-8 space-y-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/40">Sesnoop</p>
+            <p className="text-xs tracking-[0.3em] text-white/40">SESnoop</p>
             <h1 className="font-display text-3xl font-semibold tracking-tight">Sign in</h1>
-            <p className="text-sm text-white/60">
-              Enter your credentials to access the dashboard.
-            </p>
+            <p className="text-sm text-white/60">Enter your credentials to access the dashboard.</p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-widest text-white/50">
+              <label className="text-xs font-medium tracking-widest text-white/50 uppercase">
                 Username
               </label>
               <Input
@@ -104,7 +101,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-widest text-white/50">
+              <label className="text-xs font-medium tracking-widest text-white/50 uppercase">
                 Password
               </label>
               <Input

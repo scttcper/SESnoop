@@ -171,49 +171,67 @@ function extractSpkiFromCert(certDer: Uint8Array): Uint8Array | null {
 
     // Parse outer SEQUENCE (Certificate)
     const certSeq = parseAsn1Sequence(certDer, offset);
-    if (!certSeq) return null;
+    if (!certSeq) {
+      return null;
+    }
 
     // Parse TBSCertificate SEQUENCE
     const tbsSeq = parseAsn1Sequence(certDer, certSeq.contentOffset);
-    if (!tbsSeq) return null;
+    if (!tbsSeq) {
+      return null;
+    }
 
     let tbsOffset = tbsSeq.contentOffset;
 
     // Skip version if present (context tag [0])
     if (certDer[tbsOffset] === 0xa0) {
       const versionField = parseAsn1Element(certDer, tbsOffset);
-      if (!versionField) return null;
+      if (!versionField) {
+        return null;
+      }
       tbsOffset = versionField.nextOffset;
     }
 
     // Skip serialNumber (INTEGER)
     const serialNum = parseAsn1Element(certDer, tbsOffset);
-    if (!serialNum) return null;
+    if (!serialNum) {
+      return null;
+    }
     tbsOffset = serialNum.nextOffset;
 
     // Skip signature algorithm (SEQUENCE)
     const sigAlg = parseAsn1Element(certDer, tbsOffset);
-    if (!sigAlg) return null;
+    if (!sigAlg) {
+      return null;
+    }
     tbsOffset = sigAlg.nextOffset;
 
     // Skip issuer (SEQUENCE)
     const issuer = parseAsn1Element(certDer, tbsOffset);
-    if (!issuer) return null;
+    if (!issuer) {
+      return null;
+    }
     tbsOffset = issuer.nextOffset;
 
     // Skip validity (SEQUENCE)
     const validity = parseAsn1Element(certDer, tbsOffset);
-    if (!validity) return null;
+    if (!validity) {
+      return null;
+    }
     tbsOffset = validity.nextOffset;
 
     // Skip subject (SEQUENCE)
     const subject = parseAsn1Element(certDer, tbsOffset);
-    if (!subject) return null;
+    if (!subject) {
+      return null;
+    }
     tbsOffset = subject.nextOffset;
 
     // subjectPublicKeyInfo (SEQUENCE) - this is what we want!
     const spkiElement = parseAsn1Element(certDer, tbsOffset);
-    if (!spkiElement) return null;
+    if (!spkiElement) {
+      return null;
+    }
 
     // Return the entire SPKI element including tag and length
     return certDer.slice(tbsOffset, spkiElement.nextOffset);
@@ -230,12 +248,16 @@ interface Asn1Element {
 }
 
 function parseAsn1Element(data: Uint8Array, offset: number): Asn1Element | null {
-  if (offset >= data.length) return null;
+  if (offset >= data.length) {
+    return null;
+  }
 
   const tag = data[offset];
   let lengthOffset = offset + 1;
 
-  if (lengthOffset >= data.length) return null;
+  if (lengthOffset >= data.length) {
+    return null;
+  }
 
   let length = data[lengthOffset];
   let contentOffset = lengthOffset + 1;
@@ -243,7 +265,9 @@ function parseAsn1Element(data: Uint8Array, offset: number): Asn1Element | null 
   // Long form length
   if (length & 0x80) {
     const numLengthBytes = length & 0x7f;
-    if (numLengthBytes > 4 || lengthOffset + numLengthBytes >= data.length) return null;
+    if (numLengthBytes > 4 || lengthOffset + numLengthBytes >= data.length) {
+      return null;
+    }
 
     length = 0;
     for (let i = 0; i < numLengthBytes; i++) {
@@ -262,6 +286,8 @@ function parseAsn1Element(data: Uint8Array, offset: number): Asn1Element | null 
 
 function parseAsn1Sequence(data: Uint8Array, offset: number): Asn1Element | null {
   const element = parseAsn1Element(data, offset);
-  if (!element || element.tag !== 0x30) return null;
+  if (!element || element.tag !== 0x30) {
+    return null;
+  }
   return element;
 }

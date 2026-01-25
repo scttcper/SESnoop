@@ -255,7 +255,7 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <h2 className="text-lg font-semibold text-white">Daily volume</h2>
       </div>
-      <ChartContainer config={chartConfig} className="min-h-[260px] w-full aspect-auto">
+      <ChartContainer config={chartConfig} className="aspect-auto min-h-[260px] w-full">
         <BarChart
           data={chartData}
           accessibilityLayer

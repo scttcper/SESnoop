@@ -86,7 +86,7 @@ _Note: The webhook endpoint handles SNS `SubscriptionConfirmation` automatically
 
 ### Authentication
 
-You can protect the UI and API (excluding public webhooks) with HTTP Basic Auth by setting environment variables in Cloudflare or your `wrangler.jsonc` (for dev).
+You can protect the UI and API (excluding public webhooks) with a cookie-based login by setting environment variables in Cloudflare or your `wrangler.jsonc` (for dev). The UI will prompt for credentials when auth is enabled.
 
 ### Environment Variables
 
@@ -94,8 +94,11 @@ Configure these via the Cloudflare Dashboard or Wrangler:
 
 | Variable                       | Description                                                                       |
 | :----------------------------- | :-------------------------------------------------------------------------------- |
-| `HTTP_AUTH_USERNAME`           | Optional. Username for Basic Auth.                                                |
-| `HTTP_AUTH_PASSWORD`           | Optional. Password for Basic Auth.                                                |
+| `AUTH_USERNAME`                | Optional. Username for cookie-based auth.                                         |
+| `AUTH_PASSWORD`                | Optional. Password for cookie-based auth.                                         |
+| `AUTH_JWT_SECRET`              | Required when auth is enabled. Secret used to sign JWT cookies.                   |
+| `AUTH_COOKIE_NAME`             | Optional. Cookie name (default: `sesnoop_auth`).                                  |
+| `AUTH_COOKIE_TTL_SECONDS`      | Optional. Cookie lifetime in seconds (default: 30 days).                          |
 | `SNS_DISABLE_SIGNATURE_VERIFY` | Set to `true` to skip SNS signature verification (useful for local testing).      |
 | `DB_DISABLE_TRANSACTIONS`      | Set to `true` to disable D1 transactions during ingestion (useful for debugging). |
 

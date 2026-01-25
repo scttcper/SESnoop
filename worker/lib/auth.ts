@@ -1,73 +1,92 @@
+import { verify } from '@tsndr/cloudflare-worker-jwt';
+import { getCookie } from 'hono/cookie';
 import type { MiddlewareHandler } from 'hono';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 
 import type { AppBindings } from './types';
 
-const textEncoder = new TextEncoder();
+export const DEFAULT_AUTH_COOKIE_NAME = 'sesnoop_auth';
+export const DEFAULT_AUTH_TTL_SECONDS = 60 * 60 * 24 * 30;
 
-const timingSafeEqual = (left: string, right: string) => {
-  const leftBytes = textEncoder.encode(left);
-  const rightBytes = textEncoder.encode(right);
-  const length = Math.max(leftBytes.length, rightBytes.length);
-  let diff = leftBytes.length ^ rightBytes.length;
-
-  for (let i = 0; i < length; i += 1) {
-    diff |= (leftBytes[i] ?? 0) ^ (rightBytes[i] ?? 0);
-  }
-
-  return diff === 0;
+export type AuthSession = {
+  username: string;
 };
 
-const parseBasicAuth = (value: string) => {
-  const [scheme, encoded] = value.split(' ');
-  if (!scheme || scheme.toLowerCase() !== 'basic' || !encoded) {
-    return null;
-  }
-  try {
-    const decoded = atob(encoded);
-    const separatorIndex = decoded.indexOf(':');
-    if (separatorIndex === -1) {
-      return null;
-    }
-    return {
-      username: decoded.slice(0, separatorIndex),
-      password: decoded.slice(separatorIndex + 1),
-    };
-  } catch {
-    return null;
-  }
+type AuthConfig = {
+  username?: string;
+  password?: string;
+  secret?: string;
+  cookieName: string;
+  ttlSeconds: number;
+  configured: boolean;
+  enabled: boolean;
 };
 
-const unauthorized = (realm = 'SESnoop') =>
+const parseTtlSeconds = (value: string | undefined) => {
+  if (!value) {
+    return DEFAULT_AUTH_TTL_SECONDS;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_AUTH_TTL_SECONDS;
+  }
+  return Math.floor(parsed);
+};
+
+export const getAuthConfig = (env: AppBindings['Bindings']): AuthConfig => {
+  const username = env.AUTH_USERNAME;
+  const password = env.AUTH_PASSWORD;
+  const secret = env.AUTH_JWT_SECRET;
+  const configured = Boolean(username && password);
+
+  return {
+    username,
+    password,
+    secret,
+    cookieName: env.AUTH_COOKIE_NAME ?? DEFAULT_AUTH_COOKIE_NAME,
+    ttlSeconds: parseTtlSeconds(env.AUTH_COOKIE_TTL_SECONDS),
+    configured,
+    enabled: configured && Boolean(secret),
+  };
+};
+
+const unauthorized = () =>
   new Response('Unauthorized', {
     status: HttpStatusCodes.UNAUTHORIZED,
-    headers: {
-      'WWW-Authenticate': `Basic realm="${realm}"`,
-    },
   });
 
-export const basicAuth = (): MiddlewareHandler<AppBindings> => async (c, next) => {
+export const authMiddleware = (): MiddlewareHandler<AppBindings> => async (c, next) => {
   if (c.req.path.startsWith('/webhooks')) {
     return next();
   }
 
-  const username = c.env.HTTP_AUTH_USERNAME;
-  const password = c.env.HTTP_AUTH_PASSWORD;
-  if (!username || !password) {
+  if (c.req.path.startsWith('/api/auth/login') || c.req.path.startsWith('/api/auth/logout')) {
     return next();
   }
 
-  const header = c.req.header('Authorization');
-  const parsed = header ? parseBasicAuth(header) : null;
-  const candidateUser = parsed?.username ?? '';
-  const candidatePass = parsed?.password ?? '';
+  const config = getAuthConfig(c.env);
+  if (!config.configured) {
+    return next();
+  }
 
-  const userMatch = timingSafeEqual(candidateUser, username);
-  const passMatch = timingSafeEqual(candidatePass, password);
+  if (!config.enabled) {
+    return new Response('Auth secret not configured', {
+      status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
 
-  if (!userMatch || !passMatch) {
+  const token = getCookie(c, config.cookieName);
+  if (!token) {
     return unauthorized();
   }
+
+  const verified = await verify<AuthSession>(token, config.secret);
+  const payload = verified?.payload;
+  if (!payload?.username || payload.username !== config.username) {
+    return unauthorized();
+  }
+
+  c.set('auth', { username: payload.username } satisfies AuthSession);
 
   return next();
 };

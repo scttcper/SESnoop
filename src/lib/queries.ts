@@ -20,13 +20,23 @@ export type {
   Source,
 };
 
+import { AuthError } from './auth';
+
+const ensureOk = async (response: Response, message: string) => {
+  if (response.status === 401) {
+    throw new AuthError();
+  }
+  if (!response.ok) {
+    throw new Error(message);
+  }
+  return response;
+};
+
 export const sourcesQueryOptions = queryOptions({
   queryKey: ['sources'],
   queryFn: async () => {
     const response = await fetch('/api/sources');
-    if (!response.ok) {
-      throw new Error('Failed to load sources');
-    }
+    await ensureOk(response, 'Failed to load sources');
     return (await response.json()) as Source[];
   },
 });
@@ -37,9 +47,7 @@ export const sourceSetupQueryOptions = (sourceId: number | null | undefined) =>
     queryFn: sourceId
       ? async () => {
           const response = await fetch(`/api/sources/${sourceId}/setup`);
-          if (!response.ok) {
-            throw new Error('Failed to load setup instructions');
-          }
+          await ensureOk(response, 'Failed to load setup instructions');
           return (await response.json()) as SetupInfo;
         }
       : skipToken,
@@ -51,9 +59,7 @@ export const overviewQueryOptions = (sourceId: number | null | undefined) =>
     queryFn: sourceId
       ? async () => {
           const response = await fetch(`/api/sources/${sourceId}/overview`);
-          if (!response.ok) {
-            throw new Error('Failed to load overview');
-          }
+          await ensureOk(response, 'Failed to load overview');
           return (await response.json()) as OverviewResponse;
         }
       : skipToken,
@@ -68,9 +74,7 @@ export const eventsQueryOptions = (
     queryFn: sourceId
       ? async () => {
           const response = await fetch(`/api/sources/${sourceId}/events?${params}`);
-          if (!response.ok) {
-            throw new Error('Failed to load events');
-          }
+          await ensureOk(response, 'Failed to load events');
           return (await response.json()) as EventResponse;
         }
       : skipToken,
@@ -86,9 +90,7 @@ export const messageQueryOptions = (
       sourceId && sesMessageId
         ? async () => {
             const response = await fetch(`/api/sources/${sourceId}/messages/${sesMessageId}`);
-            if (!response.ok) {
-              throw new Error('Failed to load message');
-            }
+            await ensureOk(response, 'Failed to load message');
             return (await response.json()) as MessageDetail;
           }
         : skipToken,
@@ -105,9 +107,7 @@ export const createSourceFn = async (payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!response.ok) {
-    throw new Error('Failed to create source');
-  }
+  await ensureOk(response, 'Failed to create source');
   return (await response.json()) as Source;
 };
 
@@ -123,9 +123,7 @@ export const updateSourceFn = async ({
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!response.ok) {
-    throw new Error('Failed to update source');
-  }
+  await ensureOk(response, 'Failed to update source');
   return response.json();
 };
 
@@ -133,8 +131,9 @@ export const deleteSourceFn = async (id: number) => {
   const response = await fetch(`/api/sources/${id}`, {
     method: 'DELETE',
   });
-  if (!response.ok) {
-    throw new Error('Failed to delete source');
+  await ensureOk(response, 'Failed to delete source');
+  if (response.status === 204) {
+    return null;
   }
-  return response.json(); // assuming it returns something or empty
+  return response.json();
 };

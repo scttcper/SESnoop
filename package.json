@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "$npm_execpath run build && vite preview",
-    "deploy": "$npm_execpath run build && wrangler deploy",
+    "preview": "pnpm run build && vite preview",
+    "deploy": "pnpm run build && wrangler deploy",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "drizzle:generate": "drizzle-kit generate",
+    "drizzle:migrate": "drizzle-kit migrate",
     "test": "vitest",
     "lint": "oxlint . && oxfmt --check",
     "lint:fix": "oxlint . --fix && oxfmt"
@@ -23,6 +24,7 @@
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-router": "^1.157.5",
     "@tanstack/zod-adapter": "^1.157.5",
+    "@tsndr/cloudflare-worker-jwt": "^3.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",

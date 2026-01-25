@@ -42,7 +42,7 @@ router.post('/webhooks/:source_token', async (c) => {
     return c.json({ message: 'Invalid JSON' }, HttpStatusCodes.BAD_REQUEST);
   }
 
-  let snsMessage;
+  let snsMessage: ReturnType<typeof parseSnsMessage>;
   try {
     snsMessage = parseSnsMessage(snsPayload);
   } catch {

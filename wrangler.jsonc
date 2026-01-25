@@ -13,10 +13,16 @@
     {
       "binding": "DB",
       "database_name": "sesnoop",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "e31ac345-22c0-4072-b267-48c0b7cb8213",
       "migrations_dir": "./drizzle",
       "migrations_table": "d1_migrations",
     },
   ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+    },
+  },
   "main": "./worker/index.ts",
 }

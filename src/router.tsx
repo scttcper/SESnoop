@@ -11,9 +11,11 @@ import { fallback, zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 
 import { AppLayout } from './components/layout/AppLayout';
+import { AuthError, getSession } from './lib/auth';
 import { DEFAULT_DATE_RANGE, DEFAULT_PAGE } from './lib/constants';
 import DashboardPage from './pages/Dashboard';
 import EventsPage from './pages/Events';
+import LoginPage from './pages/Login';
 import MessageDetailPage from './pages/MessageDetail';
 import SourcesPage from './pages/Sources';
 import SourceSettingsPage from './pages/SourceSettings';
@@ -42,6 +44,39 @@ const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'app',
   component: AppLayout,
+  beforeLoad: async ({ location }) => {
+    try {
+      const session = await getSession();
+      if (!session.enabled) {
+        return;
+      }
+    } catch (error) {
+      if (error instanceof AuthError) {
+        const redirectTo = `${location.pathname}${location.search}${location.hash}`;
+        throw redirect({
+          to: '/login',
+          search: {
+            redirect: redirectTo,
+          },
+        });
+      }
+      throw error;
+    }
+  },
+});
+
+const loginSearchSchema = z.object({
+  redirect: fallback(z.string(), '').default(''),
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  validateSearch: zodValidator(loginSearchSchema),
+  component: LoginPage,
+  head: () => ({
+    meta: [{ title: 'Login | SESnoop' }],
+  }),
 });
 
 const indexRoute = createRoute({
@@ -167,6 +202,7 @@ const setupRedirectRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  loginRoute,
   appRoute.addChildren([
     indexRoute,
     dashboardRoute,

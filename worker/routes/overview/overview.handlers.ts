@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
@@ -31,6 +31,78 @@ const parseDateInput = (value?: string) => {
   }
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const parseJsonRecord = (value: unknown): Record<string, unknown> => {
+  if (!value) {
+    return {};
+  }
+  if (typeof value === 'object') {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as Record<string, unknown>;
+      return typeof parsed === 'object' && parsed ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+};
+
+const toTrimmedString = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const readString = (record: Record<string, unknown>, key: string): string | null =>
+  toTrimmedString(record[key]);
+
+const extractBounceDiagnostic = (eventData: Record<string, unknown>): string | null => {
+  const recipients = eventData.bouncedRecipients;
+  if (!Array.isArray(recipients)) {
+    return null;
+  }
+  for (const recipient of recipients) {
+    if (recipient && typeof recipient === 'object') {
+      const diagnostic = toTrimmedString((recipient as Record<string, unknown>).diagnosticCode);
+      if (diagnostic) {
+        return diagnostic;
+      }
+    }
+  }
+  return null;
+};
+
+const formatReasonLabel = (value: string | null): string => {
+  if (!value) {
+    return 'Unknown';
+  }
+  const normalized = value
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized) {
+    return 'Unknown';
+  }
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const resolveBounceReason = (
+  eventData: Record<string, unknown>,
+  bounceType: string | null,
+): string => {
+  const reason =
+    readString(eventData, 'bounceSubType') ??
+    readString(eventData, 'bounceType') ??
+    bounceType ??
+    extractBounceDiagnostic(eventData);
+  return formatReasonLabel(reason);
 };
 
 const resolveRange = (from?: string, to?: string) => {
@@ -109,6 +181,8 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter);
 
+  const bouncedTotal = sentRow[0]?.bounced ?? 0;
+
   const sentTodayRow = await db
     .select({
       sent_today: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.send} then 1 else 0 end)`,
@@ -162,6 +236,41 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     )
     .groupBy(events.bounce_type);
 
+  let bounceEvents: Array<{ event_data: unknown; bounce_type: string | null }> = [];
+  let domainRows: Array<{ domain: string | null; count: number | null }> = [];
+
+  if (bouncedTotal > 0) {
+    bounceEvents = await db
+      .select({
+        event_data: events.event_data,
+        bounce_type: events.bounce_type,
+      })
+      .from(events)
+      .innerJoin(messages, eq(events.message_id, messages.id))
+      .where(and(rangeFilter, sql`${events.event_type} = ${EVENT_TYPES.bounce}`));
+
+    const domainExpr = sql<string>`lower(substr(${events.recipient_email}, instr(${events.recipient_email}, '@') + 1))`;
+    const domainCountExpr = sql<number>`count(*)`;
+
+    domainRows = await db
+      .select({
+        domain: domainExpr,
+        count: domainCountExpr,
+      })
+      .from(events)
+      .innerJoin(messages, eq(events.message_id, messages.id))
+      .where(
+        and(
+          rangeFilter,
+          sql`${events.event_type} = ${EVENT_TYPES.bounce}`,
+          sql`instr(${events.recipient_email}, '@') > 0`,
+        ),
+      )
+      .groupBy(domainExpr)
+      .orderBy(desc(domainCountExpr))
+      .limit(5);
+  }
+
   const dailyMap = new Map<string, { sent: number; delivered: number; bounced: number }>();
   for (const row of dailyRows) {
     if (row.day) {
@@ -181,21 +290,40 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   };
 
   const sent = sentRow[0]?.sent ?? 0;
+  const bounced = bouncedTotal;
   const metrics = {
     sent,
     delivered: sentRow[0]?.delivered ?? 0,
-    bounced: sentRow[0]?.bounced ?? 0,
+    bounced,
     complaints: sentRow[0]?.complaints ?? 0,
     opens: sentRow[0]?.opens ?? 0,
     clicks: sentRow[0]?.clicks ?? 0,
     sent_today: sentTodayRow[0]?.sent_today ?? 0,
     unique_opens: uniqueRow[0]?.unique_opens ?? 0,
     unique_clicks: uniqueRow[0]?.unique_clicks ?? 0,
-    bounce_rate: sent ? (sentRow[0]?.bounced ?? 0) / sent : 0,
+    bounce_rate: sent ? bounced / sent : 0,
     complaint_rate: sent ? (sentRow[0]?.complaints ?? 0) / sent : 0,
     open_rate: sent ? (uniqueRow[0]?.unique_opens ?? 0) / sent : 0,
     click_rate: sent ? (uniqueRow[0]?.unique_clicks ?? 0) / sent : 0,
   };
+
+  const reasonCounts = new Map<string, number>();
+  for (const row of bounceEvents) {
+    const reason = resolveBounceReason(parseJsonRecord(row.event_data), row.bounce_type);
+    reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+  }
+
+  const topReasons = [...reasonCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([label, count]) => ({ label, count }));
+
+  const topDomains = domainRows
+    .map((row) => ({
+      label: row.domain?.trim() ?? '',
+      count: row.count ?? 0,
+    }))
+    .filter((row) => row.label.length > 0);
 
   return c.json(
     {
@@ -212,6 +340,10 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
           bounce_type: row.bounce_type ?? 'Unknown',
           count: row.count ?? 0,
         })),
+      failure_insights: {
+        top_reasons: topReasons,
+        top_domains: topDomains,
+      },
     },
     HttpStatusCodes.OK,
   );

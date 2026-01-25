@@ -20,7 +20,7 @@ export default function SourceSettingsPage() {
   const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
   const queryClient = useQueryClient();
 
-  const { data: sources = [] } = useQuery(sourcesQueryOptions);
+  const { data: sources = [], isLoading: loadingSources } = useQuery(sourcesQueryOptions);
   const source = sources.find((s) => s.id === sourceId);
 
   const [form, setForm] = useState({
@@ -100,6 +100,68 @@ export default function SourceSettingsPage() {
       deleteMutation.mutate(source.id);
     }
   };
+
+  if (loadingSources) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-12">
+        <div className="animate-pulse space-y-10">
+          <div className="min-h-[92px] space-y-3 border-b border-white/10 pb-6">
+            <div className="h-6 w-28 rounded bg-white/10" />
+            <div className="h-4 w-64 rounded bg-white/10" />
+          </div>
+
+          <section className="min-h-[170px] space-y-4">
+            <div className="h-4 w-32 rounded bg-white/10" />
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="h-3 w-24 rounded bg-white/10" />
+              <div className="mt-3 h-10 w-full rounded bg-white/10" />
+              <div className="mt-3 h-3 w-64 rounded bg-white/10" />
+            </div>
+          </section>
+
+          <section className="min-h-[320px] space-y-6">
+            <div className="h-4 w-20 rounded bg-white/10" />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="h-3 w-24 rounded bg-white/10" />
+                <div className="h-10 w-full rounded bg-white/10" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-24 rounded bg-white/10" />
+                <div className="flex gap-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div
+                      key={`color-skeleton-${index}`}
+                      className="h-8 w-8 rounded-full bg-white/10"
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-40 rounded bg-white/10" />
+                <div className="flex gap-4">
+                  <div className="h-10 w-32 rounded bg-white/10" />
+                  <div className="h-4 w-64 rounded bg-white/10" />
+                </div>
+              </div>
+              <div className="h-10 w-40 rounded bg-white/10" />
+            </div>
+          </section>
+
+          <section className="min-h-[132px] space-y-4 border-t border-white/10 pt-10">
+            <div className="h-4 w-28 rounded bg-white/10" />
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="space-y-2">
+                <div className="h-4 w-28 rounded bg-white/10" />
+                <div className="h-3 w-56 rounded bg-white/10" />
+              </div>
+              <div className="h-9 w-28 rounded bg-white/10" />
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   if (!source) {
     return (

@@ -1,21 +1,49 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, getRouteApi } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
 import { BOUNCE_TYPES, DATE_PRESETS, EVENT_TYPES } from '../lib/constants';
-import { eventsQueryOptions, sourcesQueryOptions } from '../lib/queries';
+import { eventsQueryOptions, sourcesQueryOptions, type EventResponse } from '../lib/queries';
 import type { EventsSearchParams } from '../router';
 
 const routeApi = getRouteApi('/app/s/$sourceId/events');
 
 const formatDateTime = (value: number) => new Date(value).toLocaleString();
 
+const escapeCsvCell = (value: string | number | null | undefined) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  const stringValue = String(value);
+  if (/[",\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+};
+
+const createCsv = (rows: Array<Array<string | number | null | undefined>>) =>
+  rows.map((row) => row.map(escapeCsvCell).join(',')).join('\n');
+
+const buildExportFileName = (sourceName: string | undefined, sourceId: number | null) => {
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  const base = sourceName
+    ? sourceName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    : sourceId
+      ? `source-${sourceId}`
+      : 'events';
+  const trimmed = base.replace(/^-+|-+$/g, '');
+  return `${trimmed || 'events'}-${dateStamp}.csv`;
+};
+
 export default function EventsPage() {
   const { sourceId: sourceIdStr } = useParams({ strict: false });
   const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
+
+  const [exporting, setExporting] = useState(false);
 
   const searchParams = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
@@ -45,7 +73,7 @@ export default function EventsPage() {
   const { data: sources = [] } = useQuery(sourcesQueryOptions);
   const currentSource = sources.find((s) => s.id === sourceId);
 
-  const queryString = useMemo(() => {
+  const filterQueryString = useMemo(() => {
     const params = new URLSearchParams();
     if (search.trim()) {
       params.set('search', search.trim());
@@ -65,9 +93,14 @@ export default function EventsPage() {
     if (datePreset === 'custom' && to) {
       params.set('to', to);
     }
+    return params.toString();
+  }, [datePreset, from, search, selectedBounceTypes, selectedEventTypes, to]);
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams(filterQueryString);
     params.set('page', page.toString());
     return params.toString();
-  }, [datePreset, from, page, search, selectedBounceTypes, selectedEventTypes, to]);
+  }, [filterQueryString, page]);
 
   const {
     data: eventsResponse,
@@ -94,6 +127,62 @@ export default function EventsPage() {
       ? selectedBounceTypes.filter((entry: string) => entry !== value)
       : [...selectedBounceTypes, value];
     updateFilter({ bounce_types: newTypes });
+  };
+
+  const handleExport = async () => {
+    if (!sourceId) {
+      return;
+    }
+    setExporting(true);
+    try {
+      const params = new URLSearchParams(filterQueryString);
+      params.set('per_page', '200');
+      params.set('page', '1');
+
+      const response = await fetch(`/api/sources/${sourceId}/events?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to export events');
+      }
+      const firstPage = (await response.json()) as EventResponse;
+      let allEvents = [...firstPage.data];
+      const totalPages = firstPage.pagination?.total_pages ?? 1;
+
+      for (let nextPage = 2; nextPage <= totalPages; nextPage += 1) {
+        params.set('page', nextPage.toString());
+        const pageResponse = await fetch(`/api/sources/${sourceId}/events?${params.toString()}`);
+        if (!pageResponse.ok) {
+          throw new Error('Failed to export events');
+        }
+        const pageData = (await pageResponse.json()) as EventResponse;
+        allEvents = [...allEvents, ...pageData.data];
+      }
+
+      const csv = createCsv([
+        ['Event', 'Recipient', 'Subject', 'Time'],
+        ...allEvents.map((event) => [
+          event.event_type,
+          event.recipient_email ?? '',
+          event.message_subject ?? '',
+          formatDateTime(event.event_at),
+        ]),
+      ]);
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = buildExportFileName(currentSource?.name, sourceId);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${allEvents.length} events`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export events');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const totalLabel = pagination ? `${pagination.total} events` : '—';
@@ -128,11 +217,13 @@ export default function EventsPage() {
 
       <div className="flex-1 space-y-8 overflow-y-auto p-6">
         <section className="space-y-6">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
-            <h2 className="text-lg font-semibold text-white">Filters</h2>
-            <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
-              {loading ? 'Loading…' : totalLabel}
-            </span>
+          <div className="space-y-3 border-b border-white/10 pb-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Filters</h2>
+              <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
+                {loading ? 'Loading…' : totalLabel}
+              </span>
+            </div>
           </div>
           {error ? (
             <p className="rounded-lg border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-400">
@@ -258,7 +349,18 @@ export default function EventsPage() {
         </section>
 
         <section>
-          <div className="overflow-hidden rounded-lg border border-white/10">
+          <div className="mb-3 flex items-center justify-end">
+            <Button
+              variant="ghost"
+              type="button"
+              className="h-9 rounded-md border border-white/10 bg-white/10 px-3 text-xs text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+              disabled={exporting}
+              onClick={handleExport}
+            >
+              {exporting ? 'Exporting…' : 'Export CSV'}
+            </Button>
+          </div>
+          <div className="min-h-[320px] overflow-hidden rounded-lg border border-white/10">
             <table className="w-full text-left text-sm">
               <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
                 <tr>
@@ -277,13 +379,27 @@ export default function EventsPage() {
                     </td>
                   </tr>
                 ) : null}
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-white/40">
-                      Loading events...
-                    </td>
-                  </tr>
-                ) : null}
+                {loading
+                  ? Array.from({ length: 6 }).map((_, index) => (
+                      <tr key={`events-skeleton-${index}`} className="animate-pulse">
+                        <td className="px-4 py-3">
+                          <div className="h-5 w-16 rounded bg-white/10" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-40 rounded bg-white/10" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-56 rounded bg-white/10" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-24 rounded bg-white/10" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="ml-auto h-4 w-12 rounded bg-white/10" />
+                        </td>
+                      </tr>
+                    ))
+                  : null}
                 {events.map((event) => (
                   <tr key={event.id} className="transition-colors hover:bg-white/5">
                     <td className="px-4 py-3">
@@ -310,6 +426,16 @@ export default function EventsPage() {
                       <Link
                         to="/messages/$sesMessageId"
                         params={{ sesMessageId: event.ses_message_id }}
+                        search={{
+                          sourceId: sourceId ?? undefined,
+                          search,
+                          event_types: selectedEventTypes,
+                          bounce_types: selectedBounceTypes,
+                          date_range: datePreset,
+                          from,
+                          to,
+                          page,
+                        }}
                         className="text-xs font-medium text-blue-400 transition-colors hover:text-blue-300"
                       >
                         Details

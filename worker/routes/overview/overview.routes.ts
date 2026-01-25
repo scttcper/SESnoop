@@ -45,6 +45,20 @@ const responseSchema = z.object({
       count: z.number(),
     }),
   ),
+  failure_insights: z.object({
+    top_reasons: z.array(
+      z.object({
+        label: z.string(),
+        count: z.number(),
+      }),
+    ),
+    top_domains: z.array(
+      z.object({
+        label: z.string(),
+        count: z.number(),
+      }),
+    ),
+  }),
 });
 
 export type OverviewResponse = z.infer<typeof responseSchema>;

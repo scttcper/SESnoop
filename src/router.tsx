@@ -163,6 +163,13 @@ const sourceDashboardRoute = createRoute({
 
 const messageDetailSearchSchema = z.object({
   sourceId: z.number().optional().catch(undefined),
+  search: z.string().optional().catch(undefined),
+  event_types: z.array(z.string()).optional().catch(undefined),
+  bounce_types: z.array(z.string()).optional().catch(undefined),
+  date_range: z.string().optional().catch(undefined),
+  from: z.string().optional().catch(undefined),
+  to: z.string().optional().catch(undefined),
+  page: z.number().optional().catch(undefined),
 });
 
 export type MessageDetailSearchParams = z.infer<typeof messageDetailSearchSchema>;

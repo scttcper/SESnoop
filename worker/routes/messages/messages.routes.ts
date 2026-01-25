@@ -17,6 +17,7 @@ const eventSchema = z.object({
   event_type: z.string(),
   recipient_email: z.string(),
   event_at: z.number(),
+  event_detail: z.string().nullable(),
 });
 
 const messageSchema = z.object({

@@ -50,6 +50,11 @@ type BounceBreakdownRow = {
   count: number;
 };
 
+type FailureInsightItem = {
+  label: string;
+  count: number;
+};
+
 type OverviewData = {
   range: {
     from: string;
@@ -58,6 +63,10 @@ type OverviewData = {
   metrics: OverviewMetrics;
   chart: OverviewChart;
   bounce_breakdown: BounceBreakdownRow[];
+  failure_insights: {
+    top_reasons: FailureInsightItem[];
+    top_domains: FailureInsightItem[];
+  };
 };
 
 type QueryError = string | null;
@@ -129,27 +138,15 @@ function EmptySourceState({ sources }: { sources: SourceItem[] }) {
   );
 }
 
-function DashboardHeader({
-  sourceId,
-  sources,
-  overview,
-}: {
-  sourceId: number;
-  sources: SourceItem[];
-  overview: OverviewData | undefined;
-}) {
+function DashboardHeader({ sourceId, sources }: { sourceId: number; sources: SourceItem[] }) {
+  const sourceName = sources.find((source) => source.id === sourceId)?.name ?? 'Selected project';
+
   return (
     <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
-        <div className="mt-1 flex items-center gap-2">
-          <span className="text-sm text-white/40">Viewing data for</span>
-          {overview ? (
-            <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-sm font-medium text-white/80">
-              {sources.find((s) => s.id === sourceId)?.name || 'Unknown Source'}
-            </span>
-          ) : null}
-        </div>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
+          {sourceName} Dashboard
+        </h1>
       </div>
       <div className="flex items-center space-x-3">
         <Link
@@ -255,7 +252,7 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <h2 className="text-lg font-semibold text-white">Daily volume</h2>
       </div>
-      <ChartContainer config={chartConfig} className="aspect-auto min-h-[260px] w-full">
+      <ChartContainer config={chartConfig} className="h-[260px] w-full">
         <BarChart
           data={chartData}
           accessibilityLayer
@@ -362,6 +359,55 @@ function BounceBreakdownSection({ overview }: { overview: OverviewData }) {
   );
 }
 
+function FailureInsightsList({ title, items }: { title: string; items: FailureInsightItem[] }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-white/70">{title}</h3>
+      {items.length > 0 ? (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm"
+            >
+              <span className="text-white/80">{item.label}</span>
+              <span className="font-mono text-xs text-white/60">{item.count}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-white/10 px-3 py-2 text-xs text-white/40">
+          No data.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FailureInsightsSection({ overview }: { overview: OverviewData }) {
+  const { top_reasons, top_domains } = overview.failure_insights;
+  const isEmpty = top_reasons.length === 0 && top_domains.length === 0;
+
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <h2 className="text-lg font-semibold text-white">Failure insights</h2>
+        <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
+          {overview.range.from} → {overview.range.to}
+        </span>
+      </div>
+      {isEmpty ? (
+        <div className="pt-4 text-sm text-white/50">No bounce data in this range.</div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2">
+          <FailureInsightsList title="Top bounce reasons" items={top_reasons} />
+          <FailureInsightsList title="Top failing domains" items={top_domains} />
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function DashboardPage() {
   const sourceId = useActiveSourceId();
   const { data: sources = [], isLoading: loadingSources } = useQuery(sourcesQueryOptions);
@@ -390,7 +436,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col border-x border-white/10 bg-[#0B0C0E]">
-      <DashboardHeader sourceId={sourceId} sources={sources} overview={overview} />
+      <DashboardHeader sourceId={sourceId} sources={sources} />
 
       <div className="flex-1 space-y-8 overflow-y-auto p-6">
         <SummarySection overview={overview} loadingOverview={loadingOverview} error={error} />
@@ -403,6 +449,8 @@ export default function DashboardPage() {
             <BounceBreakdownSection overview={overview} />
           </div>
         ) : null}
+
+        {overview ? <FailureInsightsSection overview={overview} /> : null}
       </div>
     </div>
   );

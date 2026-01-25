@@ -93,6 +93,8 @@ describe('overview routes', () => {
     expect(json.chart.delivered).toEqual([1]);
     expect(json.chart.bounced).toEqual([1]);
     expect(json.bounce_breakdown).toEqual([{ bounce_type: 'Permanent', count: 1 }]);
+    expect(json.failure_insights.top_reasons).toEqual([{ label: 'Permanent', count: 1 }]);
+    expect(json.failure_insights.top_domains).toEqual([{ label: 'example.com', count: 1 }]);
   });
 
   it('returns 404 for missing sources', async () => {

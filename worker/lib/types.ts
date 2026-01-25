@@ -11,6 +11,11 @@ export interface AppBindings {
     AUTH_COOKIE_NAME?: string;
     AUTH_COOKIE_TTL_SECONDS?: string;
   };
+  Variables: {
+    auth?: {
+      username: string;
+    };
+  };
 }
 
 export type AppOpenAPI = OpenAPIHono<AppBindings>;

@@ -52,7 +52,7 @@ const appRoute = createRoute({
       }
     } catch (error) {
       if (error instanceof AuthError) {
-        const redirectTo = `${location.pathname}${location.search}${location.hash}`;
+        const redirectTo = location.href;
         throw redirect({
           to: '/login',
           search: {
@@ -162,7 +162,7 @@ const sourceDashboardRoute = createRoute({
 });
 
 const messageDetailSearchSchema = z.object({
-  sourceId: z.number().optional().catch(),
+  sourceId: z.number().optional().catch(undefined),
 });
 
 export type MessageDetailSearchParams = z.infer<typeof messageDetailSearchSchema>;

@@ -28,7 +28,15 @@ export const safeRedirectPath = (value: string | null | undefined) => {
   if (value.startsWith('/') && !value.startsWith('//')) {
     return value;
   }
-  return '/';
+  try {
+    const fallbackOrigin =
+      typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+    const url = new URL(value, fallbackOrigin);
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    return path.startsWith('/') ? path : '/';
+  } catch {
+    return '/';
+  }
 };
 
 export const redirectToLogin = (path?: string) => {
@@ -38,7 +46,8 @@ export const redirectToLogin = (path?: string) => {
   if (window.location.pathname === '/login') {
     return;
   }
-  const redirectTarget = path ?? `${window.location.pathname}${window.location.search}`;
+  const redirectTarget =
+    path ?? `${window.location.pathname}${window.location.search}${window.location.hash}`;
   const next = encodeURIComponent(redirectTarget);
   window.location.assign(`/login?redirect=${next}`);
 };

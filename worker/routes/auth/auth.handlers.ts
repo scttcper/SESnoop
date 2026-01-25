@@ -70,6 +70,6 @@ export const session: AppRouteHandler<SessionRoute> = async (c) => {
     return c.json({ error: 'Auth secret not configured' }, HttpStatusCodes.INTERNAL_SERVER_ERROR);
   }
 
-  const auth = c.get('auth') as { username: string } | undefined;
+  const auth = c.get('auth');
   return c.json({ enabled: true, user: auth ?? null }, HttpStatusCodes.OK);
 };

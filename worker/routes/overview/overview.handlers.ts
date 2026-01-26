@@ -214,6 +214,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       sent: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.send} then 1 else 0 end)`,
       delivered: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.delivery} then 1 else 0 end)`,
       bounced: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.bounce} then 1 else 0 end)`,
+      unique_opens: sql<number>`count(distinct case when ${events.event_type} = ${EVENT_TYPES.open} then ${events.recipient_email} || '|' || ${events.ses_message_id} end)`,
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
@@ -271,13 +272,17 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       .limit(5);
   }
 
-  const dailyMap = new Map<string, { sent: number; delivered: number; bounced: number }>();
+  const dailyMap = new Map<
+    string,
+    { sent: number; delivered: number; bounced: number; unique_opens: number }
+  >();
   for (const row of dailyRows) {
     if (row.day) {
       dailyMap.set(row.day, {
         sent: row.sent ?? 0,
         delivered: row.delivered ?? 0,
         bounced: row.bounced ?? 0,
+        unique_opens: row.unique_opens ?? 0,
       });
     }
   }
@@ -287,6 +292,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     sent: dayKeys.map((day) => dailyMap.get(day)?.sent ?? 0),
     delivered: dayKeys.map((day) => dailyMap.get(day)?.delivered ?? 0),
     bounced: dayKeys.map((day) => dailyMap.get(day)?.bounced ?? 0),
+    unique_opens: dayKeys.map((day) => dailyMap.get(day)?.unique_opens ?? 0),
   };
 
   const sent = sentRow[0]?.sent ?? 0;

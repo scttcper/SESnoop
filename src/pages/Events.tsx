@@ -220,9 +220,6 @@ export default function EventsPage() {
           <div className="space-y-3 border-b border-white/10 pb-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Filters</h2>
-              <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
-                {loading ? 'Loading…' : totalLabel}
-              </span>
             </div>
           </div>
           {error ? (
@@ -349,7 +346,10 @@ export default function EventsPage() {
         </section>
 
         <section>
-          <div className="mb-3 flex items-center justify-end">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
+              {loading ? 'Loading…' : totalLabel}
+            </span>
             <Button
               variant="ghost"
               type="button"

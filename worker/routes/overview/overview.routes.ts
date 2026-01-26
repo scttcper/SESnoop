@@ -38,6 +38,7 @@ const responseSchema = z.object({
     sent: z.array(z.number()),
     delivered: z.array(z.number()),
     bounced: z.array(z.number()),
+    unique_opens: z.array(z.number()),
   }),
   bounce_breakdown: z.array(
     z.object({

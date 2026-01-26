@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Activity, Plus, BarChart3, ArrowRight } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
+import type { TooltipContentProps } from 'recharts';
 
 import {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
-  ChartTooltipContent,
   type ChartConfig,
 } from '../components/ui/chart';
 import { overviewQueryOptions, sourcesQueryOptions } from '../lib/queries';
@@ -28,6 +28,7 @@ type OverviewChart = {
   sent: number[];
   delivered: number[];
   bounced: number[];
+  unique_opens: number[];
 };
 
 type OverviewMetrics = {
@@ -230,6 +231,14 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
     sent: overview.chart.sent[index] ?? 0,
     delivered: overview.chart.delivered[index] ?? 0,
     bounced: overview.chart.bounced[index] ?? 0,
+    bounce_rate:
+      (overview.chart.sent[index] ?? 0) > 0
+        ? Math.min(1, (overview.chart.bounced[index] ?? 0) / (overview.chart.sent[index] ?? 0))
+        : 0,
+    open_rate:
+      (overview.chart.sent[index] ?? 0) > 0
+        ? Math.min(1, (overview.chart.unique_opens[index] ?? 0) / (overview.chart.sent[index] ?? 0))
+        : 0,
   }));
 
   const chartConfig = {
@@ -241,25 +250,69 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
       label: 'Delivered',
       color: '#4ade80',
     },
-    bounced: {
-      label: 'Bounced',
+    bounce_rate: {
+      label: 'Bounce rate',
       color: '#f87171',
     },
+    open_rate: {
+      label: 'Open rate',
+      color: '#c084fc',
+    },
   } satisfies ChartConfig;
+
+  const tooltipRows = [
+    { key: 'sent', isRate: false },
+    { key: 'delivered', isRate: false },
+    { key: 'bounce_rate', isRate: true },
+    { key: 'open_rate', isRate: true },
+  ] as const;
+
+  const renderTooltip = ({ active, label }: TooltipContentProps<number, string>) => {
+    if (!active || label === undefined || label === null) {
+      return null;
+    }
+    const labelText = typeof label === 'string' || typeof label === 'number' ? String(label) : '';
+    if (!labelText) {
+      return null;
+    }
+    const row = chartData.find((item) => item.day === labelText);
+    if (!row) {
+      return null;
+    }
+
+    return (
+      <div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs/relaxed shadow-xl">
+        <div className="font-medium">{labelText}</div>
+        <div className="grid gap-1.5">
+          {tooltipRows.map(({ key, isRate }) => {
+            const value = row[key];
+            return (
+              <div key={key} className="flex items-center gap-2">
+              <div
+                className="h-2.5 w-2.5 rounded-[2px]"
+                style={{ background: `var(--color-${key})` }}
+              />
+              <div className="flex flex-1 justify-between leading-none">
+                <span className="text-muted-foreground">{chartConfig[key].label ?? key}</span>
+                <span className="pl-4 font-mono">
+                  {isRate ? `${(value * 100).toFixed(1)}%` : value}
+                </span>
+              </div>
+            </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
-        <h2 className="text-lg font-semibold text-white">Daily volume</h2>
+        <h2 className="text-lg font-semibold text-white">Daily delivery trend</h2>
       </div>
       <ChartContainer config={chartConfig} className="h-[260px] w-full">
-        <BarChart
-          data={chartData}
-          accessibilityLayer
-          barGap={6}
-          barCategoryGap="22%"
-          margin={{ top: 8, right: 12, bottom: 8 }}
-        >
+        <LineChart data={chartData} accessibilityLayer margin={{ top: 8, right: 12, bottom: 8 }}>
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
           <XAxis
             dataKey="day"
@@ -268,22 +321,43 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
             tickMargin={8}
             tickFormatter={(value) => (typeof value === 'string' ? value.slice(5) : value)}
           />
-          <ChartTooltip content={<ChartTooltipContent />} />
+          <YAxis yAxisId="count" tickLine={false} axisLine={false} tickMargin={8} width={36} />
+          <YAxis
+            yAxisId="rate"
+            orientation="right"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            domain={[0, 1]}
+            tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+          />
+          <ChartTooltip content={renderTooltip} />
           <ChartLegend content={<ChartLegendContent />} />
-          <Bar dataKey="sent" fill="var(--color-sent)" radius={[4, 4, 0, 0]} maxBarSize={18} />
-          <Bar
-            dataKey="delivered"
-            fill="var(--color-delivered)"
-            radius={[4, 4, 0, 0]}
-            maxBarSize={18}
+          <Line
+            yAxisId="count"
+            type="monotone"
+            dataKey="sent"
+            stroke="var(--color-sent)"
+            strokeWidth={2}
+            dot={false}
           />
-          <Bar
-            dataKey="bounced"
-            fill="var(--color-bounced)"
-            radius={[4, 4, 0, 0]}
-            maxBarSize={18}
+          <Line
+            yAxisId="rate"
+            type="monotone"
+            dataKey="bounce_rate"
+            stroke="var(--color-bounce_rate)"
+            strokeWidth={2}
+            dot={false}
           />
-        </BarChart>
+          <Line
+            yAxisId="rate"
+            type="monotone"
+            dataKey="open_rate"
+            stroke="var(--color-open_rate)"
+            strokeWidth={2}
+            dot={false}
+          />
+        </LineChart>
       </ChartContainer>
     </section>
   );

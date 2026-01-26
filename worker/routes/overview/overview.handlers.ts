@@ -296,10 +296,11 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   };
 
   const sent = sentRow[0]?.sent ?? 0;
+  const delivered = sentRow[0]?.delivered ?? 0;
   const bounced = bouncedTotal;
   const metrics = {
     sent,
-    delivered: sentRow[0]?.delivered ?? 0,
+    delivered,
     bounced,
     complaints: sentRow[0]?.complaints ?? 0,
     opens: sentRow[0]?.opens ?? 0,
@@ -309,8 +310,8 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     unique_clicks: uniqueRow[0]?.unique_clicks ?? 0,
     bounce_rate: sent ? bounced / sent : 0,
     complaint_rate: sent ? (sentRow[0]?.complaints ?? 0) / sent : 0,
-    open_rate: sent ? (uniqueRow[0]?.unique_opens ?? 0) / sent : 0,
-    click_rate: sent ? (uniqueRow[0]?.unique_clicks ?? 0) / sent : 0,
+    open_rate: delivered ? (uniqueRow[0]?.unique_opens ?? 0) / delivered : 0,
+    click_rate: delivered ? (uniqueRow[0]?.unique_clicks ?? 0) / delivered : 0,
   };
 
   const reasonCounts = new Map<string, number>();

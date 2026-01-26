@@ -228,8 +228,8 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
         ? Math.min(1, (overview.chart.bounced[index] ?? 0) / (overview.chart.sent[index] ?? 0))
         : 0,
     open_rate:
-      (overview.chart.sent[index] ?? 0) > 0
-        ? Math.min(1, (overview.chart.unique_opens[index] ?? 0) / (overview.chart.sent[index] ?? 0))
+      (overview.chart.delivered[index] ?? 0) > 0
+        ? Math.min(1, (overview.chart.unique_opens[index] ?? 0) / (overview.chart.delivered[index] ?? 0))
         : 0,
   }));
 

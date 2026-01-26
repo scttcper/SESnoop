@@ -8,6 +8,7 @@
   "rules": {
     "no-bitwise": "off",
     "no-alert": "off",
-    "unicorn/no-useless-undefined": "off"
+    "unicorn/no-useless-undefined": "off",
+    "unicorn/number-literal-case": "off"
   }
 }

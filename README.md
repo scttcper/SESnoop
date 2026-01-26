@@ -6,6 +6,9 @@ Built on Cloudflare Workers and D1, it offers a serverless, low-cost alternative
 
 Based on the excellent work by [marckohlbrugge/sessy](https://github.com/marckohlbrugge/sessy), a Rails app for the same purpose.
 
+| ----------------------------------------------- | ------------------------------------------ |
+| ![SESnoop Dashboard](screenshots/dashboard.png) | ![Events Explorer](screenshots/events.png) |
+
 ## Features
 
 - **Webhook Ingestion**: Accepts SNS notifications securely, verifies signatures, and deduplicates events.
@@ -15,12 +18,6 @@ Based on the excellent work by [marckohlbrugge/sessy](https://github.com/marckoh
 - **Multi-Source Support**: Manage multiple SES identities or environments (e.g., staging vs. prod) with unique webhook URLs.
 - **Data Retention**: Configurable per-source retention policies with automatic cleanup of old data.
 - **Security**: Optional Basic Auth for the UI and API.
-
-## Screenshots
-
-| Dashboard                                       | Events Explorer                            |
-| ----------------------------------------------- | ------------------------------------------ |
-| ![SESnoop Dashboard](screenshots/dashboard.png) | ![Events Explorer](screenshots/events.png) |
 
 ## Architecture
 

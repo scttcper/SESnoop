@@ -6,6 +6,7 @@ Built on Cloudflare Workers and D1, it offers a serverless, low-cost alternative
 
 Based on the excellent work by [marckohlbrugge/sessy](https://github.com/marckohlbrugge/sessy), a Rails app for the same purpose.
 
+|                                                 |                                            |
 | ----------------------------------------------- | ------------------------------------------ |
 | ![SESnoop Dashboard](screenshots/dashboard.png) | ![Events Explorer](screenshots/events.png) |
 

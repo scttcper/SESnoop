@@ -15,6 +15,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "drizzle-kit migrate",
+    "db:seed": "wrangler d1 execute sesnoop --local --file worker/db/seed.sql",
     "test": "vitest",
     "lint": "oxlint . && oxfmt --check",
     "lint:fix": "oxlint . --fix && oxfmt"

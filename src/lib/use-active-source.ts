@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 const STORAGE_KEY = 'sesnoop_active_source_id';
 
@@ -13,7 +13,7 @@ export function useActiveSourceId() {
   });
 
   // If there is a param, it wins and updates storage
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (paramSourceId) {
       localStorage.setItem(STORAGE_KEY, paramSourceId);
       setStoredSourceId(paramSourceId);

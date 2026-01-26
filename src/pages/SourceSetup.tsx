@@ -45,6 +45,99 @@ export default function SourceSetupPage() {
     );
   }
 
+  const inlineCodeClass =
+    'cursor-pointer select-all rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-white/80 transition-colors hover:bg-white/20';
+  const codeTooltip = 'Click to copy to clipboard.';
+  const handleCopyInlineCode = (value: string, label: string) => {
+    navigator.clipboard.writeText(value);
+    toast.success(`${label} copied to clipboard.`);
+  };
+  const steps = [
+    {
+      key: 'sns-topic',
+      content: (
+        <>
+          Create an SNS topic named{' '}
+          <code
+            className={inlineCodeClass}
+            title={codeTooltip}
+            role="button"
+            tabIndex={0}
+            onClick={() => handleCopyInlineCode(setupInfo.sns_topic_name, 'SNS topic name')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleCopyInlineCode(setupInfo.sns_topic_name, 'SNS topic name');
+              }
+            }}
+          >
+            {setupInfo.sns_topic_name}
+          </code>
+          .
+        </>
+      ),
+    },
+    {
+      key: 'configuration-set',
+      content: (
+        <>
+          Create or choose an SES configuration set named{' '}
+          <code
+            className={inlineCodeClass}
+            title={codeTooltip}
+            role="button"
+            tabIndex={0}
+            onClick={() =>
+              handleCopyInlineCode(setupInfo.configuration_set_name, 'Configuration set name')
+            }
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleCopyInlineCode(setupInfo.configuration_set_name, 'Configuration set name');
+              }
+            }}
+          >
+            {setupInfo.configuration_set_name}
+          </code>
+          .
+        </>
+      ),
+    },
+    {
+      key: 'subscription',
+      content: (
+        <>
+          Add an HTTPS subscription to the SNS topic using{' '}
+          <code
+            className={inlineCodeClass}
+            title={codeTooltip}
+            role="button"
+            tabIndex={0}
+            onClick={() => handleCopyInlineCode(setupInfo.webhook_url, 'Webhook URL')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleCopyInlineCode(setupInfo.webhook_url, 'Webhook URL');
+              }
+            }}
+          >
+            {setupInfo.webhook_url}
+          </code>
+          .
+        </>
+      ),
+    },
+    {
+      key: 'event-destination',
+      content: (
+        <>
+          In SES, add an Event Destination that publishes delivery, bounce, complaint, reject,
+          delivery delay, rendering failure, open, click, and subscription events to the SNS topic.
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       <header className="mb-10">
@@ -166,10 +259,10 @@ export default function SourceSetupPage() {
         <section>
           <h3 className="mb-6 text-lg font-semibold text-white">Step-by-step Instructions</h3>
           <div className="space-y-0">
-            {setupInfo.steps.map((step, i) => (
-              <div key={step} className="group relative pb-8 pl-10 last:pb-0">
+            {steps.map((step, i) => (
+              <div key={step.key} className="group relative pb-8 pl-10 last:pb-0">
                 {/* Connecting line */}
-                {i !== setupInfo.steps.length - 1 && (
+                {i !== steps.length - 1 && (
                   <div className="absolute top-6 bottom-0 left-3 w-px -translate-x-1/2 bg-white/10 transition-colors group-hover:bg-white/20" />
                 )}
 
@@ -180,7 +273,7 @@ export default function SourceSetupPage() {
 
                 {/* Content Card */}
                 <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 transition-all hover:border-white/10 hover:bg-white/[0.04] hover:shadow-sm">
-                  <p className="text-sm leading-relaxed text-white/80">{step}</p>
+                  <p className="text-sm leading-relaxed text-white/80">{step.content}</p>
                 </div>
               </div>
             ))}

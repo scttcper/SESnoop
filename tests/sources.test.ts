@@ -95,7 +95,7 @@ describe('sources routes', () => {
     expect(response.status).toBe(204);
   });
 
-  it('returns setup guidance', async () => {
+  it('returns setup guidance variables', async () => {
     await insertSource({ id: 1, name: 'My Source', token: 'tok-1' });
     const response = await SELF.fetch('http://example.com/api/sources/1/setup');
     expect(response.status).toBe(200);
@@ -103,7 +103,6 @@ describe('sources routes', () => {
     expect(json.configuration_set_name).toBe('sesnoop-my-source-config');
     expect(json.sns_topic_name).toBe('sesnoop-my-source-sns');
     expect(json.webhook_url).toBe('http://example.com/api/webhooks/tok-1');
-    expect(json.steps).toHaveLength(4);
   });
 
   it('runs retention cleanup for a source', async () => {

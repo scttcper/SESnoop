@@ -13,7 +13,6 @@ const setupSchema = z.object({
   configuration_set_name: z.string(),
   sns_topic_name: z.string(),
   webhook_url: z.string().url(),
-  steps: z.array(z.string()),
 });
 
 export type SetupInfo = z.infer<typeof setupSchema>;

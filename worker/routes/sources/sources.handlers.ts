@@ -208,20 +208,12 @@ export const setup: AppRouteHandler<SetupRoute> = async (c) => {
   const origin = new URL(c.req.url).origin;
   const webhookUrl = `${origin}/api/webhooks/${source.token}`;
 
-  const steps = [
-    `Create an SNS topic named "${snsTopicName}".`,
-    `Create or choose an SES configuration set named "${configurationSetName}".`,
-    `Add an HTTPS subscription to the SNS topic using "${webhookUrl}".`,
-    'In SES, add an Event Destination that publishes delivery, bounce, complaint, reject, delivery delay, rendering failure, open, click, and subscription events to the SNS topic.',
-  ];
-
   return c.json(
     {
       source: serializeSource(source),
       configuration_set_name: configurationSetName,
       sns_topic_name: snsTopicName,
       webhook_url: webhookUrl,
-      steps,
     },
     HttpStatusCodes.OK,
   );

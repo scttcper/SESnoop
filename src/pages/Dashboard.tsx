@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Activity, Plus, BarChart3, ArrowRight } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
-import type { TooltipContentProps } from 'recharts';
+import { Plus, BarChart3, ArrowRight } from 'lucide-react';
+import { CartesianGrid, Line, LineChart, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 
 import {
   ChartContainer,
@@ -139,33 +138,39 @@ function EmptySourceState({ sources }: { sources: SourceItem[] }) {
   );
 }
 
-function DashboardHeader({ sourceId, sources }: { sourceId: number; sources: SourceItem[] }) {
+function DashboardHeader({
+  sourceId,
+  sources,
+  loadingOverview,
+  overview,
+}: {
+  sourceId: number;
+  sources: SourceItem[];
+  loadingOverview: boolean;
+  overview: OverviewData | undefined;
+}) {
   const sourceName = sources.find((source) => source.id === sourceId)?.name ?? 'Selected project';
 
   return (
     <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-      <div>
+      <div className="flex flex-wrap items-center gap-1 space-x-4">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
           {sourceName} Dashboard
         </h1>
       </div>
-      <div className="flex items-center space-x-3">
-        <Link
-          to="/s/$sourceId/events"
-          params={{ sourceId: sourceId.toString() }}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white/60 transition-colors hover:text-white"
-        >
-          <Activity className="h-4 w-4" />
-          Events
-        </Link>
-      </div>
+      <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
+        {loadingOverview
+          ? 'Loading…'
+          : overview
+            ? `${overview.range.from} → ${overview.range.to}`
+            : '—'}
+      </span>
     </header>
   );
 }
 
 function SummarySection({
   overview,
-  loadingOverview,
   error,
 }: {
   overview: OverviewData | undefined;
@@ -174,19 +179,6 @@ function SummarySection({
 }) {
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-lg font-semibold text-white">Summary</h2>
-          <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
-            {loadingOverview
-              ? 'Loading…'
-              : overview
-                ? `${overview.range.from} → ${overview.range.to}`
-                : '—'}
-          </span>
-        </div>
-      </div>
-
       {error ? (
         <p className="rounded-lg border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-400">
           {error}
@@ -288,17 +280,17 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
             const value = row[key];
             return (
               <div key={key} className="flex items-center gap-2">
-              <div
-                className="h-2.5 w-2.5 rounded-[2px]"
-                style={{ background: `var(--color-${key})` }}
-              />
-              <div className="flex flex-1 justify-between leading-none">
-                <span className="text-muted-foreground">{chartConfig[key].label ?? key}</span>
-                <span className="pl-4 font-mono">
-                  {isRate ? `${(value * 100).toFixed(1)}%` : value}
-                </span>
+                <div
+                  className="h-2.5 w-2.5 rounded-[2px]"
+                  style={{ background: `var(--color-${key})` }}
+                />
+                <div className="flex flex-1 justify-between leading-none">
+                  <span className="text-muted-foreground">{chartConfig[key].label ?? key}</span>
+                  <span className="pl-4 font-mono">
+                    {isRate ? `${(value * 100).toFixed(1)}%` : value}
+                  </span>
+                </div>
               </div>
-            </div>
             );
           })}
         </div>
@@ -510,7 +502,12 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col border-x border-white/10 bg-[#0B0C0E]">
-      <DashboardHeader sourceId={sourceId} sources={sources} />
+      <DashboardHeader
+        sourceId={sourceId}
+        sources={sources}
+        loadingOverview={loadingOverview}
+        overview={overview}
+      />
 
       <div className="flex-1 space-y-8 overflow-y-auto p-6">
         <SummarySection overview={overview} loadingOverview={loadingOverview} error={error} />

@@ -1,23 +1,12 @@
 import { env } from 'cloudflare:test';
 
-import { migrationSql } from './migration-sql';
-
-const runStatements = async (sql: string) => {
-  const statements = sql
-    .split('--> statement-breakpoint')
-    .map((statement) => statement.trim())
-    .filter(Boolean);
-
-  for (const statement of statements) {
-    await env.DB.prepare(statement).run();
-  }
-};
-
 export const resetDb = async () => {
-  await runStatements(migrationSql);
-  await runStatements(
-    'DELETE FROM events; DELETE FROM messages; DELETE FROM webhooks; DELETE FROM sources; DELETE FROM tasks;',
-  );
+  // Clear data in correct order to respect foreign key constraints
+  await env.DB.prepare('DELETE FROM events').run();
+  await env.DB.prepare('DELETE FROM messages').run();
+  await env.DB.prepare('DELETE FROM webhooks').run();
+  await env.DB.prepare('DELETE FROM sources').run();
+  await env.DB.prepare('DELETE FROM tasks').run();
 };
 
 export const insertSource = async (overrides?: {

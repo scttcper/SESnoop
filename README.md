@@ -16,6 +16,12 @@ Based on the excellent work by [marckohlbrugge/sessy](https://github.com/marckoh
 - **Data Retention**: Configurable per-source retention policies with automatic cleanup of old data.
 - **Security**: Optional Basic Auth for the UI and API.
 
+## Screenshots
+
+| Dashboard                                       | Events Explorer                            |
+| ----------------------------------------------- | ------------------------------------------ |
+| ![SESnoop Dashboard](screenshots/dashboard.png) | ![Events Explorer](screenshots/events.png) |
+
 ## Architecture
 
 - **UI**: React + TanStack Router + TanStack Query.

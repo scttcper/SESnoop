@@ -1,6 +1,10 @@
 {
   "name": "sesnoop",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scttcper/sesnoop"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -229,7 +229,10 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
         : 0,
     open_rate:
       (overview.chart.delivered[index] ?? 0) > 0
-        ? Math.min(1, (overview.chart.unique_opens[index] ?? 0) / (overview.chart.delivered[index] ?? 0))
+        ? Math.min(
+            1,
+            (overview.chart.unique_opens[index] ?? 0) / (overview.chart.delivered[index] ?? 0),
+          )
         : 0,
   }));
 

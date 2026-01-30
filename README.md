@@ -27,7 +27,6 @@ Based on the excellent work by [marckohlbrugge/sessy](https://github.com/marckoh
 - **UI**: React + TanStack Router + TanStack Query.
 - **API**: Hono (OpenAPI compliant) running on Cloudflare Workers.
 - **Database**: Cloudflare D1 (SQLite) with Drizzle ORM.
-- **Infrastructure**: Fully serverless; the Worker serves both the static UI assets and the API.
 
 ## Quickstart
 
@@ -66,25 +65,6 @@ Before deploying, you need to set up the D1 database.
     wrangler d1 migrations apply sesnoop
     ```
 
-#### Clone remote D1 to local (for testing)
-
-If you want a local copy of production data for testing, export the remote DB, rebuild the local DB from schema first, then import data.
-
-```bash
-# 1) Export remote DB to SQL
-wrangler d1 export sesnoop --remote --output dump.sql
-
-# 2) Split schema and data (the export interleaves CREATE/INSERT)
-awk 'BEGIN{in_create=0} { if ($0 ~ /^PRAGMA/) { print > "schema.sql"; print > "data.sql"; next } if ($0 ~ /^CREATE/) { in_create=1; print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if (in_create) { print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if ($0 ~ /^INSERT/) { print > "data.sql"; next } }' dump.sql
-
-# 3) Reset local DB (destructive for local dev data)
-rm -f .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite*
-
-# 4) Import schema, then data
-wrangler d1 execute sesnoop --local --file schema.sql
-wrangler d1 execute sesnoop --local --file data.sql
-```
-
 ### 2. Deploy Worker
 
 Build the UI and deploy the worker to Cloudflare:
@@ -109,23 +89,17 @@ Once deployed, you need to tell Amazon SES where to send events.
 
 _Note: The webhook endpoint handles SNS `SubscriptionConfirmation` automatically._
 
-### Authentication
+### Environment Variables and Authentication
 
-You can protect the UI and API (excluding public webhooks) with a cookie-based login by setting environment variables in Cloudflare or your `wrangler.jsonc` (for dev). The UI will prompt for credentials when auth is enabled.
+Configure these via the Cloudflare Dashboard or Wrangler: Setup AUTH_USERNAME, AUTH_PASSWORD, and AUTH_JWT_SECRET to enable authentication.
 
-### Environment Variables
-
-Configure these via the Cloudflare Dashboard or Wrangler:
-
-| Variable                       | Description                                                                       |
-| :----------------------------- | :-------------------------------------------------------------------------------- |
-| `AUTH_USERNAME`                | Optional. Username for cookie-based auth.                                         |
-| `AUTH_PASSWORD`                | Optional. Password for cookie-based auth.                                         |
-| `AUTH_JWT_SECRET`              | Required when auth is enabled. Secret used to sign JWT cookies.                   |
-| `AUTH_COOKIE_NAME`             | Optional. Cookie name (default: `sesnoop_auth`).                                  |
-| `AUTH_COOKIE_TTL_SECONDS`      | Optional. Cookie lifetime in seconds (default: 30 days).                          |
-| `SNS_DISABLE_SIGNATURE_VERIFY` | Set to `true` to skip SNS signature verification (useful for local testing).      |
-| `DB_DISABLE_TRANSACTIONS`      | Set to `true` to disable D1 transactions during ingestion (useful for debugging). |
+| Variable                  | Description                                                     |
+| :------------------------ | :-------------------------------------------------------------- |
+| `AUTH_USERNAME`           | Optional. Username for cookie-based auth.                       |
+| `AUTH_PASSWORD`           | Optional. Password for cookie-based auth.                       |
+| `AUTH_JWT_SECRET`         | Required when auth is enabled. Secret used to sign JWT cookies. |
+| `AUTH_COOKIE_NAME`        | Optional. Cookie name (default: `sesnoop_auth`).                |
+| `AUTH_COOKIE_TTL_SECONDS` | Optional. Cookie lifetime in seconds (default: 30 days).        |
 
 ### Data Retention
 
@@ -154,4 +128,23 @@ pnpm preview    # Build and preview locally
 pnpm deploy     # Build and deploy to Cloudflare
 pnpm test       # Run tests (Vitest)
 pnpm cf-typegen # Generate types from Wrangler bindings
+```
+
+#### Clone remote D1 to local (for testing)
+
+If you want a local copy of production data for testing, export the remote DB, rebuild the local DB from schema first, then import data.
+
+```bash
+# 1) Export remote DB to SQL
+wrangler d1 export sesnoop --remote --output dump.sql
+
+# 2) Split schema and data (the export interleaves CREATE/INSERT)
+awk 'BEGIN{in_create=0} { if ($0 ~ /^PRAGMA/) { print > "schema.sql"; print > "data.sql"; next } if ($0 ~ /^CREATE/) { in_create=1; print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if (in_create) { print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if ($0 ~ /^INSERT/) { print > "data.sql"; next } }' dump.sql
+
+# 3) Reset local DB (destructive for local dev data)
+rm -f .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite*
+
+# 4) Import schema, then data
+wrangler d1 execute sesnoop --local --file schema.sql
+wrangler d1 execute sesnoop --local --file data.sql
 ```

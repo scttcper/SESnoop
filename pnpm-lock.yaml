@@ -16,13 +16,13 @@ importers:
         version: 5.2.8
       '@hono/zod-openapi':
         specifier: ^1.2.0
-        version: 1.2.0(hono@4.11.7)(zod@4.3.6)
+        version: 1.2.0(hono@4.11.10)(zod@4.3.6)
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0
       '@scalar/hono-api-reference':
         specifier: ^0.9.38
-        version: 0.9.38(hono@4.11.7)
+        version: 0.9.38(hono@4.11.10)
       '@tanstack/react-query':
         specifier: ^5.90.20
         version: 5.90.20(react@19.2.4)
@@ -48,8 +48,8 @@ importers:
         specifier: ^0.45.1
         version: 0.45.1(@cloudflare/workers-types@4.20260130.0)(@libsql/client@0.17.0)
       hono:
-        specifier: ^4.11.7
-        version: 4.11.7
+        specifier: ^4.11.10
+        version: 4.11.10
       lucide-react:
         specifier: ^0.563.0
         version: 0.563.0(react@19.2.4)
@@ -67,13 +67,13 @@ importers:
         version: 3.7.0(@types/react@19.2.10)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.3)(react@19.2.4)(redux@5.0.1)
       shadcn:
         specifier: ^3.7.0
-        version: 3.7.0(@types/node@25.0.10)(hono@4.11.7)
+        version: 3.7.0(@types/node@25.0.10)(hono@4.11.10)
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       stoker:
         specifier: ^2.0.1
-        version: 2.0.1(@asteasolutions/zod-to-openapi@8.4.0(zod@4.3.6))(@hono/zod-openapi@1.2.0(hono@4.11.7)(zod@4.3.6))(hono@4.11.7)(openapi3-ts@4.5.0)
+        version: 2.0.1(@asteasolutions/zod-to-openapi@8.4.0(zod@4.3.6))(@hono/zod-openapi@1.2.0(hono@4.11.10)(zod@4.3.6))(hono@4.11.10)(openapi3-ts@4.5.0)
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
@@ -2619,8 +2619,8 @@ packages:
   headers-polyfill@4.0.3:
     resolution: {integrity: sha512-IScLbePpkvO846sIwOtOTDjutRMWdXdJmXdMvk6gCBHxFO8d+QKOQedyZSxFTTFYRSmlgSTDtXqqq4pcenBXLQ==}
 
-  hono@4.11.7:
-    resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
+  hono@4.11.10:
+    resolution: {integrity: sha512-kyWP5PAiMooEvGrA9jcD3IXF7ATu8+o7B3KCbPXid5se52NPqnOpM/r9qeW2heMnOekF4kqR1fXJqCYeCLKrZg==}
     engines: {node: '>=16.9.0'}
 
   http-errors@2.0.1:
@@ -4432,21 +4432,21 @@ snapshots:
 
   '@fontsource-variable/inter@5.2.8': {}
 
-  '@hono/node-server@1.19.9(hono@4.11.7)':
+  '@hono/node-server@1.19.9(hono@4.11.10)':
     dependencies:
-      hono: 4.11.7
+      hono: 4.11.10
 
-  '@hono/zod-openapi@1.2.0(hono@4.11.7)(zod@4.3.6)':
+  '@hono/zod-openapi@1.2.0(hono@4.11.10)(zod@4.3.6)':
     dependencies:
       '@asteasolutions/zod-to-openapi': 8.4.0(zod@4.3.6)
-      '@hono/zod-validator': 0.7.6(hono@4.11.7)(zod@4.3.6)
-      hono: 4.11.7
+      '@hono/zod-validator': 0.7.6(hono@4.11.10)(zod@4.3.6)
+      hono: 4.11.10
       openapi3-ts: 4.5.0
       zod: 4.3.6
 
-  '@hono/zod-validator@0.7.6(hono@4.11.7)(zod@4.3.6)':
+  '@hono/zod-validator@0.7.6(hono@4.11.10)(zod@4.3.6)':
     dependencies:
-      hono: 4.11.7
+      hono: 4.11.10
       zod: 4.3.6
 
   '@img/colour@1.0.0': {}
@@ -4665,9 +4665,9 @@ snapshots:
   '@libsql/win32-x64-msvc@0.5.22':
     optional: true
 
-  '@modelcontextprotocol/sdk@1.25.3(hono@4.11.7)(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.25.3(hono@4.11.10)(zod@3.25.76)':
     dependencies:
-      '@hono/node-server': 1.19.9(hono@4.11.7)
+      '@hono/node-server': 1.19.9(hono@4.11.10)
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
       content-type: 1.0.5
@@ -4882,10 +4882,10 @@ snapshots:
 
   '@scalar/helpers@0.2.9': {}
 
-  '@scalar/hono-api-reference@0.9.38(hono@4.11.7)':
+  '@scalar/hono-api-reference@0.9.38(hono@4.11.10)':
     dependencies:
       '@scalar/core': 0.3.35
-      hono: 4.11.7
+      hono: 4.11.10
 
   '@scalar/types@0.6.0':
     dependencies:
@@ -5837,7 +5837,7 @@ snapshots:
 
   headers-polyfill@4.0.3: {}
 
-  hono@4.11.7: {}
+  hono@4.11.10: {}
 
   http-errors@2.0.1:
     dependencies:
@@ -6471,7 +6471,7 @@ snapshots:
 
   setprototypeof@1.2.0: {}
 
-  shadcn@3.7.0(@types/node@25.0.10)(hono@4.11.7):
+  shadcn@3.7.0(@types/node@25.0.10)(hono@4.11.10):
     dependencies:
       '@antfu/ni': 25.0.0
       '@babel/core': 7.28.6
@@ -6479,7 +6479,7 @@ snapshots:
       '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.28.6)
       '@babel/preset-typescript': 7.28.5(@babel/core@7.28.6)
       '@dotenvx/dotenvx': 1.52.0
-      '@modelcontextprotocol/sdk': 1.25.3(hono@4.11.7)(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.25.3(hono@4.11.10)(zod@3.25.76)
       '@types/validate-npm-package-name': 4.0.2
       browserslist: 4.28.1
       commander: 14.0.2
@@ -6610,12 +6610,12 @@ snapshots:
 
   stdin-discarder@0.2.2: {}
 
-  stoker@2.0.1(@asteasolutions/zod-to-openapi@8.4.0(zod@4.3.6))(@hono/zod-openapi@1.2.0(hono@4.11.7)(zod@4.3.6))(hono@4.11.7)(openapi3-ts@4.5.0):
+  stoker@2.0.1(@asteasolutions/zod-to-openapi@8.4.0(zod@4.3.6))(@hono/zod-openapi@1.2.0(hono@4.11.10)(zod@4.3.6))(hono@4.11.10)(openapi3-ts@4.5.0):
     dependencies:
-      hono: 4.11.7
+      hono: 4.11.10
     optionalDependencies:
       '@asteasolutions/zod-to-openapi': 8.4.0(zod@4.3.6)
-      '@hono/zod-openapi': 1.2.0(hono@4.11.7)(zod@4.3.6)
+      '@hono/zod-openapi': 1.2.0(hono@4.11.10)(zod@4.3.6)
       openapi3-ts: 4.5.0
 
   strict-event-emitter@0.5.1: {}

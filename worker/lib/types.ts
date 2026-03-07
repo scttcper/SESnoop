@@ -4,6 +4,7 @@ export interface AppBindings {
   Bindings: {
     DB: D1Database;
     SNS_DISABLE_SIGNATURE_VERIFY?: string;
+    IGNORED_SES_EVENT_TYPES?: string;
     AUTH_USERNAME?: string;
     AUTH_PASSWORD?: string;
     AUTH_JWT_SECRET?: string;

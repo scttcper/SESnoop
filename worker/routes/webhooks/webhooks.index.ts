@@ -5,6 +5,7 @@ import * as HttpStatusCodes from 'stoker/http-status-codes';
 import { createDb } from '../../db';
 import * as schema from '../../db/schema';
 import { events, messages, sources, webhooks } from '../../db/schema';
+import { EVENT_TYPE_VALUES } from '../../lib/constants';
 import { createRouter } from '../../lib/create-app';
 import { EventPayload } from '../../lib/event-payload';
 import {
@@ -26,6 +27,31 @@ interface WebhookRecord {
   alreadyProcessed: boolean;
 }
 
+type EventType = (typeof EVENT_TYPE_VALUES)[number];
+
+const EVENT_TYPE_BY_LOWERCASE = new Map<string, EventType>(
+  EVENT_TYPE_VALUES.map((eventType) => [eventType.toLowerCase(), eventType]),
+);
+
+const parseIgnoredEventTypes = (value: string | undefined): Set<EventType> => {
+  if (!value) {
+    return new Set();
+  }
+
+  return new Set(
+    value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+      .map((entry) => EVENT_TYPE_BY_LOWERCASE.get(entry.toLowerCase()))
+      .filter((eventType): eventType is EventType => Boolean(eventType)),
+  );
+};
+
+const normalizeRecipients = (recipients: string[]): string[] => [
+  ...new Set(recipients.map((recipient) => recipient.trim().toLowerCase()).filter(Boolean)),
+];
+
 async function handleSubscriptionConfirmation(subscribeUrl: string | undefined): Promise<void> {
   if (subscribeUrl) {
     await fetch(subscribeUrl);
@@ -37,22 +63,24 @@ async function findOrCreateWebhook(
   snsMessage: SnsMessage,
   snsPayload: unknown,
 ): Promise<WebhookRecord> {
-  let webhook = await db.query.webhooks.findFirst({
-    where: eq(webhooks.sns_message_id, snsMessage.MessageId),
-  });
-
-  if (!webhook) {
-    await db.insert(webhooks).values({
+  const [insertedWebhook] = await db
+    .insert(webhooks)
+    .values({
       sns_message_id: snsMessage.MessageId,
       sns_type: snsMessage.Type,
       sns_timestamp: snsMessage.Timestamp ? new Date(snsMessage.Timestamp) : new Date(),
       raw_payload: snsPayload,
-    });
+    })
+    .onConflictDoNothing()
+    .returning();
 
-    webhook = await db.query.webhooks.findFirst({
-      where: eq(webhooks.sns_message_id, snsMessage.MessageId),
-    });
+  if (insertedWebhook) {
+    return { webhook: insertedWebhook, alreadyProcessed: false };
   }
+
+  const webhook = await db.query.webhooks.findFirst({
+    where: eq(webhooks.sns_message_id, snsMessage.MessageId),
+  });
 
   if (!webhook) {
     throw new Error('Failed to load webhook record');
@@ -66,24 +94,26 @@ async function findOrCreateMessage(
   source: Source,
   eventPayload: EventPayload,
 ): Promise<Message> {
-  let message = await db.query.messages.findFirst({
-    where: eq(messages.ses_message_id, eventPayload.messageId!),
-  });
-
-  if (!message) {
-    await db.insert(messages).values({
+  const [insertedMessage] = await db
+    .insert(messages)
+    .values({
       source_id: source.id,
       ses_message_id: eventPayload.messageId!,
       source_email: eventPayload.sourceEmail,
       subject: eventPayload.subject,
       sent_at: eventPayload.sentAt,
       mail_metadata: eventPayload.mail,
-    });
+    })
+    .onConflictDoNothing()
+    .returning();
 
-    message = await db.query.messages.findFirst({
-      where: eq(messages.ses_message_id, eventPayload.messageId!),
-    });
+  if (insertedMessage) {
+    return insertedMessage;
   }
+
+  const message = await db.query.messages.findFirst({
+    where: eq(messages.ses_message_id, eventPayload.messageId!),
+  });
 
   if (!message) {
     throw new Error('Failed to load message record');
@@ -98,28 +128,30 @@ async function insertEvents(
   webhook: Webhook,
   eventPayload: EventPayload,
 ): Promise<number> {
-  let insertedCount = 0;
-  for (const recipient of eventPayload.recipients) {
-    const normalizedRecipient = recipient.trim().toLowerCase();
-    const result = await db
-      .insert(events)
-      .values({
+  const recipients = normalizeRecipients(eventPayload.recipients);
+  if (recipients.length === 0) {
+    return 0;
+  }
+
+  const insertedEvents = await db
+    .insert(events)
+    .values(
+      recipients.map((recipient) => ({
         message_id: message.id,
         webhook_id: webhook.id,
         event_type: eventPayload.eventType,
-        recipient_email: normalizedRecipient,
+        recipient_email: recipient,
         event_at: eventPayload.timestamp,
         ses_message_id: eventPayload.messageId!,
         event_data: eventPayload.eventData,
         raw_payload: eventPayload.raw,
         bounce_type: eventPayload.bounceType,
-      })
-      .onConflictDoNothing();
-    if (result.meta.changes > 0) {
-      insertedCount += 1;
-    }
-  }
-  return insertedCount;
+      })),
+    )
+    .onConflictDoNothing()
+    .returning({ id: events.id });
+
+  return insertedEvents.length;
 }
 
 async function updateMessageEventCount(db: Db, messageId: number, delta: number): Promise<void> {
@@ -182,6 +214,7 @@ function parseNotificationPayload(snsMessage: SnsMessage): EventPayload | null {
 router.post('/api/webhooks/:source_token', async (c) => {
   const sourceToken = c.req.param('source_token');
   const db = createDb(c.env);
+  const ignoredEventTypes = parseIgnoredEventTypes(c.env.IGNORED_SES_EVENT_TYPES);
 
   // Validate source
   const source = await db.query.sources.findFirst({
@@ -219,6 +252,11 @@ router.post('/api/webhooks/:source_token', async (c) => {
       const eventPayload = parseNotificationPayload(snsMessage);
       if (!eventPayload) {
         return c.json({ message: 'Invalid notification payload' }, HttpStatusCodes.BAD_REQUEST);
+      }
+
+      const eventType = EVENT_TYPE_BY_LOWERCASE.get(eventPayload.eventType.toLowerCase());
+      if (eventType && ignoredEventTypes.has(eventType)) {
+        return c.json({ ok: true, ignored: true }, HttpStatusCodes.OK);
       }
 
       try {

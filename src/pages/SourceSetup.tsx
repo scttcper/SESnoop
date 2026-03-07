@@ -131,8 +131,10 @@ export default function SourceSetupPage() {
       key: 'event-destination',
       content: (
         <>
-          In SES, add an Event Destination that publishes delivery, bounce, complaint, reject,
-          delivery delay, rendering failure, open, click, and subscription events to the SNS topic.
+          In SES, start by publishing delivery, bounce, complaint, reject, delivery delay, and
+          rendering failure events to the SNS topic. Enable open, click, and subscription events
+          only if you need engagement tracking, since they can drive significantly more webhook and
+          database volume.
         </>
       ),
     },

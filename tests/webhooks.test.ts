@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { insertSource, resetDb } from './helpers/db';
 
+const testEnv = env as typeof env & {
+  IGNORED_SES_EVENT_TYPES?: string;
+};
+
 beforeEach(async () => {
+  testEnv.IGNORED_SES_EVENT_TYPES = undefined;
   await resetDb();
   await insertSource({ name: 'Test', token: 'token-123', color: 'blue' });
 });
@@ -159,5 +164,53 @@ describe('webhooks ingestion', () => {
       "SELECT event_type FROM events WHERE ses_message_id = 'ses-multi'",
     ).all();
     expect(events.results).toHaveLength(4);
+  });
+
+  it('acknowledges ignored event types without storing them', async () => {
+    testEnv.IGNORED_SES_EVENT_TYPES = 'Open, click';
+
+    const eventPayload = {
+      eventType: 'Open',
+      mail: {
+        messageId: 'ses-ignored',
+        timestamp: '2025-01-01T00:00:00.000Z',
+        source: 'sender@example.com',
+        destination: ['reader@example.com'],
+        commonHeaders: {
+          subject: 'Ignored',
+        },
+      },
+      open: {
+        timestamp: '2025-01-01T00:00:01.000Z',
+      },
+    };
+
+    const snsMessage = {
+      Type: 'Notification',
+      MessageId: 'sns-ignored-1',
+      Message: JSON.stringify(eventPayload),
+      Timestamp: '2025-01-01T00:00:02.000Z',
+      SignatureVersion: '1',
+      Signature: 'ignored',
+      SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
+    };
+
+    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+      method: 'POST',
+      body: JSON.stringify(snsMessage),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true, ignored: true });
+
+    const messages = await env.DB.prepare('SELECT id FROM messages').all();
+    expect(messages.results).toHaveLength(0);
+
+    const events = await env.DB.prepare('SELECT id FROM events').all();
+    expect(events.results).toHaveLength(0);
+
+    const webhooks = await env.DB.prepare('SELECT id FROM webhooks').all();
+    expect(webhooks.results).toHaveLength(0);
   });
 });

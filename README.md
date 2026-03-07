@@ -87,6 +87,10 @@ Once deployed, you need to tell Amazon SES where to send events.
     - Instructions for creating an SES Configuration Set and SNS Topic.
     - Steps to subscribe your unique URL to the SNS Topic.
 
+For lower webhook and D1 usage, start with delivery, bounce, complaint, reject, delivery delay, and
+rendering failure events. Enable open, click, and subscription events only if you need engagement
+data.
+
 _Note: The webhook endpoint handles SNS `SubscriptionConfirmation` automatically._
 
 ### Environment Variables and Authentication
@@ -100,6 +104,7 @@ Configure these via the Cloudflare Dashboard or Wrangler: Setup AUTH_USERNAME, A
 | `AUTH_JWT_SECRET`         | Required when auth is enabled. Secret used to sign JWT cookies. |
 | `AUTH_COOKIE_NAME`        | Optional. Cookie name (default: `sesnoop_auth`).                |
 | `AUTH_COOKIE_TTL_SECONDS` | Optional. Cookie lifetime in seconds (default: 30 days).        |
+| `IGNORED_SES_EVENT_TYPES` | Optional. Comma-separated SES event types to acknowledge but not store, e.g. `Open,Click`. |
 
 ### Data Retention
 

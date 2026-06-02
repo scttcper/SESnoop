@@ -136,9 +136,9 @@ async function getPublicKeyFromCert(certPem: string): Promise<CryptoKey | null> 
   try {
     // Remove PEM headers and decode base64
     const pemContents = certPem
-      .replace(/-----BEGIN CERTIFICATE-----/g, '')
-      .replace(/-----END CERTIFICATE-----/g, '')
-      .replace(/\s/g, '');
+      .replaceAll('-----BEGIN CERTIFICATE-----', '')
+      .replaceAll('-----END CERTIFICATE-----', '')
+      .replaceAll(/\s/g, '');
 
     const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
 
@@ -167,7 +167,7 @@ async function getPublicKeyFromCert(certPem: string): Promise<CryptoKey | null> 
  */
 function extractSpkiFromCert(certDer: Uint8Array): Uint8Array | null {
   try {
-    let offset = 0;
+    const offset = 0;
 
     // Parse outer SEQUENCE (Certificate)
     const certSeq = parseAsn1Sequence(certDer, offset);
@@ -253,7 +253,7 @@ function parseAsn1Element(data: Uint8Array, offset: number): Asn1Element | null 
   }
 
   const tag = data[offset];
-  let lengthOffset = offset + 1;
+  const lengthOffset = offset + 1;
 
   if (lengthOffset >= data.length) {
     return null;

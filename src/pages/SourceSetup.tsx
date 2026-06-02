@@ -11,6 +11,11 @@ import {
 } from '../components/ui/input-group';
 import { sourceSetupQueryOptions } from '../lib/queries';
 
+const handleCopyInlineCode = (value: string, label: string) => {
+  navigator.clipboard.writeText(value);
+  toast.success(`${label} copied to clipboard.`);
+};
+
 export default function SourceSetupPage() {
   const { sourceId: sourceIdStr } = useParams({ strict: false });
   const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
@@ -48,10 +53,6 @@ export default function SourceSetupPage() {
   const inlineCodeClass =
     'cursor-pointer select-all rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-white/80 transition-colors hover:bg-white/20';
   const codeTooltip = 'Click to copy to clipboard.';
-  const handleCopyInlineCode = (value: string, label: string) => {
-    navigator.clipboard.writeText(value);
-    toast.success(`${label} copied to clipboard.`);
-  };
   const steps = [
     {
       key: 'sns-topic',

@@ -47,7 +47,7 @@ function ChartContainer({
   children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>['children'];
 }) {
   const uniqueId = useId();
-  const chartId = `chart-${id || uniqueId.replace(/:/g, '')}`;
+  const chartId = `chart-${id || uniqueId.replaceAll(':', '')}`;
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -68,7 +68,9 @@ function ChartContainer({
 }
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color);
+  const colorConfig = Object.entries(config).filter(
+    ([, itemConfig]) => itemConfig.theme || itemConfig.color,
+  );
 
   if (colorConfig.length === 0) {
     return null;

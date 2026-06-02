@@ -8,6 +8,9 @@ import { messageQueryOptions, sourcesQueryOptions } from '../lib/queries';
 
 const routeApi = getRouteApi('/app/messages/$sesMessageId');
 
+const RECIPIENT_SKELETON_ROWS = ['recipient-1', 'recipient-2', 'recipient-3', 'recipient-4'];
+const TIMELINE_SKELETON_ITEMS = ['timeline-1', 'timeline-2', 'timeline-3'];
+
 const formatDateTime = (value?: number | null) => (value ? new Date(value).toLocaleString() : '—');
 
 const formatJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
@@ -261,8 +264,8 @@ export default function MessageDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 bg-white/[0.02]">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <tr key={`recipients-skeleton-${index}`} className="animate-pulse">
+                  {RECIPIENT_SKELETON_ROWS.map((rowId) => (
+                    <tr key={rowId} className="animate-pulse">
                       <td className="px-4 py-3">
                         <div className="h-4 w-48 rounded bg-white/10" />
                       </td>
@@ -340,9 +343,9 @@ export default function MessageDetailPage() {
           </div>
           {loading ? (
             <div className="min-h-[240px] space-y-4">
-              {Array.from({ length: 3 }).map((_, index) => (
+              {TIMELINE_SKELETON_ITEMS.map((itemId) => (
                 <div
-                  key={`timeline-skeleton-${index}`}
+                  key={itemId}
                   className="animate-pulse rounded-lg border border-white/5 bg-white/[0.02] p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">

@@ -12,6 +12,8 @@ import type { EventsSearchParams } from '../router';
 
 const routeApi = getRouteApi('/app/s/$sourceId/events');
 
+const EVENT_SKELETON_ROWS = ['event-1', 'event-2', 'event-3', 'event-4', 'event-5', 'event-6'];
+
 const formatDateTime = (value: number) => new Date(value).toLocaleString();
 
 const escapeCsvCell = (value: string | number | null | undefined) => {
@@ -20,7 +22,7 @@ const escapeCsvCell = (value: string | number | null | undefined) => {
   }
   const stringValue = String(value);
   if (/[",\n]/.test(stringValue)) {
-    return `"${stringValue.replace(/"/g, '""')}"`;
+    return `"${stringValue.replaceAll('"', '""')}"`;
   }
   return stringValue;
 };
@@ -31,11 +33,11 @@ const createCsv = (rows: Array<Array<string | number | null | undefined>>) =>
 const buildExportFileName = (sourceName: string | undefined, sourceId: number | null) => {
   const dateStamp = new Date().toISOString().slice(0, 10);
   const base = sourceName
-    ? sourceName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    ? sourceName.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')
     : sourceId
       ? `source-${sourceId}`
       : 'events';
-  const trimmed = base.replace(/^-+|-+$/g, '');
+  const trimmed = base.replaceAll(/^-+|-+$/g, '');
   return `${trimmed || 'events'}-${dateStamp}.csv`;
 };
 
@@ -178,8 +180,8 @@ export default function EventsPage() {
       window.URL.revokeObjectURL(url);
 
       toast.success(`Exported ${allEvents.length} events`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to export events');
+    } catch (exportError) {
+      toast.error(exportError instanceof Error ? exportError.message : 'Failed to export events');
     } finally {
       setExporting(false);
     }
@@ -380,8 +382,8 @@ export default function EventsPage() {
                   </tr>
                 ) : null}
                 {loading
-                  ? Array.from({ length: 6 }).map((_, index) => (
-                      <tr key={`events-skeleton-${index}`} className="animate-pulse">
+                  ? EVENT_SKELETON_ROWS.map((rowId) => (
+                      <tr key={rowId} className="animate-pulse">
                         <td className="px-4 py-3">
                           <div className="h-5 w-16 rounded bg-white/10" />
                         </td>

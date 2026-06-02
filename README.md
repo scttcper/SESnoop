@@ -97,13 +97,13 @@ _Note: The webhook endpoint handles SNS `SubscriptionConfirmation` automatically
 
 Configure these via the Cloudflare Dashboard or Wrangler: Setup AUTH_USERNAME, AUTH_PASSWORD, and AUTH_JWT_SECRET to enable authentication.
 
-| Variable                  | Description                                                     |
-| :------------------------ | :-------------------------------------------------------------- |
-| `AUTH_USERNAME`           | Optional. Username for cookie-based auth.                       |
-| `AUTH_PASSWORD`           | Optional. Password for cookie-based auth.                       |
-| `AUTH_JWT_SECRET`         | Required when auth is enabled. Secret used to sign JWT cookies. |
-| `AUTH_COOKIE_NAME`        | Optional. Cookie name (default: `sesnoop_auth`).                |
-| `AUTH_COOKIE_TTL_SECONDS` | Optional. Cookie lifetime in seconds (default: 30 days).        |
+| Variable                  | Description                                                                                |
+| :------------------------ | :----------------------------------------------------------------------------------------- |
+| `AUTH_USERNAME`           | Optional. Username for cookie-based auth.                                                  |
+| `AUTH_PASSWORD`           | Optional. Password for cookie-based auth.                                                  |
+| `AUTH_JWT_SECRET`         | Required when auth is enabled. Secret used to sign JWT cookies.                            |
+| `AUTH_COOKIE_NAME`        | Optional. Cookie name (default: `sesnoop_auth`).                                           |
+| `AUTH_COOKIE_TTL_SECONDS` | Optional. Cookie lifetime in seconds (default: 30 days).                                   |
 | `IGNORED_SES_EVENT_TYPES` | Optional. Comma-separated SES event types to acknowledge but not store, e.g. `Open,Click`. |
 
 ### Data Retention

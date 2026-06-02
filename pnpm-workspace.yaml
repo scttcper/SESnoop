@@ -1,5 +1,6 @@
-onlyBuiltDependencies:
-  - esbuild
-  - msw
-  - sharp
-  - workerd
+allowBuilds:
+  esbuild: true
+  msw: true
+  sharp: true
+  workerd: true
+minimumReleaseAge: 0

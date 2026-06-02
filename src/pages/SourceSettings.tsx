@@ -19,6 +19,8 @@ import {
 } from '../lib/queries';
 import { COLORS } from '../lib/utils';
 
+const COLOR_SKELETON_ITEMS = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5', 'color-6'];
+
 export default function SourceSettingsPage() {
   const navigate = useNavigate();
   const { sourceId: sourceIdStr } = useParams({ strict: false });
@@ -165,11 +167,8 @@ export default function SourceSettingsPage() {
               <div className="space-y-2">
                 <div className="h-3 w-24 rounded bg-white/10" />
                 <div className="flex gap-2">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div
-                      key={`color-skeleton-${index}`}
-                      className="h-8 w-8 rounded-full bg-white/10"
-                    />
+                  {COLOR_SKELETON_ITEMS.map((itemId) => (
+                    <div key={itemId} className="h-8 w-8 rounded-full bg-white/10" />
                   ))}
                 </div>
               </div>

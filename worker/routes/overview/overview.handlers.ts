@@ -83,9 +83,9 @@ const formatReasonLabel = (value: string | null): string => {
     return 'Unknown';
   }
   const normalized = value
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/\s+/g, ' ')
+    .replaceAll('_', ' ')
+    .replaceAll(/([a-z])([A-Z])/g, '$1 $2')
+    .replaceAll(/\s+/g, ' ')
     .trim();
   if (!normalized) {
     return 'Unknown';

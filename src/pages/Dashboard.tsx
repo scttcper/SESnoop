@@ -1,7 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Plus, BarChart3, ArrowRight } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, XAxis, YAxis, type TooltipContentProps } from 'recharts';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+  type TooltipContentProps,
+  type TooltipValueType,
+} from 'recharts';
 
 import {
   ChartContainer,
@@ -70,6 +78,8 @@ type OverviewData = {
 };
 
 type QueryError = string | null;
+
+type TooltipName = number | string;
 
 function LoadingState() {
   return <div className="p-8 text-white/50">Loading...</div>;
@@ -262,7 +272,7 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
     { key: 'open_rate', isRate: true },
   ] as const;
 
-  const renderTooltip = ({ active, label }: TooltipContentProps<number, string>) => {
+  const renderTooltip = ({ active, label }: TooltipContentProps<TooltipValueType, TooltipName>) => {
     if (!active || label === undefined || label === null) {
       return null;
     }

@@ -1,21 +1,26 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, count, countDistinct, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 import { createDb } from '../../db';
 import { events, messages, sources } from '../../db/schema';
+import { EVENT_TYPES, EVENT_TYPE_VALUES } from '../../lib/constants';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetRoute } from './overview.routes';
 
-const EVENT_TYPES = {
-  send: 'Send',
-  delivery: 'Delivery',
-  bounce: 'Bounce',
-  complaint: 'Complaint',
-  open: 'Open',
-  click: 'Click',
-};
+type EventType = (typeof EVENT_TYPE_VALUES)[number];
+
+const eventCount = (eventType: EventType) =>
+  count(sql`case when ${eq(events.event_type, eventType)} then 1 end`);
+
+const uniqueEventCount = (eventType: EventType) =>
+  countDistinct(
+    sql`case when ${eq(events.event_type, eventType)} then ${events.recipient_email} || '|' || ${events.ses_message_id} end`,
+  );
+
+const rate = (numerator: number, denominator: number) =>
+  denominator ? numerator / denominator : 0;
 
 const startOfDayUtc = (value: Date) =>
   new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
@@ -168,23 +173,21 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const todayStartMs = todayRange.start.getTime();
   const todayEndMs = todayRange.end.getTime();
 
-  const sentRow = await db
+  const [eventTotals] = await db
     .select({
-      sent: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.send} then 1 else 0 end)`,
-      delivered: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.delivery} then 1 else 0 end)`,
-      bounced: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.bounce} then 1 else 0 end)`,
-      complaints: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.complaint} then 1 else 0 end)`,
-      opens: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.open} then 1 else 0 end)`,
+      sent: eventCount(EVENT_TYPES.send),
+      delivered: eventCount(EVENT_TYPES.delivery),
+      bounced: eventCount(EVENT_TYPES.bounce),
+      complaints: eventCount(EVENT_TYPES.complaint),
+      opens: eventCount(EVENT_TYPES.open),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter);
 
-  const bouncedTotal = sentRow[0]?.bounced ?? 0;
-
-  const sentTodayRow = await db
+  const [{ sent_today }] = await db
     .select({
-      sent_today: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.send} then 1 else 0 end)`,
+      sent_today: eventCount(EVENT_TYPES.send),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
@@ -196,11 +199,11 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       ),
     );
 
-  const uniqueRow = await db
+  const [uniqueTotals] = await db
     .select({
-      unique_emails: sql<number>`count(distinct lower(${events.recipient_email}))`,
-      unique_opens: sql<number>`count(distinct case when ${events.event_type} = ${EVENT_TYPES.open} then ${events.recipient_email} || '|' || ${events.ses_message_id} end)`,
-      unique_clicks: sql<number>`count(distinct case when ${events.event_type} = ${EVENT_TYPES.click} then ${events.recipient_email} || '|' || ${events.ses_message_id} end)`,
+      unique_emails: countDistinct(sql`lower(${events.recipient_email})`),
+      unique_opens: uniqueEventCount(EVENT_TYPES.open),
+      unique_clicks: uniqueEventCount(EVENT_TYPES.click),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
@@ -211,10 +214,10 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const dailyRows = await db
     .select({
       day: dayExpr,
-      sent: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.send} then 1 else 0 end)`,
-      delivered: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.delivery} then 1 else 0 end)`,
-      bounced: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.bounce} then 1 else 0 end)`,
-      unique_opens: sql<number>`count(distinct case when ${events.event_type} = ${EVENT_TYPES.open} then ${events.recipient_email} || '|' || ${events.ses_message_id} end)`,
+      sent: eventCount(EVENT_TYPES.send),
+      delivered: eventCount(EVENT_TYPES.delivery),
+      bounced: eventCount(EVENT_TYPES.bounce),
+      unique_opens: uniqueEventCount(EVENT_TYPES.open),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
@@ -224,23 +227,19 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const bounceRows = await db
     .select({
       bounce_type: events.bounce_type,
-      count: sql<number>`count(*)`,
+      count: count(),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(
-      and(
-        rangeFilter,
-        sql`${events.event_type} = ${EVENT_TYPES.bounce}`,
-        sql`${events.bounce_type} is not null`,
-      ),
+      and(rangeFilter, eq(events.event_type, EVENT_TYPES.bounce), isNotNull(events.bounce_type)),
     )
     .groupBy(events.bounce_type);
 
   let bounceEvents: Array<{ event_data: unknown; bounce_type: string | null }> = [];
-  let domainRows: Array<{ domain: string | null; count: number | null }> = [];
+  let domainRows: Array<{ domain: string | null; count: number }> = [];
 
-  if (bouncedTotal > 0) {
+  if (eventTotals.bounced > 0) {
     bounceEvents = await db
       .select({
         event_data: events.event_data,
@@ -248,10 +247,10 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       })
       .from(events)
       .innerJoin(messages, eq(events.message_id, messages.id))
-      .where(and(rangeFilter, sql`${events.event_type} = ${EVENT_TYPES.bounce}`));
+      .where(and(rangeFilter, eq(events.event_type, EVENT_TYPES.bounce)));
 
     const domainExpr = sql<string>`lower(substr(${events.recipient_email}, instr(${events.recipient_email}, '@') + 1))`;
-    const domainCountExpr = sql<number>`count(*)`;
+    const domainCountExpr = count();
 
     domainRows = await db
       .select({
@@ -263,7 +262,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       .where(
         and(
           rangeFilter,
-          sql`${events.event_type} = ${EVENT_TYPES.bounce}`,
+          eq(events.event_type, EVENT_TYPES.bounce),
           sql`instr(${events.recipient_email}, '@') > 0`,
         ),
       )
@@ -272,46 +271,34 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       .limit(5);
   }
 
-  const dailyMap = new Map<
-    string,
-    { sent: number; delivered: number; bounced: number; unique_opens: number }
-  >();
-  for (const row of dailyRows) {
-    if (row.day) {
-      dailyMap.set(row.day, {
-        sent: row.sent ?? 0,
-        delivered: row.delivered ?? 0,
-        bounced: row.bounced ?? 0,
-        unique_opens: row.unique_opens ?? 0,
-      });
-    }
-  }
+  const dailyMap = new Map(dailyRows.map((row) => [row.day, row]));
+  type DailyMetric = 'sent' | 'delivered' | 'bounced' | 'unique_opens';
+  const series = (metric: DailyMetric) => dayKeys.map((day) => dailyMap.get(day)?.[metric] ?? 0);
 
   const chart = {
     days: dayKeys,
-    sent: dayKeys.map((day) => dailyMap.get(day)?.sent ?? 0),
-    delivered: dayKeys.map((day) => dailyMap.get(day)?.delivered ?? 0),
-    bounced: dayKeys.map((day) => dailyMap.get(day)?.bounced ?? 0),
-    unique_opens: dayKeys.map((day) => dailyMap.get(day)?.unique_opens ?? 0),
+    sent: series('sent'),
+    delivered: series('delivered'),
+    bounced: series('bounced'),
+    unique_opens: series('unique_opens'),
   };
 
-  const sent = sentRow[0]?.sent ?? 0;
-  const delivered = sentRow[0]?.delivered ?? 0;
-  const bounced = bouncedTotal;
+  const { sent, delivered, bounced, complaints, opens } = eventTotals;
+  const { unique_emails, unique_opens, unique_clicks } = uniqueTotals;
   const metrics = {
     sent,
     delivered,
     bounced,
-    complaints: sentRow[0]?.complaints ?? 0,
-    opens: sentRow[0]?.opens ?? 0,
-    sent_today: sentTodayRow[0]?.sent_today ?? 0,
-    unique_emails: uniqueRow[0]?.unique_emails ?? 0,
-    unique_opens: uniqueRow[0]?.unique_opens ?? 0,
-    unique_clicks: uniqueRow[0]?.unique_clicks ?? 0,
-    bounce_rate: sent ? bounced / sent : 0,
-    complaint_rate: sent ? (sentRow[0]?.complaints ?? 0) / sent : 0,
-    open_rate: delivered ? (uniqueRow[0]?.unique_opens ?? 0) / delivered : 0,
-    click_rate: delivered ? (uniqueRow[0]?.unique_clicks ?? 0) / delivered : 0,
+    complaints,
+    opens,
+    sent_today,
+    unique_emails,
+    unique_opens,
+    unique_clicks,
+    bounce_rate: rate(bounced, sent),
+    complaint_rate: rate(complaints, sent),
+    open_rate: rate(unique_opens, delivered),
+    click_rate: rate(unique_clicks, delivered),
   };
 
   const reasonCounts = new Map<string, number>();
@@ -323,12 +310,12 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const topReasons = [...reasonCounts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([label, count]) => ({ label, count }));
+    .map(([label, reasonCount]) => ({ label, count: reasonCount }));
 
   const topDomains = domainRows
     .map((row) => ({
       label: row.domain?.trim() ?? '',
-      count: row.count ?? 0,
+      count: row.count,
     }))
     .filter((row) => row.label.length > 0);
 
@@ -345,7 +332,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
         .filter((row) => row.bounce_type)
         .map((row) => ({
           bounce_type: row.bounce_type ?? 'Unknown',
-          count: row.count ?? 0,
+          count: row.count,
         })),
       failure_insights: {
         top_reasons: topReasons,

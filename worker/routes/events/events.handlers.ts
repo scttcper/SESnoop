@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull, sql, type SQL } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
@@ -11,6 +11,8 @@ import type { ListRoute } from './events.routes';
 
 const DEFAULT_PER_PAGE = 50;
 const MAX_PER_PAGE = 200;
+type EventType = (typeof EVENT_TYPE_VALUES)[number];
+type BounceType = (typeof BOUNCE_TYPES)[number];
 
 const parseCsv = (value?: string) =>
   value
@@ -88,6 +90,12 @@ const buildSearchFilter = (search?: string) => {
 const filterSql = (items: Array<SQL | undefined | null>): SQL[] =>
   items.filter((item): item is SQL => item != null);
 
+const isEventType = (value: string): value is EventType =>
+  EVENT_TYPE_VALUES.includes(value as EventType);
+
+const isBounceType = (value: string): value is BounceType =>
+  BOUNCE_TYPES.includes(value as BounceType);
+
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const db = createDb(c.env);
   const { id } = c.req.valid('param');
@@ -106,12 +114,8 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
     );
   }
 
-  const eventTypes = parseCsv(query.event_types).filter((value) =>
-    EVENT_TYPE_VALUES.includes(value as (typeof EVENT_TYPE_VALUES)[number]),
-  );
-  const bounceTypes = parseCsv(query.bounce_types).filter((value) =>
-    BOUNCE_TYPES.includes(value as (typeof BOUNCE_TYPES)[number]),
-  );
+  const eventTypes = parseCsv(query.event_types).filter(isEventType);
+  const bounceTypes = parseCsv(query.bounce_types).filter(isBounceType);
 
   const page = Math.max(Number(query.page ?? 1), 1);
   const perPage = Math.min(Math.max(Number(query.per_page ?? DEFAULT_PER_PAGE), 1), MAX_PER_PAGE);
@@ -134,7 +138,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   ]);
 
   const [{ total }] = await db
-    .select({ total: sql<number>`count(*)` })
+    .select({ total: count() })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(and(...listFilters));
@@ -159,7 +163,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const eventTypeCounts = await db
     .select({
       key: events.event_type,
-      count: sql<number>`count(*)`,
+      count: count(),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
@@ -169,14 +173,14 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const bounceTypeCounts = await db
     .select({
       key: events.bounce_type,
-      count: sql<number>`count(*)`,
+      count: count(),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(and(...baseFilters, sql`${events.bounce_type} is not null`))
+    .where(and(...baseFilters, isNotNull(events.bounce_type)))
     .groupBy(events.bounce_type);
 
-  const totalPages = Math.max(Math.ceil((total ?? 0) / perPage), 1);
+  const totalPages = Math.max(Math.ceil(total / perPage), 1);
 
   return c.json(
     {
@@ -187,19 +191,19 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
       pagination: {
         page,
         per_page: perPage,
-        total: total ?? 0,
+        total,
         total_pages: totalPages,
       },
       counts: {
         event_types: eventTypeCounts.reduce<Record<string, number>>((acc, entry) => {
           if (entry.key) {
-            acc[entry.key] = entry.count ?? 0;
+            acc[entry.key] = entry.count;
           }
           return acc;
         }, {}),
         bounce_types: bounceTypeCounts.reduce<Record<string, number>>((acc, entry) => {
           if (entry.key) {
-            acc[entry.key] = entry.count ?? 0;
+            acc[entry.key] = entry.count;
           }
           return acc;
         }, {}),

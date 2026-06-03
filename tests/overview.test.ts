@@ -81,7 +81,8 @@ describe('overview routes', () => {
     expect(json.metrics.bounced).toBe(1);
     expect(json.metrics.complaints).toBe(1);
     expect(json.metrics.opens).toBe(2);
-    expect(json.metrics.clicks).toBe(1);
+    expect('clicks' in json.metrics).toBe(false);
+    expect(json.metrics.unique_emails).toBe(1);
     expect(json.metrics.unique_opens).toBe(1);
     expect(json.metrics.unique_clicks).toBe(1);
     expect(json.metrics.bounce_rate).toBe(1);
@@ -276,6 +277,7 @@ describe('open rate and click rate calculations', () => {
     const json = (await response.json()) as OverviewResponse;
 
     expect(json.metrics.delivered).toBe(2);
+    expect(json.metrics.unique_emails).toBe(2);
     expect(json.metrics.unique_opens).toBe(2);
     expect(json.metrics.open_rate).toBe(1); // 2 unique opens / 2 delivered
   });

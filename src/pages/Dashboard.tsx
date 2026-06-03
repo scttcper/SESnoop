@@ -46,9 +46,9 @@ type OverviewMetrics = {
   sent_today: number;
   bounce_rate: number;
   opens: number;
+  unique_emails: number;
   unique_opens: number;
   open_rate: number;
-  clicks: number;
   unique_clicks: number;
   click_rate: number;
 };
@@ -377,13 +377,13 @@ function EngagementSection({ overview }: { overview: OverviewData }) {
       <div className="grid grid-cols-2 gap-4">
         {[
           { label: 'Opens', value: overview.metrics.opens },
+          { label: 'Unique emails', value: overview.metrics.unique_emails },
           { label: 'Unique opens', value: overview.metrics.unique_opens },
           {
             label: 'Open rate',
             value: formatPercent(overview.metrics.open_rate),
             color: 'text-purple-400',
           },
-          { label: 'Clicks', value: overview.metrics.clicks },
           { label: 'Unique clicks', value: overview.metrics.unique_clicks },
           {
             label: 'Click rate',

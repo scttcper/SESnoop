@@ -175,7 +175,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       bounced: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.bounce} then 1 else 0 end)`,
       complaints: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.complaint} then 1 else 0 end)`,
       opens: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.open} then 1 else 0 end)`,
-      clicks: sql<number>`sum(case when ${events.event_type} = ${EVENT_TYPES.click} then 1 else 0 end)`,
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
@@ -199,6 +198,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
 
   const uniqueRow = await db
     .select({
+      unique_emails: sql<number>`count(distinct lower(${events.recipient_email}))`,
       unique_opens: sql<number>`count(distinct case when ${events.event_type} = ${EVENT_TYPES.open} then ${events.recipient_email} || '|' || ${events.ses_message_id} end)`,
       unique_clicks: sql<number>`count(distinct case when ${events.event_type} = ${EVENT_TYPES.click} then ${events.recipient_email} || '|' || ${events.ses_message_id} end)`,
     })
@@ -304,8 +304,8 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     bounced,
     complaints: sentRow[0]?.complaints ?? 0,
     opens: sentRow[0]?.opens ?? 0,
-    clicks: sentRow[0]?.clicks ?? 0,
     sent_today: sentTodayRow[0]?.sent_today ?? 0,
+    unique_emails: uniqueRow[0]?.unique_emails ?? 0,
     unique_opens: uniqueRow[0]?.unique_opens ?? 0,
     unique_clicks: uniqueRow[0]?.unique_clicks ?? 0,
     bounce_rate: sent ? bounced / sent : 0,

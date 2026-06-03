@@ -33,6 +33,10 @@ const responseSchema = z.object({
     open_rate: z.number(),
     click_rate: z.number(),
   }),
+  activity: z.object({
+    last_event_at: z.number().nullable(),
+  }),
+  event_mix: z.record(z.string(), z.number()),
   chart: z.object({
     days: z.array(z.string()),
     sent: z.array(z.number()),
@@ -51,12 +55,14 @@ const responseSchema = z.object({
       z.object({
         label: z.string(),
         count: z.number(),
+        percentage: z.number(),
       }),
     ),
     top_domains: z.array(
       z.object({
         label: z.string(),
         count: z.number(),
+        percentage: z.number(),
       }),
     ),
   }),

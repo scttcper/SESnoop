@@ -1,28 +1,37 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import type { EChartsOption, TooltipComponentFormatterCallbackParams } from 'echarts';
+import ReactEChartsCore from 'echarts-for-react/esm/core';
+import { BarChart, LineChart } from 'echarts/charts';
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+import * as echarts from 'echarts/core';
+import { CanvasRenderer } from 'echarts/renderers';
 import { Plus, BarChart3, ArrowRight } from 'lucide-react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-  type TooltipContentProps,
-  type TooltipValueType,
-} from 'recharts';
 
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  type ChartConfig,
-} from '../components/ui/chart';
 import { overviewQueryOptions, sourcesQueryOptions } from '../lib/queries';
 import { useActiveSourceId } from '../lib/use-active-source';
 import { cn, COLOR_STYLES } from '../lib/utils';
 
-const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+echarts.use([
+  BarChart,
+  LineChart,
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+  CanvasRenderer,
+]);
+
+const format = {
+  integer: (value: number) => value.toLocaleString(),
+  percent: (value: number) => `${(value * 100).toFixed(1)}%`,
+  dateTime: (value: number | null) =>
+    value
+      ? new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(value))
+      : 'No events yet',
+};
 
 type SourceItem = {
   id: number;
@@ -45,12 +54,17 @@ type OverviewMetrics = {
   complaints: number;
   sent_today: number;
   bounce_rate: number;
+  complaint_rate: number;
   opens: number;
   unique_emails: number;
   unique_opens: number;
   open_rate: number;
   unique_clicks: number;
   click_rate: number;
+};
+
+type OverviewActivity = {
+  last_event_at: number | null;
 };
 
 type BounceBreakdownRow = {
@@ -61,6 +75,7 @@ type BounceBreakdownRow = {
 type FailureInsightItem = {
   label: string;
   count: number;
+  percentage: number;
 };
 
 type OverviewData = {
@@ -69,6 +84,8 @@ type OverviewData = {
     to: string;
   };
   metrics: OverviewMetrics;
+  activity: OverviewActivity;
+  event_mix: Record<string, number>;
   chart: OverviewChart;
   bounce_breakdown: BounceBreakdownRow[];
   failure_insights: {
@@ -78,8 +95,6 @@ type OverviewData = {
 };
 
 type QueryError = string | null;
-
-type TooltipName = number | string;
 
 function LoadingState() {
   return <div className="p-8 text-white/50">Loading...</div>;
@@ -205,7 +220,7 @@ function SummarySection({
             { label: 'Sent today', value: overview.metrics.sent_today },
             {
               label: 'Bounce rate',
-              value: formatPercent(overview.metrics.bounce_rate),
+              value: format.percent(overview.metrics.bounce_rate),
               color: overview.metrics.bounce_rate > 0.05 ? 'text-red-400' : 'text-white',
             },
           ].map((stat) => (
@@ -223,6 +238,68 @@ function SummarySection({
           ))}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function ActivitySection({ overview }: { overview: OverviewData }) {
+  const eventMix = [
+    { label: 'Send', value: overview.event_mix.Send ?? 0 },
+    { label: 'Delivery', value: overview.event_mix.Delivery ?? 0 },
+    { label: 'Bounce', value: overview.event_mix.Bounce ?? 0 },
+    { label: 'Complaint', value: overview.event_mix.Complaint ?? 0 },
+    { label: 'Open', value: overview.event_mix.Open ?? 0 },
+    { label: 'Click', value: overview.event_mix.Click ?? 0 },
+  ];
+
+  return (
+    <section className="grid gap-4 border-y border-white/10 py-4 lg:grid-cols-2 lg:items-start">
+      <div>
+        <div className="mb-2 text-xs font-semibold tracking-wider text-white/40 uppercase">
+          Latest
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-2">
+          <span className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap text-white/45">
+            Last event
+            <span className="font-mono text-xs text-white/70">
+              {format.dateTime(overview.activity.last_event_at)}
+            </span>
+          </span>
+          <span className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap text-white/45">
+            Bounce rate
+            <span className="font-mono text-xs text-white/70">
+              {format.percent(overview.metrics.bounce_rate)}
+            </span>
+          </span>
+          <span className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap text-white/45">
+            Complaints
+            <span
+              className={`font-mono text-xs ${
+                overview.metrics.complaints > 0 ? 'text-red-300' : 'text-white/70'
+              }`}
+            >
+              {format.integer(overview.metrics.complaints)}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 text-xs font-semibold tracking-wider text-white/40 uppercase">
+          Events
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-2">
+          {eventMix.map((item) => (
+            <span
+              key={item.label}
+              className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap"
+            >
+              <span className="text-white/45">{item.label}</span>
+              <span className="font-mono text-xs text-white/70">{format.integer(item.value)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
@@ -246,158 +323,256 @@ function DailyVolumeSection({ overview }: { overview: OverviewData }) {
         : 0,
   }));
 
-  const chartConfig = {
-    sent: {
-      label: 'Sent',
-      color: '#60a5fa',
-    },
-    delivered: {
-      label: 'Delivered',
-      color: '#4ade80',
-    },
-    bounce_rate: {
-      label: 'Bounce rate',
-      color: '#f87171',
-    },
-    open_rate: {
-      label: 'Open rate',
-      color: '#c084fc',
-    },
-  } satisfies ChartConfig;
-
-  const tooltipRows = [
-    { key: 'sent', isRate: false },
-    { key: 'delivered', isRate: false },
-    { key: 'bounce_rate', isRate: true },
-    { key: 'open_rate', isRate: true },
+  const chartSeries = [
+    { label: 'Delivered', color: 'rgba(45, 212, 191, 0.42)', isRate: false },
+    { label: 'Bounced', color: '#f43f5e', isRate: false },
+    { label: 'Open rate', color: '#60a5fa', isRate: true },
   ] as const;
 
-  const renderTooltip = ({ active, label }: TooltipContentProps<TooltipValueType, TooltipName>) => {
-    if (!active || label === undefined || label === null) {
-      return null;
-    }
-    const labelText = typeof label === 'string' || typeof label === 'number' ? String(label) : '';
-    if (!labelText) {
-      return null;
-    }
-    const row = chartData.find((item) => item.day === labelText);
-    if (!row) {
-      return null;
-    }
+  const chartOption = {
+    backgroundColor: 'transparent',
+    color: chartSeries.map((series) => series.color),
+    animationDuration: 250,
+    grid: {
+      top: 12,
+      right: 44,
+      bottom: 48,
+      left: 40,
+      containLabel: false,
+    },
+    legend: {
+      bottom: 0,
+      icon: 'roundRect',
+      itemWidth: 8,
+      itemHeight: 8,
+      itemGap: 16,
+      textStyle: {
+        color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: 12,
+      },
+      data: chartSeries.map((series) => series.label),
+    },
+    tooltip: {
+      trigger: 'axis',
+      confine: true,
+      backgroundColor: '#0B0C0E',
+      borderColor: 'rgba(255, 255, 255, 0.12)',
+      borderWidth: 1,
+      padding: [8, 10],
+      textStyle: {
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: 12,
+        lineHeight: 18,
+        fontFamily: 'Inter Variable, Inter, sans-serif',
+      },
+      axisPointer: {
+        type: 'line',
+        lineStyle: {
+          color: 'rgba(255, 255, 255, 0.22)',
+          width: 1,
+        },
+      },
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const rows = Array.isArray(params) ? params : [params];
+        const title = rows[0]?.name ?? '';
+        const rowData = chartData.find((item) => item.day === title);
+        const values = rows
+          .map((row) => {
+            const series = chartSeries.find((item) => item.label === row.seriesName);
+            if (!series) {
+              return null;
+            }
 
-    return (
-      <div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs/relaxed shadow-xl">
-        <div className="font-medium">{labelText}</div>
-        <div className="grid gap-1.5">
-          {tooltipRows.map(({ key, isRate }) => {
-            const value = row[key];
-            return (
-              <div key={key} className="flex items-center gap-2">
-                <div
-                  className="h-2.5 w-2.5 rounded-[2px]"
-                  style={{ background: `var(--color-${key})` }}
-                />
-                <div className="flex flex-1 justify-between leading-none">
-                  <span className="text-muted-foreground">{chartConfig[key].label ?? key}</span>
-                  <span className="pl-4 font-mono">
-                    {isRate ? `${(value * 100).toFixed(1)}%` : value}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
+            const value = Number(row.value);
+            if (!Number.isFinite(value)) {
+              return null;
+            }
+
+            return `${row.marker ?? ''} ${series.label}: ${
+              series.isRate ? format.percent(value) : format.integer(value)
+            }`;
+          })
+          .filter((row): row is string => row !== null);
+        if (rowData) {
+          values.unshift(`Sent: ${format.integer(rowData.sent)}`);
+          values.splice(3, 0, `Bounce rate: ${format.percent(rowData.bounce_rate)}`);
+        }
+
+        return [title, ...values].join('<br />');
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: chartData.map((item) => item.day),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: 'rgba(255, 255, 255, 0.45)',
+        margin: 10,
+        formatter: (value: string) => value.slice(5),
+      },
+    },
+    yAxis: [
+      {
+        type: 'value',
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          color: 'rgba(255, 255, 255, 0.28)',
+          margin: 8,
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.1)',
+            type: 'dashed',
+          },
+        },
+      },
+      {
+        type: 'value',
+        min: 0,
+        max: 1,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          color: 'rgba(255, 255, 255, 0.55)',
+          margin: 8,
+          formatter: (value: number) => `${(value * 100).toFixed(0)}%`,
+        },
+        splitLine: { show: false },
+      },
+    ],
+    series: [
+      {
+        name: 'Delivered',
+        type: 'bar',
+        stack: 'outcome',
+        yAxisIndex: 0,
+        barMaxWidth: 18,
+        barCategoryGap: '45%',
+        itemStyle: {
+          color: 'rgba(45, 212, 191, 0.14)',
+          decal: {
+            symbol: 'rect',
+            symbolSize: 1,
+            rotation: -Math.PI / 4,
+            dashArrayX: [1, 0],
+            dashArrayY: [4, 4],
+            color: 'rgba(45, 212, 191, 0.5)',
+            backgroundColor: 'rgba(45, 212, 191, 0.1)',
+          },
+        },
+        emphasis: {
+          focus: 'series',
+        },
+        data: chartData.map((item) => item.delivered),
+      },
+      {
+        name: 'Bounced',
+        type: 'bar',
+        stack: 'outcome',
+        yAxisIndex: 0,
+        barMaxWidth: 18,
+        barCategoryGap: '45%',
+        itemStyle: {
+          color: '#f43f5e',
+          borderRadius: [3, 3, 0, 0],
+        },
+        emphasis: {
+          focus: 'series',
+        },
+        data: chartData.map((item) => item.bounced),
+      },
+      {
+        name: 'Open rate',
+        type: 'line',
+        yAxisIndex: 1,
+        lineStyle: {
+          width: 2.5,
+          color: '#60a5fa',
+        },
+        smooth: true,
+        showSymbol: false,
+        symbol: 'circle',
+        itemStyle: {
+          color: '#60a5fa',
+        },
+        emphasis: {
+          focus: 'series',
+        },
+        data: chartData.map((item) => item.open_rate),
+      },
+    ],
+  } satisfies EChartsOption;
 
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <h2 className="text-lg font-semibold text-white">Daily delivery trend</h2>
       </div>
-      <ChartContainer config={chartConfig} className="h-[260px] w-full">
-        <LineChart data={chartData} accessibilityLayer margin={{ top: 8, right: 12, bottom: 8 }}>
-          <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis
-            dataKey="day"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => (typeof value === 'string' ? value.slice(5) : value)}
-          />
-          <YAxis yAxisId="count" tickLine={false} axisLine={false} tickMargin={8} width={36} />
-          <YAxis
-            yAxisId="rate"
-            orientation="right"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            domain={[0, 1]}
-            tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
-          />
-          <ChartTooltip content={renderTooltip} />
-          <ChartLegend content={<ChartLegendContent />} />
-          <Line
-            yAxisId="count"
-            type="monotone"
-            dataKey="sent"
-            stroke="var(--color-sent)"
-            strokeWidth={2}
-            dot={false}
-          />
-          <Line
-            yAxisId="rate"
-            type="monotone"
-            dataKey="bounce_rate"
-            stroke="var(--color-bounce_rate)"
-            strokeWidth={2}
-            dot={false}
-          />
-          <Line
-            yAxisId="rate"
-            type="monotone"
-            dataKey="open_rate"
-            stroke="var(--color-open_rate)"
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
-      </ChartContainer>
+      <ReactEChartsCore
+        echarts={echarts}
+        option={chartOption}
+        notMerge
+        lazyUpdate
+        className="h-[260px] w-full"
+        opts={{ renderer: 'canvas' }}
+      />
     </section>
   );
 }
 
 function EngagementSection({ overview }: { overview: OverviewData }) {
+  const rateMetrics = [
+    {
+      label: 'Open rate',
+      value: overview.metrics.open_rate,
+      detail: `${format.integer(overview.metrics.unique_opens)} unique opens`,
+      color: 'text-blue-300',
+      accent: 'bg-blue-400',
+      track: 'bg-blue-400/10',
+    },
+    {
+      label: 'Click rate',
+      value: overview.metrics.click_rate,
+      detail: `${format.integer(overview.metrics.unique_clicks)} unique clicks`,
+      color: 'text-emerald-300',
+      accent: 'bg-emerald-400',
+      track: 'bg-emerald-400/10',
+    },
+  ];
+
   return (
     <section className="space-y-6">
-      <div className="border-b border-white/10 pb-4">
+      <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
         <h2 className="text-lg font-semibold text-white">Engagement</h2>
+        <span className="shrink-0 rounded bg-white/5 px-2 py-0.5 font-mono text-sm whitespace-nowrap text-white/45">
+          {format.integer(overview.metrics.unique_emails)} recipients
+        </span>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        {[
-          { label: 'Opens', value: overview.metrics.opens },
-          { label: 'Unique emails', value: overview.metrics.unique_emails },
-          { label: 'Unique opens', value: overview.metrics.unique_opens },
-          {
-            label: 'Open rate',
-            value: formatPercent(overview.metrics.open_rate),
-            color: 'text-purple-400',
-          },
-          { label: 'Unique clicks', value: overview.metrics.unique_clicks },
-          {
-            label: 'Click rate',
-            value: formatPercent(overview.metrics.click_rate),
-            color: 'text-purple-400',
-          },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <span className="mb-2 block text-xs font-semibold tracking-wider text-white/40 uppercase">
-              {stat.label}
-            </span>
-            <span className={`font-display text-xl font-medium ${stat.color || 'text-white'}`}>
-              {stat.value}
-            </span>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {rateMetrics.map((metric) => (
+          <div key={metric.label} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+              <div className="min-w-0">
+                <span className="block text-sm font-medium text-white/70">{metric.label}</span>
+                <span className="mt-1 block truncate text-sm leading-snug whitespace-nowrap text-white/45">
+                  {metric.detail}
+                </span>
+              </div>
+              <span
+                className={`font-display shrink-0 text-right text-3xl leading-none font-medium ${metric.color}`}
+              >
+                {format.percent(metric.value)}
+              </span>
+            </div>
+            <div className={`h-2 overflow-hidden rounded-full ${metric.track}`}>
+              <div
+                className={`h-full rounded-full ${metric.accent}`}
+                style={{ width: `${Math.min(100, Math.max(0, metric.value * 100))}%` }}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -440,24 +615,24 @@ function BounceBreakdownSection({ overview }: { overview: OverviewData }) {
 
 function FailureInsightsList({ title, items }: { title: string; items: FailureInsightItem[] }) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-white/70">{title}</h3>
+    <div>
+      <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 className="text-sm font-semibold text-white/75">{title}</h3>
+        <span className="font-mono text-xs text-white/35">Count</span>
+      </div>
       {items.length > 0 ? (
-        <div className="space-y-2">
+        <div className="divide-y divide-white/10">
           {items.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm"
-            >
-              <span className="text-white/80">{item.label}</span>
-              <span className="font-mono text-xs text-white/60">{item.count}</span>
+            <div key={item.label} className="flex items-center justify-between gap-4 py-2 text-sm">
+              <span className="min-w-0 truncate text-white/75">{item.label}</span>
+              <span className="shrink-0 font-mono text-xs text-white/55">
+                {item.count} · {format.percent(item.percentage)}
+              </span>
             </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-white/10 px-3 py-2 text-xs text-white/40">
-          No data.
-        </div>
+        <div className="py-2 text-sm text-white/40">No data.</div>
       )}
     </div>
   );
@@ -468,7 +643,7 @@ function FailureInsightsSection({ overview }: { overview: OverviewData }) {
   const isEmpty = top_reasons.length === 0 && top_domains.length === 0;
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+    <section className="space-y-6">
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <h2 className="text-lg font-semibold text-white">Failure insights</h2>
         <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
@@ -476,9 +651,9 @@ function FailureInsightsSection({ overview }: { overview: OverviewData }) {
         </span>
       </div>
       {isEmpty ? (
-        <div className="pt-4 text-sm text-white/50">No bounce data in this range.</div>
+        <div className="text-sm text-white/50">No bounce data in this range.</div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <FailureInsightsList title="Top bounce reasons" items={top_reasons} />
           <FailureInsightsList title="Top failing domains" items={top_domains} />
         </div>
@@ -526,6 +701,8 @@ export default function DashboardPage() {
         <SummarySection overview={overview} loadingOverview={loadingOverview} error={error} />
 
         {overview ? <DailyVolumeSection overview={overview} /> : null}
+
+        {overview ? <ActivitySection overview={overview} /> : null}
 
         {overview ? (
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">

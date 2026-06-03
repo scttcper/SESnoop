@@ -185,6 +185,26 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter);
 
+  const eventMixRows = await db
+    .select({
+      event_type: events.event_type,
+      count: count(),
+    })
+    .from(events)
+    .innerJoin(messages, eq(events.message_id, messages.id))
+    .where(rangeFilter)
+    .groupBy(events.event_type);
+
+  const [lastEvent] = await db
+    .select({
+      event_at: events.event_at,
+    })
+    .from(events)
+    .innerJoin(messages, eq(events.message_id, messages.id))
+    .where(eq(messages.source_id, source.id))
+    .orderBy(desc(events.event_at))
+    .limit(1);
+
   const [{ sent_today }] = await db
     .select({
       sent_today: eventCount(EVENT_TYPES.send),
@@ -285,6 +305,10 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
 
   const { sent, delivered, bounced, complaints, opens } = eventTotals;
   const { unique_emails, unique_opens, unique_clicks } = uniqueTotals;
+  const bounceRate = rate(bounced, sent);
+  const complaintRate = rate(complaints, sent);
+  const openRate = rate(unique_opens, delivered);
+  const clickRate = rate(unique_clicks, delivered);
   const metrics = {
     sent,
     delivered,
@@ -295,10 +319,23 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     unique_emails,
     unique_opens,
     unique_clicks,
-    bounce_rate: rate(bounced, sent),
-    complaint_rate: rate(complaints, sent),
-    open_rate: rate(unique_opens, delivered),
-    click_rate: rate(unique_clicks, delivered),
+    bounce_rate: bounceRate,
+    complaint_rate: complaintRate,
+    open_rate: openRate,
+    click_rate: clickRate,
+  };
+
+  const eventMix = Object.fromEntries(
+    EVENT_TYPE_VALUES.map((eventType) => [eventType, 0]),
+  ) as Record<EventType, number>;
+  for (const row of eventMixRows) {
+    if (EVENT_TYPE_VALUES.includes(row.event_type as EventType)) {
+      eventMix[row.event_type as EventType] = row.count;
+    }
+  }
+
+  const activity = {
+    last_event_at: lastEvent?.event_at?.getTime() ?? null,
   };
 
   const reasonCounts = new Map<string, number>();
@@ -310,12 +347,17 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const topReasons = [...reasonCounts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([label, reasonCount]) => ({ label, count: reasonCount }));
+    .map(([label, reasonCount]) => ({
+      label,
+      count: reasonCount,
+      percentage: rate(reasonCount, bounced),
+    }));
 
   const topDomains = domainRows
     .map((row) => ({
       label: row.domain?.trim() ?? '',
       count: row.count,
+      percentage: rate(row.count, bounced),
     }))
     .filter((row) => row.label.length > 0);
 
@@ -327,6 +369,8 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
         to: formatDay(end),
       },
       metrics,
+      activity,
+      event_mix: eventMix,
       chart,
       bounce_breakdown: bounceRows
         .filter((row) => row.bounce_type)

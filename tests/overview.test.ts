@@ -89,13 +89,24 @@ describe('overview routes', () => {
     expect(json.metrics.complaint_rate).toBe(1);
     expect(json.metrics.open_rate).toBe(1);
     expect(json.metrics.click_rate).toBe(1);
+    expect(json.activity.last_event_at).toBe(rangeDate + 6000);
+    expect(json.event_mix.Send).toBe(1);
+    expect(json.event_mix.Delivery).toBe(1);
+    expect(json.event_mix.Bounce).toBe(1);
+    expect(json.event_mix.Complaint).toBe(1);
+    expect(json.event_mix.Open).toBe(2);
+    expect(json.event_mix.Click).toBe(1);
     expect(json.chart.days).toEqual(['2025-01-01']);
     expect(json.chart.sent).toEqual([1]);
     expect(json.chart.delivered).toEqual([1]);
     expect(json.chart.bounced).toEqual([1]);
     expect(json.bounce_breakdown).toEqual([{ bounce_type: 'Permanent', count: 1 }]);
-    expect(json.failure_insights.top_reasons).toEqual([{ label: 'Permanent', count: 1 }]);
-    expect(json.failure_insights.top_domains).toEqual([{ label: 'example.com', count: 1 }]);
+    expect(json.failure_insights.top_reasons).toEqual([
+      { label: 'Permanent', count: 1, percentage: 1 },
+    ]);
+    expect(json.failure_insights.top_domains).toEqual([
+      { label: 'example.com', count: 1, percentage: 1 },
+    ]);
   });
 
   it('returns 404 for missing sources', async () => {

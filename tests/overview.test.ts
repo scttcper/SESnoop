@@ -92,6 +92,7 @@ describe('overview routes', () => {
     expect(json.chart.sent).toEqual([1]);
     expect(json.chart.delivered).toEqual([1]);
     expect(json.chart.bounced).toEqual([1]);
+    expect(json.chart.unique_recipients).toEqual([1]);
     expect(json.bounce_breakdown).toEqual([{ bounce_type: 'Permanent', count: 1 }]);
     expect(json.failure_insights.top_reasons).toEqual([
       { label: 'Permanent', count: 1, percentage: 1 },
@@ -109,6 +110,57 @@ describe('overview routes', () => {
   it('returns 422 for invalid params', async () => {
     const response = await SELF.fetch('http://example.com/api/sources/nope/overview');
     expect(response.status).toBe(422);
+  });
+});
+
+describe('daily recipient reach', () => {
+  it('counts unique normalized recipients per day and aligns zero-filled chart arrays', async () => {
+    await resetDb();
+    await insertSource({ id: 1, name: 'Test', token: 'token' });
+    await insertMessage({ id: 1, source_id: 1, ses_message_id: 'ses-1' });
+
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Send',
+      recipient_email: 'a@example.com',
+      event_at: Date.UTC(2025, 0, 1, 8, 0, 0),
+    });
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Delivery',
+      recipient_email: 'A@example.com',
+      event_at: Date.UTC(2025, 0, 1, 8, 1, 0),
+    });
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Open',
+      recipient_email: 'a@example.com',
+      event_at: Date.UTC(2025, 0, 1, 8, 2, 0),
+    });
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Send',
+      recipient_email: 'b@example.com',
+      event_at: Date.UTC(2025, 0, 1, 8, 3, 0),
+    });
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Delivery',
+      recipient_email: 'c@example.com',
+      event_at: Date.UTC(2025, 0, 3, 8, 0, 0),
+    });
+
+    const response = await SELF.fetch(
+      'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-03',
+    );
+    const json = (await response.json()) as OverviewResponse;
+
+    expect(json.chart.days).toEqual(['2025-01-01', '2025-01-02', '2025-01-03']);
+    expect(json.chart.sent).toEqual([2, 0, 0]);
+    expect(json.chart.delivered).toEqual([1, 0, 1]);
+    expect(json.chart.bounced).toEqual([0, 0, 0]);
+    expect(json.chart.unique_opens).toEqual([1, 0, 0]);
+    expect(json.chart.unique_recipients).toEqual([2, 0, 1]);
   });
 });
 

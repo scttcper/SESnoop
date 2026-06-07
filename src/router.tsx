@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import {
   createRootRoute,
   createRoute,
@@ -10,6 +9,7 @@ import {
   redirect,
 } from '@tanstack/react-router';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
+import { Suspense } from 'react';
 import { z } from 'zod';
 
 import { AuthError, getSession } from './lib/auth';

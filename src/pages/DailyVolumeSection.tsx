@@ -1,9 +1,9 @@
-import type { EChartsOption, TooltipComponentFormatterCallbackParams } from 'echarts';
+import type { EChartsOption, EChartsType, TooltipComponentFormatterCallbackParams } from 'echarts';
+import ReactEChartsCore from 'echarts-for-react/esm/core';
 import { BarChart, LineChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import ReactEChartsCore from 'echarts-for-react/esm/core';
 
 echarts.use([
   BarChart,
@@ -19,12 +19,20 @@ const format = {
   percent: (value: number) => `${(value * 100).toFixed(1)}%`,
 };
 
+const OVERVIEW_CHART_GROUP = 'dashboard-overview';
+
+const connectOverviewChart = (instance: EChartsType) => {
+  instance.group = OVERVIEW_CHART_GROUP;
+  echarts.connect(OVERVIEW_CHART_GROUP);
+};
+
 type OverviewChart = {
   days: string[];
   sent: number[];
   delivered: number[];
   bounced: number[];
   unique_opens: number[];
+  unique_recipients: number[];
 };
 
 export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) {
@@ -235,7 +243,9 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         option={chartOption}
         notMerge
         lazyUpdate
+        onChartReady={connectOverviewChart}
         className="h-[260px] w-full"
+        style={{ height: 260 }}
         opts={{ renderer: 'canvas' }}
       />
     </section>

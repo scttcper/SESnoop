@@ -1,13 +1,14 @@
-import { lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Plus, BarChart3, ArrowRight } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 
 import { overviewQueryOptions, sourcesQueryOptions } from '../lib/queries';
 import { useActiveSourceId } from '../lib/use-active-source';
 import { cn, COLOR_STYLES } from '../lib/utils';
 
 const DailyVolumeSection = lazy(() => import('./DailyVolumeSection'));
+const RecipientReachSection = lazy(() => import('./RecipientReachSection'));
 
 const format = {
   integer: (value: number) => value.toLocaleString(),
@@ -33,6 +34,7 @@ type OverviewChart = {
   delivered: number[];
   bounced: number[];
   unique_opens: number[];
+  unique_recipients: number[];
 };
 
 type OverviewMetrics = {
@@ -95,6 +97,19 @@ function DailyVolumeLoadingState() {
         <h2 className="text-lg font-semibold text-white">Daily delivery trend</h2>
       </div>
       <div className="flex h-[260px] w-full items-center justify-center text-sm text-white/40">
+        Loading chart...
+      </div>
+    </section>
+  );
+}
+
+function RecipientReachLoadingState() {
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <h2 className="text-lg font-semibold text-white">Recipient reach</h2>
+      </div>
+      <div className="flex h-[200px] w-full items-center justify-center text-sm text-white/40">
         Loading chart...
       </div>
     </section>
@@ -200,7 +215,6 @@ function SummarySection({
   error,
 }: {
   overview: OverviewData | undefined;
-  loadingOverview: boolean;
   error: QueryError;
 }) {
   return (
@@ -212,29 +226,73 @@ function SummarySection({
       ) : null}
 
       {overview ? (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <span className="mb-2 block text-xs font-semibold tracking-wider text-white/40 uppercase">
+                  Sent
+                </span>
+                <span className="font-display block text-3xl leading-none font-medium text-blue-300">
+                  {format.integer(overview.metrics.sent)}
+                </span>
+              </div>
+              <span className="rounded-md border border-blue-300/15 bg-blue-300/10 px-2.5 py-1 text-right">
+                <span className="block text-[10px] leading-none font-semibold tracking-wider text-blue-100/45 uppercase">
+                  Today
+                </span>
+                <span className="mt-1 block font-mono text-sm leading-none text-blue-100">
+                  {format.integer(overview.metrics.sent_today)}
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-white/45">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-300/80" />
+              <span>{format.integer(overview.metrics.delivered)} delivered in range</span>
+            </div>
+          </div>
+
           {[
-            { label: 'Sent', value: overview.metrics.sent, color: 'text-blue-400' },
-            { label: 'Delivered', value: overview.metrics.delivered, color: 'text-green-400' },
-            { label: 'Bounced', value: overview.metrics.bounced, color: 'text-red-400' },
-            { label: 'Complaints', value: overview.metrics.complaints, color: 'text-orange-400' },
-            { label: 'Sent today', value: overview.metrics.sent_today },
             {
-              label: 'Bounce rate',
-              value: format.percent(overview.metrics.bounce_rate),
-              color: overview.metrics.bounce_rate > 0.05 ? 'text-red-400' : 'text-white',
+              label: 'Open rate',
+              value: overview.metrics.open_rate,
+              detail: `${format.integer(overview.metrics.unique_opens)} unique opens`,
+              color: 'text-blue-300',
+              accent: 'bg-blue-400',
+              track: 'bg-blue-400/10',
             },
-          ].map((stat) => (
+            {
+              label: 'Click rate',
+              value: overview.metrics.click_rate,
+              detail: `${format.integer(overview.metrics.unique_clicks)} unique clicks`,
+              color: 'text-emerald-300',
+              accent: 'bg-emerald-400',
+              track: 'bg-emerald-400/10',
+            },
+          ].map((metric) => (
             <div
-              key={stat.label}
-              className="flex flex-col rounded-xl border border-white/10 bg-white/[0.02] p-4"
+              key={metric.label}
+              className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
             >
-              <span className="mb-2 text-xs font-semibold tracking-wider text-white/40 uppercase">
-                {stat.label}
-              </span>
-              <span className={`font-display text-2xl font-medium ${stat.color || 'text-white'}`}>
-                {stat.value}
-              </span>
+              <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+                <div className="min-w-0">
+                  <span className="block text-sm font-medium text-white/70">{metric.label}</span>
+                  <span className="mt-1 block truncate text-sm leading-snug whitespace-nowrap text-white/45">
+                    {metric.detail}
+                  </span>
+                </div>
+                <span
+                  className={`font-display shrink-0 text-right text-3xl leading-none font-medium ${metric.color}`}
+                >
+                  {format.percent(metric.value)}
+                </span>
+              </div>
+              <div className={`h-2 overflow-hidden rounded-full ${metric.track}`}>
+                <div
+                  className={`h-full rounded-full ${metric.accent}`}
+                  style={{ width: `${Math.min(100, Math.max(0, metric.value * 100))}%` }}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -305,94 +363,36 @@ function ActivitySection({ overview }: { overview: OverviewData }) {
   );
 }
 
-function EngagementSection({ overview }: { overview: OverviewData }) {
-  const rateMetrics = [
-    {
-      label: 'Open rate',
-      value: overview.metrics.open_rate,
-      detail: `${format.integer(overview.metrics.unique_opens)} unique opens`,
-      color: 'text-blue-300',
-      accent: 'bg-blue-400',
-      track: 'bg-blue-400/10',
-    },
-    {
-      label: 'Click rate',
-      value: overview.metrics.click_rate,
-      detail: `${format.integer(overview.metrics.unique_clicks)} unique clicks`,
-      color: 'text-emerald-300',
-      accent: 'bg-emerald-400',
-      track: 'bg-emerald-400/10',
-    },
-  ];
-
+function BounceTypesList({ overview }: { overview: OverviewData }) {
   return (
-    <section className="space-y-6">
-      <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
-        <h2 className="text-lg font-semibold text-white">Engagement</h2>
-        <span className="shrink-0 rounded bg-white/5 px-2 py-0.5 font-mono text-sm whitespace-nowrap text-white/45">
-          {format.integer(overview.metrics.unique_emails)} recipients
-        </span>
+    <div>
+      <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 className="text-sm font-semibold text-white/75">Bounce types</h3>
+        <span className="font-mono text-xs text-white/35">Count</span>
       </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {rateMetrics.map((metric) => (
-          <div key={metric.label} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
-              <div className="min-w-0">
-                <span className="block text-sm font-medium text-white/70">{metric.label}</span>
-                <span className="mt-1 block truncate text-sm leading-snug whitespace-nowrap text-white/45">
-                  {metric.detail}
-                </span>
+      {overview.bounce_breakdown.length > 0 ? (
+        <div className="space-y-3 py-2">
+          {overview.bounce_breakdown.map((row) => (
+            <div key={row.bounce_type} className="group flex items-center justify-between text-sm">
+              <span className="font-mono text-xs text-white/60">{row.bounce_type}</span>
+              <div className="mx-4 flex flex-1 items-center space-x-3">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.05]">
+                  <div
+                    className="h-full rounded-full bg-red-500/50"
+                    style={{
+                      width: `${overview.metrics.bounced ? (row.count / overview.metrics.bounced) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
               </div>
-              <span
-                className={`font-display shrink-0 text-right text-3xl leading-none font-medium ${metric.color}`}
-              >
-                {format.percent(metric.value)}
-              </span>
+              <span className="font-medium text-white">{row.count}</span>
             </div>
-            <div className={`h-2 overflow-hidden rounded-full ${metric.track}`}>
-              <div
-                className={`h-full rounded-full ${metric.accent}`}
-                style={{ width: `${Math.min(100, Math.max(0, metric.value * 100))}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function BounceBreakdownSection({ overview }: { overview: OverviewData }) {
-  return (
-    <section className="space-y-6">
-      <div className="border-b border-white/10 pb-4">
-        <h2 className="text-lg font-semibold text-white">Bounce breakdown</h2>
-      </div>
-      <div className="space-y-3">
-        {overview.bounce_breakdown.map((row) => (
-          <div key={row.bounce_type} className="group flex items-center justify-between text-sm">
-            <span className="font-mono text-xs text-white/60">{row.bounce_type}</span>
-            <div className="mx-4 flex flex-1 items-center space-x-3">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.05]">
-                <div
-                  className="h-full rounded-full bg-red-500/50"
-                  style={{
-                    width: `${overview.metrics.bounced ? (row.count / overview.metrics.bounced) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-            <span className="font-medium text-white">{row.count}</span>
-          </div>
-        ))}
-        {overview.bounce_breakdown.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 p-8 text-center">
-            <p className="text-sm text-white/40">No bounce events in this range.</p>
-          </div>
-        ) : null}
-      </div>
-    </section>
+          ))}
+        </div>
+      ) : (
+        <div className="py-2 text-sm text-white/40">No data.</div>
+      )}
+    </div>
   );
 }
 
@@ -421,22 +421,30 @@ function FailureInsightsList({ title, items }: { title: string; items: FailureIn
   );
 }
 
-function FailureInsightsSection({ overview }: { overview: OverviewData }) {
+function FailureAnalysisSection({ overview }: { overview: OverviewData }) {
   const { top_reasons, top_domains } = overview.failure_insights;
-  const isEmpty = top_reasons.length === 0 && top_domains.length === 0;
+  const isEmpty =
+    overview.bounce_breakdown.length === 0 && top_reasons.length === 0 && top_domains.length === 0;
 
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
-        <h2 className="text-lg font-semibold text-white">Failure insights</h2>
+        <h2 className="text-lg font-semibold text-white">Failure analysis</h2>
         <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
           {overview.range.from} → {overview.range.to}
         </span>
       </div>
       {isEmpty ? (
-        <div className="text-sm text-white/50">No bounce data in this range.</div>
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-6">
+          <div className="text-sm font-medium text-white/70">No bounce activity</div>
+          <p className="mt-1 text-sm text-white/45">
+            There were no bounce events in this range, so there are no failure reasons or domains to
+            analyze.
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <BounceTypesList overview={overview} />
           <FailureInsightsList title="Top bounce reasons" items={top_reasons} />
           <FailureInsightsList title="Top failing domains" items={top_domains} />
         </div>
@@ -453,10 +461,7 @@ export default function DashboardPage() {
     data: overview,
     isLoading: loadingOverview,
     error: queryError,
-  } = useQuery({
-    ...overviewQueryOptions(sourceId),
-    enabled: !!sourceId,
-  });
+  } = useQuery(overviewQueryOptions(sourceId));
 
   // 1. Loading State
   if (loadingSources) {
@@ -481,7 +486,7 @@ export default function DashboardPage() {
       />
 
       <div className="flex-1 space-y-8 overflow-y-auto p-6">
-        <SummarySection overview={overview} loadingOverview={loadingOverview} error={error} />
+        <SummarySection overview={overview} error={error} />
 
         {overview ? (
           <Suspense fallback={<DailyVolumeLoadingState />}>
@@ -492,13 +497,15 @@ export default function DashboardPage() {
         {overview ? <ActivitySection overview={overview} /> : null}
 
         {overview ? (
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <EngagementSection overview={overview} />
-            <BounceBreakdownSection overview={overview} />
-          </div>
+          <Suspense fallback={<RecipientReachLoadingState />}>
+            <RecipientReachSection
+              chart={overview.chart}
+              uniqueRecipients={overview.metrics.unique_emails}
+            />
+          </Suspense>
         ) : null}
 
-        {overview ? <FailureInsightsSection overview={overview} /> : null}
+        {overview ? <FailureAnalysisSection overview={overview} /> : null}
       </div>
     </div>
   );

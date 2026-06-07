@@ -100,15 +100,21 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const todayStartMs = todayRange.start.getTime();
   const todayEndMs = todayRange.end.getTime();
 
-  const eventMixRows = await db
+  const [rangeTotals] = await db
     .select({
-      event_type: events.event_type,
-      count: count(),
+      sent: eventCount(EVENT_TYPES.send),
+      delivered: eventCount(EVENT_TYPES.delivery),
+      bounced: eventCount(EVENT_TYPES.bounce),
+      complaints: eventCount(EVENT_TYPES.complaint),
+      opens: eventCount(EVENT_TYPES.open),
+      clicks: eventCount(EVENT_TYPES.click),
+      unique_emails: countDistinct(sql`lower(${events.recipient_email})`),
+      unique_opens: uniqueEventCount(EVENT_TYPES.open),
+      unique_clicks: uniqueEventCount(EVENT_TYPES.click),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(rangeFilter)
-    .groupBy(events.event_type);
+    .where(rangeFilter);
 
   const [lastEvent] = await db
     .select({
@@ -134,16 +140,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       ),
     );
 
-  const [uniqueTotals] = await db
-    .select({
-      unique_emails: countDistinct(sql`lower(${events.recipient_email})`),
-      unique_opens: uniqueEventCount(EVENT_TYPES.open),
-      unique_clicks: uniqueEventCount(EVENT_TYPES.click),
-    })
-    .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(rangeFilter);
-
   const dayExpr = sql<string>`strftime('%Y-%m-%d', ${events.event_at} / 1000, 'unixepoch')`;
 
   const dailyRows = await db
@@ -153,26 +149,27 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       delivered: eventCount(EVENT_TYPES.delivery),
       bounced: eventCount(EVENT_TYPES.bounce),
       unique_opens: uniqueEventCount(EVENT_TYPES.open),
+      unique_recipients: countDistinct(sql`lower(${events.recipient_email})`),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter)
     .groupBy(dayExpr);
 
+  const sent = rangeTotals.sent;
+  const delivered = rangeTotals.delivered;
+  const bounced = rangeTotals.bounced;
+  const complaints = rangeTotals.complaints;
+  const opens = rangeTotals.opens;
   const eventMix = Object.fromEntries(
     EVENT_TYPE_VALUES.map((eventType) => [eventType, 0]),
   ) as Record<EventType, number>;
-  for (const row of eventMixRows) {
-    if (EVENT_TYPE_VALUES.includes(row.event_type as EventType)) {
-      eventMix[row.event_type as EventType] = row.count;
-    }
-  }
-
-  const sent = eventMix.Send;
-  const delivered = eventMix.Delivery;
-  const bounced = eventMix.Bounce;
-  const complaints = eventMix.Complaint;
-  const opens = eventMix.Open;
+  eventMix.Send = sent;
+  eventMix.Delivery = delivered;
+  eventMix.Bounce = bounced;
+  eventMix.Complaint = complaints;
+  eventMix.Open = opens;
+  eventMix.Click = rangeTotals.clicks;
 
   let bounceEvents: Array<{
     event_data: unknown;
@@ -193,7 +190,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   }
 
   const dailyMap = new Map(dailyRows.map((row) => [row.day, row]));
-  type DailyMetric = 'sent' | 'delivered' | 'bounced' | 'unique_opens';
+  type DailyMetric = 'sent' | 'delivered' | 'bounced' | 'unique_opens' | 'unique_recipients';
   const series = (metric: DailyMetric) => dayKeys.map((day) => dailyMap.get(day)?.[metric] ?? 0);
 
   const chart = {
@@ -202,9 +199,10 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     delivered: series('delivered'),
     bounced: series('bounced'),
     unique_opens: series('unique_opens'),
+    unique_recipients: series('unique_recipients'),
   };
 
-  const { unique_emails, unique_opens, unique_clicks } = uniqueTotals;
+  const { unique_emails, unique_opens, unique_clicks } = rangeTotals;
   const bounceRate = rate(bounced, sent);
   const complaintRate = rate(complaints, sent);
   const openRate = rate(unique_opens, delivered);

@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   build: {
+    emptyOutDir: true,
     rolldownOptions: {
       output: {
         codeSplitting: {

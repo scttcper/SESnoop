@@ -10,13 +10,13 @@ const router = createRouter().openapi(
     method: 'get',
     path: '/',
     responses: {
-      [HttpStatusCodes.OK]: jsonContent(z.object({ name: z.string() }), 'Tasks API Index'),
+      [HttpStatusCodes.OK]: jsonContent(z.object({ name: z.string() }), 'SESnoop API Index'),
     },
   }),
   (c) => {
     return c.json(
       {
-        name: 'Cloudflare',
+        name: 'SESnoop',
       },
       HttpStatusCodes.OK,
     );

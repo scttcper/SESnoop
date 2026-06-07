@@ -6,7 +6,6 @@ export const resetDb = async () => {
   await env.DB.prepare('DELETE FROM messages').run();
   await env.DB.prepare('DELETE FROM webhooks').run();
   await env.DB.prepare('DELETE FROM sources').run();
-  await env.DB.prepare('DELETE FROM tasks').run();
 };
 
 export const insertSource = async (overrides?: {

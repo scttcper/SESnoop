@@ -11,12 +11,6 @@ const timestampMs = (name: string) =>
 
 const timestampMsNullable = (name: string) => integer(name, { mode: 'timestamp_ms' });
 
-export const tasks = sqliteTable('tasks', {
-  id: integer({ mode: 'number' }).primaryKey({ autoIncrement: true }),
-  name: text().notNull(),
-  done: integer({ mode: 'boolean' }).notNull().default(false),
-});
-
 export const sources = sqliteTable(
   'sources',
   {
@@ -176,23 +170,4 @@ export const patchSourcesSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   color: z.enum(SOURCE_COLORS).optional(),
   retention_days: retentionDaysSchema.optional(),
-});
-
-// Zod schemas for tasks (manually defined for better type inference)
-export const selectTasksSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  done: z.boolean(),
-});
-
-export type Task = z.infer<typeof selectTasksSchema>;
-
-export const insertTasksSchema = z.object({
-  name: z.string().min(1).max(500),
-  done: z.boolean(),
-});
-
-export const patchTasksSchema = z.object({
-  name: z.string().min(1).max(500).optional(),
-  done: z.boolean().optional(),
 });

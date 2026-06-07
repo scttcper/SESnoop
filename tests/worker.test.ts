@@ -8,6 +8,6 @@ describe('api index', () => {
     const response = await SELF.fetch('http://example.com/api/');
     expect(response.status).toBe(200);
     const json = (await response.json()) as ApiIndexResponse;
-    expect(json).toEqual({ name: 'Cloudflare' });
+    expect(json).toEqual({ name: 'SESnoop' });
   });
 });

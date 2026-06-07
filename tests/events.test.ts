@@ -29,6 +29,13 @@ beforeEach(async () => {
     event_at: day + 1000,
     bounce_type: 'Permanent',
   });
+  await insertEvent({
+    message_id: 1,
+    event_type: 'Bounce',
+    recipient_email: 'c@example.com',
+    event_at: day + 2000,
+    bounce_type: 'Transient',
+  });
 });
 
 describe('events routes', () => {
@@ -38,11 +45,12 @@ describe('events routes', () => {
     );
     expect(response.status).toBe(200);
     const json = (await response.json()) as EventResponse;
-    expect(json.data).toHaveLength(2);
-    expect(json.pagination.total).toBe(2);
-    expect(json.counts.event_types.Bounce).toBe(1);
+    expect(json.data).toHaveLength(3);
+    expect(json.pagination.total).toBe(3);
+    expect(json.counts.event_types.Bounce).toBe(2);
     expect(json.counts.event_types.Delivery).toBe(1);
     expect(json.counts.bounce_types.Permanent).toBe(1);
+    expect(json.counts.bounce_types.Transient).toBe(1);
     expect(json.data[0]?.event_type).toBe('Bounce');
   });
 
@@ -52,7 +60,7 @@ describe('events routes', () => {
     );
     expect(response.status).toBe(200);
     const json = (await response.json()) as EventResponse;
-    expect(json.data).toHaveLength(1);
+    expect(json.data).toHaveLength(2);
     expect(json.data[0]?.event_type).toBe('Bounce');
   });
 

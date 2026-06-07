@@ -7,7 +7,12 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
 import { BOUNCE_TYPES, DATE_PRESETS, EVENT_TYPES } from '../lib/constants';
-import { eventsQueryOptions, sourcesQueryOptions, type EventResponse } from '../lib/queries';
+import {
+  eventsQueryOptions,
+  sourcesQueryOptions,
+  type EventResponse,
+  type EventRow,
+} from '../lib/queries';
 import type { EventsSearchParams } from '../router';
 
 const routeApi = getRouteApi('/app/s/$sourceId/events');
@@ -402,7 +407,7 @@ export default function EventsPage() {
                       </tr>
                     ))
                   : null}
-                {events.map((event) => (
+                {events.map((event: EventRow) => (
                   <tr key={event.id} className="transition-colors hover:bg-white/5">
                     <td className="px-4 py-3">
                       <span

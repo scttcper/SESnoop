@@ -4,7 +4,7 @@ import { Link, getRouteApi } from '@tanstack/react-router';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { messageQueryOptions } from '../lib/queries';
+import { messageQueryOptions, type MessageDetail } from '../lib/queries';
 
 const routeApi = getRouteApi('/app/s/$sourceId/messages/$sesMessageId');
 
@@ -208,7 +208,7 @@ export default function MessageDetailPage() {
                   <dt className="text-sm/6 font-semibold text-white/70">Tags</dt>
                   <dd className="mt-1 flex flex-wrap gap-2 text-sm/6 text-white/70">
                     {message.tags.length > 0 ? (
-                      message.tags.map((tag) => (
+                      message.tags.map((tag: string) => (
                         <span
                           key={tag}
                           className="rounded-full bg-white/10 px-2 py-1 font-mono text-xs text-white/80"
@@ -336,7 +336,7 @@ export default function MessageDetailPage() {
             </div>
           ) : message?.events.length ? (
             <div className="ml-2 flex flex-col">
-              {message.events.map((event, index) => (
+              {message.events.map((event: MessageDetail['events'][number], index: number) => (
                 <div key={event.id} className="group relative pb-8 pl-10 last:pb-0">
                   {index > 0 && (
                     <div className="absolute top-0 left-4 h-5 w-px -translate-x-1/2 bg-white/10" />

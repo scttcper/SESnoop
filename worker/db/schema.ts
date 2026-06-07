@@ -68,7 +68,6 @@ export const webhooks = sqliteTable(
     raw_payload: text({ mode: 'json' })
       .notNull()
       .default(sql`'{}'`),
-    processed_at: timestampMsNullable('processed_at'),
     created_at: timestampMs('created_at'),
     updated_at: timestampMs('updated_at'),
   },
@@ -85,16 +84,10 @@ export const events = sqliteTable(
     message_id: integer({ mode: 'number' })
       .notNull()
       .references(() => messages.id, { onDelete: 'cascade' }),
-    webhook_id: integer({ mode: 'number' }).references(() => webhooks.id, {
-      onDelete: 'set null',
-    }),
     event_type: text().notNull(),
     recipient_email: text().notNull(),
     event_at: timestampMsNullable('event_at').notNull(),
     event_data: text({ mode: 'json' })
-      .notNull()
-      .default(sql`'{}'`),
-    raw_payload: text({ mode: 'json' })
       .notNull()
       .default(sql`'{}'`),
     bounce_type: text(),
@@ -119,7 +112,7 @@ export const events = sqliteTable(
 );
 
 const retentionDaysSchema = z.preprocess(
-  (value) => (value === null ? undefined : value),
+  (value: unknown) => (value === null ? undefined : value),
   z.number().int().positive().optional(),
 );
 

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNotNull, sql, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
@@ -101,9 +101,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const { id } = c.req.valid('param');
   const query = c.req.valid('query');
 
-  const source = await db.query.sources.findFirst({
-    where: eq(sources.id, id),
-  });
+  const [source] = await db.select({ id: sources.id }).from(sources).where(eq(sources.id, id));
 
   if (!source) {
     return c.json(
@@ -160,27 +158,27 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
     .limit(perPage)
     .offset((page - 1) * perPage);
 
-  const eventTypeCounts = await db
+  const countRows = await db
     .select({
-      key: events.event_type,
+      event_type: events.event_type,
+      bounce_type: events.bounce_type,
       count: count(),
     })
     .from(events)
     .innerJoin(messages, eq(events.message_id, messages.id))
     .where(and(...baseFilters))
-    .groupBy(events.event_type);
-
-  const bounceTypeCounts = await db
-    .select({
-      key: events.bounce_type,
-      count: count(),
-    })
-    .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(and(...baseFilters, isNotNull(events.bounce_type)))
-    .groupBy(events.bounce_type);
+    .groupBy(events.event_type, events.bounce_type);
 
   const totalPages = Math.max(Math.ceil(total / perPage), 1);
+  const eventTypeCounts: Record<string, number> = {};
+  const bounceTypeCounts: Record<string, number> = {};
+
+  for (const row of countRows) {
+    eventTypeCounts[row.event_type] = (eventTypeCounts[row.event_type] ?? 0) + row.count;
+    if (row.bounce_type) {
+      bounceTypeCounts[row.bounce_type] = (bounceTypeCounts[row.bounce_type] ?? 0) + row.count;
+    }
+  }
 
   return c.json(
     {
@@ -195,18 +193,8 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
         total_pages: totalPages,
       },
       counts: {
-        event_types: eventTypeCounts.reduce<Record<string, number>>((acc, entry) => {
-          if (entry.key) {
-            acc[entry.key] = entry.count;
-          }
-          return acc;
-        }, {}),
-        bounce_types: bounceTypeCounts.reduce<Record<string, number>>((acc, entry) => {
-          if (entry.key) {
-            acc[entry.key] = entry.count;
-          }
-          return acc;
-        }, {}),
+        event_types: eventTypeCounts,
+        bounce_types: bounceTypeCounts,
       },
     },
     HttpStatusCodes.OK,

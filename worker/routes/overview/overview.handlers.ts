@@ -1,4 +1,4 @@
-import { and, count, countDistinct, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, count, countDistinct, desc, eq, sql } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
@@ -71,9 +71,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const { id } = c.req.valid('param');
   const { from, to } = c.req.valid('query');
 
-  const source = await db.query.sources.findFirst({
-    where: eq(sources.id, id),
-  });
+  const [source] = await db.select({ id: sources.id }).from(sources).where(eq(sources.id, id));
 
   if (!source) {
     return c.json(
@@ -101,18 +99,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   };
   const todayStartMs = todayRange.start.getTime();
   const todayEndMs = todayRange.end.getTime();
-
-  const [eventTotals] = await db
-    .select({
-      sent: eventCount(EVENT_TYPES.send),
-      delivered: eventCount(EVENT_TYPES.delivery),
-      bounced: eventCount(EVENT_TYPES.bounce),
-      complaints: eventCount(EVENT_TYPES.complaint),
-      opens: eventCount(EVENT_TYPES.open),
-    })
-    .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(rangeFilter);
 
   const eventMixRows = await db
     .select({
@@ -173,51 +159,37 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     .where(rangeFilter)
     .groupBy(dayExpr);
 
-  const bounceRows = await db
-    .select({
-      bounce_type: events.bounce_type,
-      count: count(),
-    })
-    .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(
-      and(rangeFilter, eq(events.event_type, EVENT_TYPES.bounce), isNotNull(events.bounce_type)),
-    )
-    .groupBy(events.bounce_type);
+  const eventMix = Object.fromEntries(
+    EVENT_TYPE_VALUES.map((eventType) => [eventType, 0]),
+  ) as Record<EventType, number>;
+  for (const row of eventMixRows) {
+    if (EVENT_TYPE_VALUES.includes(row.event_type as EventType)) {
+      eventMix[row.event_type as EventType] = row.count;
+    }
+  }
 
-  let bounceEvents: Array<{ event_data: unknown; bounce_type: string | null }> = [];
-  let domainRows: Array<{ domain: string | null; count: number }> = [];
+  const sent = eventMix.Send;
+  const delivered = eventMix.Delivery;
+  const bounced = eventMix.Bounce;
+  const complaints = eventMix.Complaint;
+  const opens = eventMix.Open;
 
-  if (eventTotals.bounced > 0) {
+  let bounceEvents: Array<{
+    event_data: unknown;
+    bounce_type: string | null;
+    recipient_email: string;
+  }> = [];
+
+  if (bounced > 0) {
     bounceEvents = await db
       .select({
         event_data: events.event_data,
         bounce_type: events.bounce_type,
+        recipient_email: events.recipient_email,
       })
       .from(events)
       .innerJoin(messages, eq(events.message_id, messages.id))
       .where(and(rangeFilter, eq(events.event_type, EVENT_TYPES.bounce)));
-
-    const domainExpr = sql<string>`lower(substr(${events.recipient_email}, instr(${events.recipient_email}, '@') + 1))`;
-    const domainCountExpr = count();
-
-    domainRows = await db
-      .select({
-        domain: domainExpr,
-        count: domainCountExpr,
-      })
-      .from(events)
-      .innerJoin(messages, eq(events.message_id, messages.id))
-      .where(
-        and(
-          rangeFilter,
-          eq(events.event_type, EVENT_TYPES.bounce),
-          sql`instr(${events.recipient_email}, '@') > 0`,
-        ),
-      )
-      .groupBy(domainExpr)
-      .orderBy(desc(domainCountExpr))
-      .limit(5);
   }
 
   const dailyMap = new Map(dailyRows.map((row) => [row.day, row]));
@@ -232,7 +204,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     unique_opens: series('unique_opens'),
   };
 
-  const { sent, delivered, bounced, complaints, opens } = eventTotals;
   const { unique_emails, unique_opens, unique_clicks } = uniqueTotals;
   const bounceRate = rate(bounced, sent);
   const complaintRate = rate(complaints, sent);
@@ -254,23 +225,26 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     click_rate: clickRate,
   };
 
-  const eventMix = Object.fromEntries(
-    EVENT_TYPE_VALUES.map((eventType) => [eventType, 0]),
-  ) as Record<EventType, number>;
-  for (const row of eventMixRows) {
-    if (EVENT_TYPE_VALUES.includes(row.event_type as EventType)) {
-      eventMix[row.event_type as EventType] = row.count;
-    }
-  }
-
   const activity = {
     last_event_at: lastEvent?.event_at?.getTime() ?? null,
   };
 
   const reasonCounts = new Map<string, number>();
+  const bounceTypeCounts = new Map<string, number>();
+  const domainCounts = new Map<string, number>();
+
   for (const row of bounceEvents) {
     const reason = resolveBounceReason(toRecord(row.event_data), row.bounce_type);
     reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+
+    if (row.bounce_type) {
+      bounceTypeCounts.set(row.bounce_type, (bounceTypeCounts.get(row.bounce_type) ?? 0) + 1);
+    }
+
+    const domain = row.recipient_email.split('@').at(1)?.trim().toLowerCase();
+    if (domain) {
+      domainCounts.set(domain, (domainCounts.get(domain) ?? 0) + 1);
+    }
   }
 
   const topReasons = [...reasonCounts.entries()]
@@ -282,13 +256,14 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       percentage: rate(reasonCount, bounced),
     }));
 
-  const topDomains = domainRows
-    .map((row) => ({
-      label: row.domain?.trim() ?? '',
-      count: row.count,
-      percentage: rate(row.count, bounced),
-    }))
-    .filter((row) => row.label.length > 0);
+  const topDomains = [...domainCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([label, domainCount]) => ({
+      label,
+      count: domainCount,
+      percentage: rate(domainCount, bounced),
+    }));
 
   return c.json(
     {
@@ -301,12 +276,10 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       activity,
       event_mix: eventMix,
       chart,
-      bounce_breakdown: bounceRows
-        .filter((row) => row.bounce_type)
-        .map((row) => ({
-          bounce_type: row.bounce_type ?? 'Unknown',
-          count: row.count,
-        })),
+      bounce_breakdown: [...bounceTypeCounts.entries()].map(([bounce_type, bounceCount]) => ({
+        bounce_type,
+        count: bounceCount,
+      })),
       failure_insights: {
         top_reasons: topReasons,
         top_domains: topDomains,

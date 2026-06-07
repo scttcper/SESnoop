@@ -96,9 +96,9 @@ describe('webhooks ingestion', () => {
     expect(events.results[0]?.recipient_email).toBe('test@example.com');
     expect(events.results[0]?.bounce_type).toBe('Permanent');
 
-    const webhooks = await env.DB.prepare('SELECT processed_at FROM webhooks').all();
+    const webhooks = await env.DB.prepare('SELECT sns_message_id FROM webhooks').all();
     expect(webhooks.results).toHaveLength(1);
-    expect(webhooks.results[0]?.processed_at).toBeTruthy();
+    expect(webhooks.results[0]?.sns_message_id).toBe('sns-1');
   });
 
   it('creates events for multiple notifications and recipients', async () => {

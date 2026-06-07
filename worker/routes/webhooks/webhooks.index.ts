@@ -47,9 +47,11 @@ router.post('/api/webhooks/:source_token', async (c) => {
   const ignoredEventTypes = parseIgnoredEventTypes(c.env.IGNORED_SES_EVENT_TYPES);
 
   // Validate source
-  const source = await db.query.sources.findFirst({
-    where: eq(sources.token, sourceToken),
-  });
+  const [source] = await db
+    .select({ id: sources.id })
+    .from(sources)
+    .where(eq(sources.token, sourceToken))
+    .limit(1);
 
   if (!source) {
     return c.json({ message: 'Not Found' }, HttpStatusCodes.NOT_FOUND);

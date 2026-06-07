@@ -74,6 +74,14 @@ interface SesSubscription extends Record<string, unknown> {
   timestamp?: string;
 }
 
+interface SesOpen extends Record<string, unknown> {
+  timestamp?: string;
+}
+
+interface SesClick extends Record<string, unknown> {
+  timestamp?: string;
+}
+
 export interface SesEventPayload {
   eventType?: SesEventType;
   notificationType?: SesEventType;
@@ -86,6 +94,8 @@ export interface SesEventPayload {
   renderingFailure?: SesRenderingFailure;
   deliveryDelay?: SesDeliveryDelay;
   subscription?: SesSubscription;
+  open?: SesOpen;
+  click?: SesClick;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -107,6 +117,8 @@ const toSesEventPayload = (value: unknown): SesEventPayload => {
     renderingFailure: toSesRenderingFailure(record.renderingFailure),
     deliveryDelay: toSesDeliveryDelay(record.deliveryDelay),
     subscription: toSesSubscription(record.subscription),
+    open: toSesOpen(record.open),
+    click: toSesClick(record.click),
   };
 };
 
@@ -283,6 +295,26 @@ const toSesSubscription = (value: unknown): SesSubscription | undefined => {
 
   return {
     contactList: toString(value.contactList),
+    timestamp: toString(value.timestamp),
+  };
+};
+
+const toSesOpen = (value: unknown): SesOpen | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return {
+    timestamp: toString(value.timestamp),
+  };
+};
+
+const toSesClick = (value: unknown): SesClick | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return {
     timestamp: toString(value.timestamp),
   };
 };
@@ -469,6 +501,12 @@ export class EventPayload {
       case 'Subscription': {
         return parseDate(this.subscription.timestamp);
       }
+      case 'Open': {
+        return parseDate(this.open.timestamp);
+      }
+      case 'Click': {
+        return parseDate(this.click.timestamp);
+      }
       default: {
         return parseDate(this.mail.timestamp);
       }
@@ -518,6 +556,12 @@ export class EventPayload {
       case 'Subscription': {
         return this.subscription;
       }
+      case 'Open': {
+        return this.open;
+      }
+      case 'Click': {
+        return this.click;
+      }
       default: {
         return {};
       }
@@ -554,5 +598,13 @@ export class EventPayload {
 
   private get subscription() {
     return this.payload.subscription ?? {};
+  }
+
+  private get open() {
+    return this.payload.open ?? {};
+  }
+
+  private get click() {
+    return this.payload.click ?? {};
   }
 }

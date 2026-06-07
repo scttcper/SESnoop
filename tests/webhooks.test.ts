@@ -13,6 +13,28 @@ beforeEach(async () => {
   await insertSource({ name: 'Test', token: 'token-123', color: 'blue' });
 });
 
+const buildOpenNotification = (messageId: string, timestamp: string) => ({
+  Type: 'Notification',
+  MessageId: messageId,
+  Message: JSON.stringify({
+    eventType: 'Open',
+    mail: {
+      messageId: 'ses-open-repeat',
+      timestamp: '2025-01-01T00:00:00.000Z',
+      source: 'sender@example.com',
+      destination: ['reader@example.com'],
+      commonHeaders: { subject: 'Repeated open' },
+    },
+    open: {
+      timestamp,
+    },
+  }),
+  Timestamp: timestamp,
+  SignatureVersion: '1',
+  Signature: 'ignored',
+  SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
+});
+
 describe('webhooks ingestion', () => {
   it('returns 400 for invalid JSON', async () => {
     const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
@@ -151,9 +173,38 @@ describe('webhooks ingestion', () => {
     expect(response2.status).toBe(200);
 
     events = await env.DB.prepare(
-      "SELECT event_type FROM events WHERE ses_message_id = 'ses-multi'",
+      "SELECT event_type, event_at FROM events WHERE ses_message_id = 'ses-multi'",
     ).all();
     expect(events.results).toHaveLength(4);
+    expect(events.results).toContainEqual(
+      expect.objectContaining({
+        event_type: 'Open',
+        event_at: Date.parse('2025-01-01T00:00:05.000Z'),
+      }),
+    );
+  });
+
+  it('stores repeated open events at their open timestamps', async () => {
+    for (const snsMessage of [
+      buildOpenNotification('sns-open-1', '2025-01-01T00:00:05.000Z'),
+      buildOpenNotification('sns-open-2', '2025-01-01T00:00:10.000Z'),
+    ]) {
+      const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+        method: 'POST',
+        body: JSON.stringify(snsMessage),
+        headers: { 'content-type': 'application/json' },
+      });
+      expect(response.status).toBe(200);
+    }
+
+    const events = await env.DB.prepare(
+      "SELECT event_at FROM events WHERE ses_message_id = 'ses-open-repeat' ORDER BY event_at",
+    ).all();
+
+    expect(events.results).toEqual([
+      { event_at: Date.parse('2025-01-01T00:00:05.000Z') },
+      { event_at: Date.parse('2025-01-01T00:00:10.000Z') },
+    ]);
   });
 
   it('acknowledges ignored event types without storing them', async () => {

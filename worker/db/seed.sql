@@ -11,8 +11,7 @@ INSERT OR IGNORE INTO messages (
   source_email,
   subject,
   sent_at,
-  mail_metadata,
-  events_count
+  mail_metadata
 )
 SELECT
   id,
@@ -20,8 +19,7 @@ SELECT
   'hello@example.com',
   'Welcome to BetaList',
   unixepoch('now', '-5 minutes') * 1000,
-  '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}',
-  3
+  '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -31,8 +29,7 @@ INSERT OR IGNORE INTO messages (
   source_email,
   subject,
   sent_at,
-  mail_metadata,
-  events_count
+  mail_metadata
 )
 SELECT
   id,
@@ -40,8 +37,7 @@ SELECT
   'hello@example.com',
   'Your weekly product updates',
   unixepoch('now', '-1 hour') * 1000,
-  '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}',
-  4
+  '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -51,8 +47,7 @@ INSERT OR IGNORE INTO messages (
   source_email,
   subject,
   sent_at,
-  mail_metadata,
-  events_count
+  mail_metadata
 )
 SELECT
   id,
@@ -60,8 +55,7 @@ SELECT
   'hello@example.com',
   'Confirm your email to stay on BetaList',
   unixepoch('now', '-3 hours') * 1000,
-  '{"destination":["sam@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}',
-  2
+  '{"destination":["sam@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -71,8 +65,7 @@ INSERT OR IGNORE INTO messages (
   source_email,
   subject,
   sent_at,
-  mail_metadata,
-  events_count
+  mail_metadata
 )
 SELECT
   id,
@@ -80,8 +73,7 @@ SELECT
   'hello@example.com',
   'You are invited: early access',
   unixepoch('now', '-1 day') * 1000,
-  '{"destination":["taylor@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}',
-  2
+  '{"destination":["taylor@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -91,8 +83,7 @@ INSERT OR IGNORE INTO messages (
   source_email,
   subject,
   sent_at,
-  mail_metadata,
-  events_count
+  mail_metadata
 )
 SELECT
   id,
@@ -100,8 +91,7 @@ SELECT
   'hello@example.com',
   'We shipped new features',
   unixepoch('now', '-2 days') * 1000,
-  '{"destination":["jordan@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}',
-  5
+  '{"destination":["jordan@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -111,8 +101,7 @@ INSERT OR IGNORE INTO messages (
   source_email,
   subject,
   sent_at,
-  mail_metadata,
-  events_count
+  mail_metadata
 )
 SELECT
   id,
@@ -120,8 +109,7 @@ SELECT
   'hello@example.com',
   'Thanks for the feedback',
   unixepoch('now', '-7 days') * 1000,
-  '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}',
-  3
+  '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -131,8 +119,7 @@ INSERT OR IGNORE INTO messages (
   source_email,
   subject,
   sent_at,
-  mail_metadata,
-  events_count
+  mail_metadata
 )
 SELECT
   id,
@@ -140,8 +127,7 @@ SELECT
   'hello@example.com',
   'Last chance to claim your invite',
   unixepoch('now', '-14 days') * 1000,
-  '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}',
-  5
+  '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -370,25 +356,10 @@ SELECT id,
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7';
 
--- Ensure message counts stay correct across re-runs
-UPDATE messages
-SET events_count = (
-  SELECT COUNT(*) FROM events WHERE events.message_id = messages.id
-)
-WHERE ses_message_id IN (
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1',
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2',
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3',
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4',
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5',
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6',
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7'
-);
-
 COMMIT;
 
 -- Quick summary for local verification
 SELECT id, name, token, color FROM sources WHERE token = 'seed-betalist';
-SELECT ses_message_id, subject, events_count FROM messages
+SELECT ses_message_id, subject FROM messages
 WHERE ses_message_id LIKE '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a%'
 ORDER BY sent_at DESC;

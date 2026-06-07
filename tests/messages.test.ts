@@ -24,7 +24,6 @@ beforeEach(async () => {
         'ses:configuration-set': 'ignore-me',
       },
     },
-    events_count: 2,
   });
   await insertEvent({
     message_id: 1,

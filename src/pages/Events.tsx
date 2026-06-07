@@ -426,10 +426,12 @@ export default function EventsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
-                        to="/messages/$sesMessageId"
-                        params={{ sesMessageId: event.ses_message_id }}
+                        to="/s/$sourceId/messages/$sesMessageId"
+                        params={{
+                          sourceId: sourceId.toString(),
+                          sesMessageId: event.ses_message_id,
+                        }}
                         search={{
-                          sourceId: sourceId ?? undefined,
                           search,
                           event_types: selectedEventTypes,
                           bounce_types: selectedBounceTypes,

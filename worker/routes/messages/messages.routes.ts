@@ -29,7 +29,6 @@ const messageSchema = z.object({
   sent_at: z.number().nullable(),
   tags: z.array(z.string()),
   mail_metadata: z.record(z.string(), z.any()),
-  events_count: z.number(),
   events: z.array(eventSchema),
 });
 

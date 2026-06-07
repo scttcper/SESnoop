@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 
@@ -112,7 +112,12 @@ async function findOrCreateMessage(
   }
 
   const message = await db.query.messages.findFirst({
-    where: eq(messages.ses_message_id, eventPayload.messageId!),
+    where(fields, operators) {
+      return operators.and(
+        operators.eq(fields.source_id, source.id),
+        operators.eq(fields.ses_message_id, eventPayload.messageId!),
+      );
+    },
   });
 
   if (!message) {
@@ -127,13 +132,13 @@ async function insertEvents(
   message: Message,
   webhook: Webhook,
   eventPayload: EventPayload,
-): Promise<number> {
+): Promise<void> {
   const recipients = normalizeRecipients(eventPayload.recipients);
   if (recipients.length === 0) {
-    return 0;
+    return;
   }
 
-  const insertedEvents = await db
+  await db
     .insert(events)
     .values(
       recipients.map((recipient) => ({
@@ -150,18 +155,6 @@ async function insertEvents(
     )
     .onConflictDoNothing()
     .returning({ id: events.id });
-
-  return insertedEvents.length;
-}
-
-async function updateMessageEventCount(db: Db, messageId: number, delta: number): Promise<void> {
-  if (delta <= 0) {
-    return;
-  }
-  await db
-    .update(messages)
-    .set({ events_count: sql`${messages.events_count} + ${delta}` })
-    .where(eq(messages.id, messageId));
 }
 
 async function markWebhookProcessed(db: Db, webhookId: number): Promise<void> {
@@ -182,8 +175,7 @@ async function ingestNotification(
   }
 
   const message = await findOrCreateMessage(db, source, eventPayload);
-  const insertedCount = await insertEvents(db, message, webhook, eventPayload);
-  await updateMessageEventCount(db, message.id, insertedCount);
+  await insertEvents(db, message, webhook, eventPayload);
   await markWebhookProcessed(db, webhook.id);
 }
 

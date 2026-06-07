@@ -40,19 +40,17 @@ export const insertMessage = async (overrides: {
   source_email?: string | null;
   sent_at?: number | null;
   mail_metadata?: Record<string, unknown>;
-  events_count?: number;
 }) => {
   const id = overrides.id ?? 1;
   const subject = overrides.subject ?? null;
   const sourceEmail = overrides.source_email ?? null;
   const sentAt = overrides.sent_at ?? null;
   const mailMetadata = JSON.stringify(overrides.mail_metadata ?? {});
-  const eventsCount = overrides.events_count ?? 0;
 
   await env.DB.prepare(
     `INSERT INTO messages
-     (id, source_id, ses_message_id, source_email, subject, sent_at, mail_metadata, events_count, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch() * 1000, unixepoch() * 1000)`,
+     (id, source_id, ses_message_id, source_email, subject, sent_at, mail_metadata, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch() * 1000, unixepoch() * 1000)`,
   )
     .bind(
       id,
@@ -62,7 +60,6 @@ export const insertMessage = async (overrides: {
       subject,
       sentAt,
       mailMetadata,
-      eventsCount,
     )
     .run();
 

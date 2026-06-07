@@ -1,12 +1,12 @@
 import { Separator } from '@base-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, getRouteApi } from '@tanstack/react-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { messageQueryOptions, sourcesQueryOptions } from '../lib/queries';
+import { messageQueryOptions } from '../lib/queries';
 
-const routeApi = getRouteApi('/app/messages/$sesMessageId');
+const routeApi = getRouteApi('/app/s/$sourceId/messages/$sesMessageId');
 
 const RECIPIENT_SKELETON_ROWS = ['recipient-1', 'recipient-2', 'recipient-3', 'recipient-4'];
 const TIMELINE_SKELETON_ITEMS = ['timeline-1', 'timeline-2', 'timeline-3'];
@@ -26,25 +26,12 @@ const eventBadgeClassName = (eventType: string) =>
   eventBadgeClassNames[eventType] ?? 'border-white/10 bg-white/5 text-white/60';
 
 export default function MessageDetailPage() {
-  const { sesMessageId } = routeApi.useParams();
+  const { sourceId: sourceIdStr, sesMessageId } = routeApi.useParams();
   const searchParams = routeApi.useSearch();
-  const navigate = routeApi.useNavigate();
+  const sourceId = Number(sourceIdStr);
 
-  const [sourceId, setSourceId] = useState<number | null>(searchParams.sourceId ?? null);
   const [toCopied, setToCopied] = useState(false);
   const toCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const { data: sources = [] } = useQuery(sourcesQueryOptions);
-
-  // Initialize sourceId from first source if not provided in URL
-  useEffect(() => {
-    if (!sourceId && sources.length > 0) {
-      const firstSourceId = sources[0].id;
-      setSourceId(firstSourceId);
-      // Update URL with the selected sourceId
-      navigate({ search: { sourceId: firstSourceId }, replace: true });
-    }
-  }, [sources, sourceId, navigate]);
 
   const {
     data: message,
@@ -106,23 +93,14 @@ export default function MessageDetailPage() {
           </h1>
         </div>
         <div className="topbar-actions">
-          {sourceId ? (
-            <Link
-              to="/s/$sourceId/events"
-              params={{ sourceId: sourceId.toString() }}
-              search={backToEventsSearch}
-              className="rounded-md border border-white/10 px-3 py-2 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"
-            >
-              Back to events
-            </Link>
-          ) : (
-            <Link
-              to="/sources"
-              className="rounded-md border border-white/10 px-3 py-2 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"
-            >
-              Back to events
-            </Link>
-          )}
+          <Link
+            to="/s/$sourceId/events"
+            params={{ sourceId: sourceId.toString() }}
+            search={backToEventsSearch}
+            className="rounded-md border border-white/10 px-3 py-2 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            Back to events
+          </Link>
         </div>
       </header>
 
@@ -336,7 +314,7 @@ export default function MessageDetailPage() {
               <h2 className="text-lg font-semibold text-white">Event timeline</h2>
               {message ? (
                 <span className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">
-                  {message.events_count} events
+                  {message.events.length} events
                 </span>
               ) : null}
             </div>

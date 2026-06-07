@@ -167,7 +167,6 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
       sent_at: message.sent_at?.getTime() ?? null,
       tags: normalizeTags(mailMetadata),
       mail_metadata: mailMetadata,
-      events_count: message.events_count,
       events: messageEvents.map((event) => ({
         id: event.id,
         event_type: event.event_type,

@@ -47,7 +47,6 @@ export const messages = sqliteTable(
     mail_metadata: text({ mode: 'json' })
       .notNull()
       .default(sql`'{}'`),
-    events_count: integer({ mode: 'number' }).notNull().default(0),
     created_at: timestampMs('created_at'),
     updated_at: timestampMs('updated_at'),
   },
@@ -114,7 +113,7 @@ export const events = sqliteTable(
       table.recipient_email,
       table.event_at,
     ),
-    // Message detail + event count: WHERE message_id = ? ORDER BY event_at DESC.
+    // Message detail: WHERE message_id = ? ORDER BY event_at DESC.
     // Also supports the join path from messages for events list/overview queries.
     messageIdEventAtIndex: index('events_message_id_event_at_index').on(
       table.message_id,

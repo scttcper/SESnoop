@@ -162,7 +162,6 @@ const sourceDashboardRoute = createRoute({
 });
 
 const messageDetailSearchSchema = z.object({
-  sourceId: z.number().optional().catch(undefined),
   search: z.string().optional().catch(undefined),
   event_types: z.array(z.string()).optional().catch(undefined),
   bounce_types: z.array(z.string()).optional().catch(undefined),
@@ -174,9 +173,9 @@ const messageDetailSearchSchema = z.object({
 
 export type MessageDetailSearchParams = z.infer<typeof messageDetailSearchSchema>;
 
-const messageDetailRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/messages/$sesMessageId',
+const sourceMessageDetailRoute = createRoute({
+  getParentRoute: () => sourceMonitorRoute,
+  path: 'messages/$sesMessageId',
   validateSearch: zodValidator(messageDetailSearchSchema),
   component: MessageDetailPage,
   head: ({ params }) => ({
@@ -219,8 +218,8 @@ const routeTree = rootRoute.addChildren([
       sourceSettingsRoute,
       sourceSetupRoute,
       sourceDashboardRoute,
+      sourceMessageDetailRoute,
     ]),
-    messageDetailRoute,
     eventsRedirectRoute,
     setupRedirectRoute,
   ]),

@@ -65,12 +65,9 @@ describe('webhooks ingestion', () => {
     });
     expect(secondResponse.status).toBe(200);
 
-    const messages = await env.DB.prepare(
-      'SELECT ses_message_id, events_count FROM messages',
-    ).all();
+    const messages = await env.DB.prepare('SELECT ses_message_id FROM messages').all();
     expect(messages.results).toHaveLength(1);
     expect(messages.results[0]?.ses_message_id).toBe('ses-123');
-    expect(messages.results[0]?.events_count).toBe(1);
 
     const events = await env.DB.prepare('SELECT recipient_email, bounce_type FROM events').all();
     expect(events.results).toHaveLength(1);
@@ -82,7 +79,7 @@ describe('webhooks ingestion', () => {
     expect(webhooks.results[0]?.processed_at).toBeTruthy();
   });
 
-  it('increments events_count correctly with multiple recipients and duplicates', async () => {
+  it('creates events for multiple notifications and recipients', async () => {
     const eventPayload = {
       eventType: 'Delivery',
       mail: {
@@ -115,11 +112,10 @@ describe('webhooks ingestion', () => {
     });
     expect(response1.status).toBe(200);
 
-    // Check 3 events created, events_count = 3
-    let messages = await env.DB.prepare(
-      "SELECT events_count FROM messages WHERE ses_message_id = 'ses-multi'",
+    let events = await env.DB.prepare(
+      "SELECT event_type FROM events WHERE ses_message_id = 'ses-multi'",
     ).all();
-    expect(messages.results[0]?.events_count).toBe(3);
+    expect(events.results).toHaveLength(3);
 
     // Send a second notification for same message with overlapping recipients
     const eventPayload2 = {
@@ -154,13 +150,7 @@ describe('webhooks ingestion', () => {
     });
     expect(response2.status).toBe(200);
 
-    // Should now have 4 events (3 deliveries + 1 open)
-    messages = await env.DB.prepare(
-      "SELECT events_count FROM messages WHERE ses_message_id = 'ses-multi'",
-    ).all();
-    expect(messages.results[0]?.events_count).toBe(4);
-
-    const events = await env.DB.prepare(
+    events = await env.DB.prepare(
       "SELECT event_type FROM events WHERE ses_message_id = 'ses-multi'",
     ).all();
     expect(events.results).toHaveLength(4);

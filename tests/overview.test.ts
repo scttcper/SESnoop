@@ -15,7 +15,6 @@ beforeEach(async () => {
     source_id: 1,
     ses_message_id: 'ses-1',
     subject: 'Hello world',
-    events_count: 6,
   });
   await insertEvent({
     message_id: 1,

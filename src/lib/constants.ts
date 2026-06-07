@@ -7,17 +7,19 @@
 export const EVENT_TYPES = [
   'Send',
   'Delivery',
-  'Bounce',
-  'Complaint',
-  'Reject',
-  'DeliveryDelay',
-  'RenderingFailure',
-  'Subscription',
   'Open',
   'Click',
+  'Bounce',
+  'Complaint',
+  'DeliveryDelay',
+  'Reject',
+  'RenderingFailure',
+  'Subscription',
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
+
+export const DEFAULT_EVENT_TYPES: readonly EventType[] = ['Send'];
 
 // Bounce types from SES notifications
 export const BOUNCE_TYPES = ['Permanent', 'Transient', 'Undetermined'] as const;

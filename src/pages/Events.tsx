@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams, getRouteApi } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useParams, getRouteApi, useNavigate } from '@tanstack/react-router';
+import { ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '../components/ui/button';
@@ -18,8 +19,133 @@ import type { EventsSearchParams } from '../router';
 const routeApi = getRouteApi('/app/s/$sourceId/events');
 
 const EVENT_SKELETON_ROWS = ['event-1', 'event-2', 'event-3', 'event-4', 'event-5', 'event-6'];
+const GRAVATAR_HASH_CACHE = new Map<string, Promise<string> | string>();
 
 const formatDateTime = (value: number) => new Date(value).toLocaleString();
+
+const formatEventTime = (value: number) =>
+  new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value));
+
+const eventBadgeClassNames: Record<string, string> = {
+  Bounce: 'border-red-500/20 bg-red-500/10 text-red-300',
+  Complaint: 'border-orange-500/20 bg-orange-500/10 text-orange-300',
+  Delivery: 'border-green-500/20 bg-green-500/10 text-green-300',
+  Send: 'border-blue-500/20 bg-blue-500/10 text-blue-300',
+};
+
+const eventBadgeClassName = (eventType: string) =>
+  eventBadgeClassNames[eventType] ?? 'border-white/10 bg-white/5 text-white/70';
+
+const RECIPIENT_AVATAR_CLASSES = [
+  'bg-blue-500/15 text-blue-200 ring-blue-400/20',
+  'bg-emerald-500/15 text-emerald-200 ring-emerald-400/20',
+  'bg-amber-500/15 text-amber-200 ring-amber-400/20',
+  'bg-fuchsia-500/15 text-fuchsia-200 ring-fuchsia-400/20',
+  'bg-cyan-500/15 text-cyan-200 ring-cyan-400/20',
+  'bg-rose-500/15 text-rose-200 ring-rose-400/20',
+];
+
+const hashString = (value: string) => {
+  let hash = 0;
+  for (const character of value) {
+    hash = (Math.imul(hash, 31) + character.charCodeAt(0)) % Number.MAX_SAFE_INTEGER;
+  }
+  return Math.abs(hash);
+};
+
+const recipientAvatarClassName = (email: string) =>
+  RECIPIENT_AVATAR_CLASSES[hashString(email.toLowerCase()) % RECIPIENT_AVATAR_CLASSES.length];
+
+const recipientInitial = (email: string) => email.trim().charAt(0).toUpperCase() || '?';
+
+const createGravatarHash = async (email: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !window.crypto?.subtle) {
+    return null;
+  }
+
+  const cachedHash = GRAVATAR_HASH_CACHE.get(normalizedEmail);
+  if (typeof cachedHash === 'string') {
+    return cachedHash;
+  }
+  if (cachedHash) {
+    return cachedHash;
+  }
+
+  const hashPromise = window.crypto.subtle
+    .digest('SHA-256', new TextEncoder().encode(normalizedEmail))
+    .then((hashBuffer) =>
+      [...new Uint8Array(hashBuffer)].map((byte) => byte.toString(16).padStart(2, '0')).join(''),
+    );
+
+  GRAVATAR_HASH_CACHE.set(normalizedEmail, hashPromise);
+
+  try {
+    const hash = await hashPromise;
+    GRAVATAR_HASH_CACHE.set(normalizedEmail, hash);
+    return hash;
+  } catch (error) {
+    GRAVATAR_HASH_CACHE.delete(normalizedEmail);
+    throw error;
+  }
+};
+
+const gravatarUrl = (hash: string) => `https://gravatar.com/avatar/${hash}?s=48&d=404`;
+
+function RecipientAvatar({ email }: { email: string }) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    setAvatarUrl(null);
+    setImageFailed(false);
+
+    createGravatarHash(email)
+      .then((hash) => {
+        if (isCurrent && hash) {
+          setAvatarUrl(gravatarUrl(hash));
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setImageFailed(true);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [email]);
+
+  const showImage = avatarUrl && !imageFailed;
+
+  return (
+    <span
+      className={`relative inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ${recipientAvatarClassName(email)}`}
+      aria-hidden="true"
+    >
+      <span className="text-[10px] font-semibold">{recipientInitial(email)}</span>
+      {showImage ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          className="absolute inset-0 size-full rounded-full object-cover"
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setImageFailed(true)}
+        />
+      ) : null}
+    </span>
+  );
+}
 
 const escapeCsvCell = (value: string | number | null | undefined) => {
   if (value === null || value === undefined) {
@@ -54,6 +180,7 @@ export default function EventsPage() {
 
   const searchParams = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
+  const detailNavigate = useNavigate();
 
   const search = searchParams.search;
   const selectedEventTypes = searchParams.event_types;
@@ -108,6 +235,19 @@ export default function EventsPage() {
     params.set('page', page.toString());
     return params.toString();
   }, [filterQueryString, page]);
+
+  const detailSearch = useMemo(
+    () => ({
+      search,
+      event_types: selectedEventTypes,
+      bounce_types: selectedBounceTypes,
+      date_range: datePreset,
+      from,
+      to,
+      page,
+    }),
+    [datePreset, from, page, search, selectedBounceTypes, selectedEventTypes, to],
+  );
 
   const {
     data: eventsResponse,
@@ -190,6 +330,32 @@ export default function EventsPage() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const openEventDetail = (event: EventRow) => {
+    if (!sourceId) {
+      return;
+    }
+
+    detailNavigate({
+      to: '/s/$sourceId/messages/$sesMessageId',
+      params: {
+        sourceId: sourceId.toString(),
+        sesMessageId: event.ses_message_id,
+      },
+      search: detailSearch,
+    });
+  };
+
+  const handleEventRowKeyDown = (
+    keyboardEvent: KeyboardEvent<HTMLTableRowElement>,
+    event: EventRow,
+  ) => {
+    if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') {
+      return;
+    }
+    keyboardEvent.preventDefault();
+    openEventDetail(event);
   };
 
   const totalLabel = pagination ? `${pagination.total} events` : '—';
@@ -368,14 +534,23 @@ export default function EventsPage() {
             </Button>
           </div>
           <div className="min-h-[320px] overflow-hidden rounded-lg border border-white/10">
-            <table className="w-full text-left text-sm">
+            <table className="w-full table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-28" />
+                <col className="w-56" />
+                <col />
+                <col className="w-36" />
+                <col className="w-8" />
+              </colgroup>
               <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Event</th>
-                  <th className="px-4 py-3 font-semibold">Recipient</th>
-                  <th className="px-4 py-3 font-semibold">Subject</th>
-                  <th className="px-4 py-3 font-semibold">Time</th>
-                  <th className="px-4 py-3 text-right font-semibold">Action</th>
+                  <th className="px-4 py-3 font-semibold tracking-wide whitespace-nowrap">Event</th>
+                  <th className="px-4 py-3 font-semibold tracking-wide">Recipient</th>
+                  <th className="px-4 py-3 font-semibold tracking-wide">Subject</th>
+                  <th className="px-3 py-3 text-right font-semibold tracking-wide">Time</th>
+                  <th className="px-2 py-3">
+                    <span className="sr-only">Open event</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 bg-white/[0.02]">
@@ -398,60 +573,77 @@ export default function EventsPage() {
                         <td className="px-4 py-3">
                           <div className="h-4 w-56 rounded bg-white/10" />
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="h-4 w-24 rounded bg-white/10" />
+                        <td className="px-3 py-3 text-right">
+                          <div className="ml-auto h-4 w-20 rounded bg-white/10" />
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="ml-auto h-4 w-12 rounded bg-white/10" />
+                        <td className="px-2 py-3">
+                          <div className="h-4 w-4 rounded bg-white/10" />
                         </td>
                       </tr>
                     ))
                   : null}
-                {events.map((event: EventRow) => (
-                  <tr key={event.id} className="transition-colors hover:bg-white/5">
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-                          event.event_type === 'Bounce'
-                            ? 'bg-red-500/10 text-red-400'
-                            : event.event_type === 'Complaint'
-                              ? 'bg-orange-500/10 text-orange-400'
-                              : event.event_type === 'Delivery'
-                                ? 'bg-green-500/10 text-green-400'
-                                : 'bg-white/10 text-white'
-                        } `}
-                      >
-                        {event.event_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white">{event.recipient_email || '—'}</td>
-                    <td className="px-4 py-3 text-white/70">{event.message_subject || '—'}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-white/60">
-                      {formatDateTime(event.event_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        to="/s/$sourceId/messages/$sesMessageId"
-                        params={{
-                          sourceId: sourceId.toString(),
-                          sesMessageId: event.ses_message_id,
-                        }}
-                        search={{
-                          search,
-                          event_types: selectedEventTypes,
-                          bounce_types: selectedBounceTypes,
-                          date_range: datePreset,
-                          from,
-                          to,
-                          page,
-                        }}
-                        className="text-xs font-medium text-blue-400 transition-colors hover:text-blue-300"
-                      >
-                        Details
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {events.map((event: EventRow) => {
+                  const recipientEmail = event.recipient_email || 'Unknown recipient';
+                  const messageSubject = event.message_subject || '[no subject]';
+                  const bounceType = event.bounce_type;
+
+                  return (
+                    <tr
+                      key={event.id}
+                      tabIndex={0}
+                      role="link"
+                      aria-label={`Open ${event.event_type} event for ${recipientEmail}`}
+                      className="group cursor-pointer transition-colors hover:bg-white/[0.04] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30"
+                      onClick={() => openEventDetail(event)}
+                      onKeyDown={(keyboardEvent) => handleEventRowKeyDown(keyboardEvent, event)}
+                    >
+                      <td className="px-4 py-2.5 align-middle">
+                        <div className="flex min-w-0 flex-col items-start gap-1">
+                          <span
+                            className={`inline-flex max-w-full items-center rounded-sm border px-1.5 py-0.5 text-xs font-semibold ${eventBadgeClassName(event.event_type)}`}
+                          >
+                            <span className="truncate">{event.event_type}</span>
+                          </span>
+                          {bounceType ? (
+                            <span className="max-w-full truncate text-xs text-white/35">
+                              {bounceType}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 align-middle">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <RecipientAvatar email={recipientEmail} />
+                          <span className="min-w-0 truncate font-medium text-white">
+                            {recipientEmail}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 align-middle">
+                        <div className="min-w-0">
+                          <span className="block truncate text-white/75" title={messageSubject}>
+                            {messageSubject}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-right align-middle">
+                        <time
+                          className="block font-mono text-xs whitespace-nowrap text-white/55 tabular-nums"
+                          dateTime={new Date(event.event_at).toISOString()}
+                          title={formatDateTime(event.event_at)}
+                        >
+                          {formatEventTime(event.event_at)}
+                        </time>
+                      </td>
+                      <td className="px-2 py-2.5 align-middle text-white/25">
+                        <ChevronRight
+                          className="size-4 transition-colors group-hover:text-white/55"
+                          aria-hidden="true"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

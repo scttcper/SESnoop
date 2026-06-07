@@ -13,7 +13,7 @@ import { Suspense } from 'react';
 import { z } from 'zod';
 
 import { AuthError, getSession } from './lib/auth';
-import { DEFAULT_DATE_RANGE, DEFAULT_PAGE } from './lib/constants';
+import { DEFAULT_DATE_RANGE, DEFAULT_EVENT_TYPES, DEFAULT_PAGE } from './lib/constants';
 
 const AppLayout = lazyRouteComponent(() => import('./components/layout/AppLayout'), 'AppLayout');
 const DashboardPage = lazyRouteComponent(() => import('./pages/Dashboard'));
@@ -119,7 +119,9 @@ const sourceMonitorRoute = createRoute({
 
 const eventsSearchSchema = z.object({
   search: fallback(z.string(), '').default(''),
-  event_types: fallback(z.array(z.string()), []).default([]),
+  event_types: fallback(z.array(z.string()), [...DEFAULT_EVENT_TYPES]).default([
+    ...DEFAULT_EVENT_TYPES,
+  ]),
   bounce_types: fallback(z.array(z.string()), []).default([]),
   date_range: fallback(z.string(), DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
   from: fallback(z.string(), '').default(''),

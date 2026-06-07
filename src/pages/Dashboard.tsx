@@ -228,27 +228,16 @@ function SummarySection({
       {overview ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <span className="mb-2 block text-xs font-semibold tracking-wider text-white/40 uppercase">
-                  Sent
-                </span>
-                <span className="font-display block text-3xl leading-none font-medium text-blue-300">
-                  {format.integer(overview.metrics.sent)}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+              <div className="min-w-0">
+                <span className="block text-sm font-medium text-white/70">Sent</span>
+                <span className="mt-1 block truncate text-sm leading-snug whitespace-nowrap text-white/45">
+                  {format.integer(overview.metrics.sent_today)} today
                 </span>
               </div>
-              <span className="rounded-md border border-blue-300/15 bg-blue-300/10 px-2.5 py-1 text-right">
-                <span className="block text-[10px] leading-none font-semibold tracking-wider text-blue-100/45 uppercase">
-                  Today
-                </span>
-                <span className="mt-1 block font-mono text-sm leading-none text-blue-100">
-                  {format.integer(overview.metrics.sent_today)}
-                </span>
+              <span className="font-display shrink-0 text-right text-3xl leading-none font-medium text-blue-300">
+                {format.integer(overview.metrics.sent)}
               </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-white/45">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-300/80" />
-              <span>{format.integer(overview.metrics.delivered)} delivered in range</span>
             </div>
           </div>
 

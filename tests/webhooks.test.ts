@@ -135,7 +135,10 @@ describe('webhooks ingestion', () => {
     expect(response1.status).toBe(200);
 
     let events = await env.DB.prepare(
-      "SELECT event_type FROM events WHERE ses_message_id = 'ses-multi'",
+      `SELECT events.event_type
+       FROM events
+       INNER JOIN messages ON events.message_id = messages.id
+       WHERE messages.ses_message_id = 'ses-multi'`,
     ).all();
     expect(events.results).toHaveLength(3);
 
@@ -173,7 +176,10 @@ describe('webhooks ingestion', () => {
     expect(response2.status).toBe(200);
 
     events = await env.DB.prepare(
-      "SELECT event_type, event_at FROM events WHERE ses_message_id = 'ses-multi'",
+      `SELECT events.event_type, events.event_at
+       FROM events
+       INNER JOIN messages ON events.message_id = messages.id
+       WHERE messages.ses_message_id = 'ses-multi'`,
     ).all();
     expect(events.results).toHaveLength(4);
     expect(events.results).toContainEqual(
@@ -198,7 +204,11 @@ describe('webhooks ingestion', () => {
     }
 
     const events = await env.DB.prepare(
-      "SELECT event_at FROM events WHERE ses_message_id = 'ses-open-repeat' ORDER BY event_at",
+      `SELECT events.event_at
+       FROM events
+       INNER JOIN messages ON events.message_id = messages.id
+       WHERE messages.ses_message_id = 'ses-open-repeat'
+       ORDER BY events.event_at`,
     ).all();
 
     expect(events.results).toEqual([

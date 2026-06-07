@@ -1,0 +1,1 @@
+ALTER TABLE `events` DROP COLUMN `ses_message_id`;

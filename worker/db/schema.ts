@@ -1,5 +1,5 @@
 import { z } from '@hono/zod-openapi';
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 import { SOURCE_COLORS } from '../lib/constants';
@@ -91,7 +91,6 @@ export const events = sqliteTable(
     event_type: text().notNull(),
     recipient_email: text().notNull(),
     event_at: timestampMsNullable('event_at').notNull(),
-    ses_message_id: text().notNull(),
     event_data: text({ mode: 'json' })
       .notNull()
       .default(sql`'{}'`),
@@ -118,33 +117,6 @@ export const events = sqliteTable(
     ),
   }),
 );
-
-export const sourcesRelations = relations(sources, ({ many }) => ({
-  messages: many(messages),
-}));
-
-export const messagesRelations = relations(messages, ({ one, many }) => ({
-  source: one(sources, {
-    fields: [messages.source_id],
-    references: [sources.id],
-  }),
-  events: many(events),
-}));
-
-export const eventsRelations = relations(events, ({ one }) => ({
-  message: one(messages, {
-    fields: [events.message_id],
-    references: [messages.id],
-  }),
-  webhook: one(webhooks, {
-    fields: [events.webhook_id],
-    references: [webhooks.id],
-  }),
-}));
-
-export const webhooksRelations = relations(webhooks, ({ many }) => ({
-  events: many(events),
-}));
 
 const retentionDaysSchema = z.preprocess(
   (value) => (value === null ? undefined : value),

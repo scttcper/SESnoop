@@ -21,21 +21,18 @@ beforeEach(async () => {
     event_type: 'Send',
     recipient_email: 'a@example.com',
     event_at: rangeDate,
-    ses_message_id: 'ses-1',
   });
   await insertEvent({
     message_id: 1,
     event_type: 'Delivery',
     recipient_email: 'a@example.com',
     event_at: rangeDate + 1000,
-    ses_message_id: 'ses-1',
   });
   await insertEvent({
     message_id: 1,
     event_type: 'Bounce',
     recipient_email: 'a@example.com',
     event_at: rangeDate + 2000,
-    ses_message_id: 'ses-1',
     bounce_type: 'Permanent',
   });
   await insertEvent({
@@ -43,28 +40,24 @@ beforeEach(async () => {
     event_type: 'Complaint',
     recipient_email: 'a@example.com',
     event_at: rangeDate + 3000,
-    ses_message_id: 'ses-1',
   });
   await insertEvent({
     message_id: 1,
     event_type: 'Open',
     recipient_email: 'a@example.com',
     event_at: rangeDate + 4000,
-    ses_message_id: 'ses-1',
   });
   await insertEvent({
     message_id: 1,
     event_type: 'Open',
     recipient_email: 'a@example.com',
     event_at: rangeDate + 5000,
-    ses_message_id: 'ses-1',
   });
   await insertEvent({
     message_id: 1,
     event_type: 'Click',
     recipient_email: 'a@example.com',
     event_at: rangeDate + 6000,
-    ses_message_id: 'ses-1',
   });
 });
 
@@ -131,21 +124,18 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'a@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Delivery',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 1000,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Open',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 2000,
-      ses_message_id: 'ses-1',
     });
 
     // Message 2: sent but bounced (not delivered)
@@ -155,14 +145,12 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'b@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-2',
     });
     await insertEvent({
       message_id: 2,
       event_type: 'Bounce',
       recipient_email: 'b@example.com',
       event_at: rangeDate + 1000,
-      ses_message_id: 'ses-2',
       bounce_type: 'Permanent',
     });
 
@@ -188,14 +176,12 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'a@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Delivery',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 1000,
-      ses_message_id: 'ses-1',
     });
     // Same recipient opens the same email 3 times
     await insertEvent({
@@ -203,21 +189,18 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Open',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 2000,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Open',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 3000,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Open',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 4000,
-      ses_message_id: 'ses-1',
     });
 
     const response = await SELF.fetch(
@@ -241,21 +224,18 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'a@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Delivery',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 1000,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Open',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 2000,
-      ses_message_id: 'ses-1',
     });
 
     // Recipient B
@@ -264,21 +244,18 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'b@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Delivery',
       recipient_email: 'b@example.com',
       event_at: rangeDate + 1000,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Open',
       recipient_email: 'b@example.com',
       event_at: rangeDate + 2000,
-      ses_message_id: 'ses-1',
     });
 
     const response = await SELF.fetch(
@@ -303,21 +280,18 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'a@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Delivery',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 1000,
-      ses_message_id: 'ses-1',
     });
     await insertEvent({
       message_id: 1,
       event_type: 'Click',
       recipient_email: 'a@example.com',
       event_at: rangeDate + 2000,
-      ses_message_id: 'ses-1',
     });
 
     // Message 2: bounced (no delivery)
@@ -327,14 +301,12 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'b@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-2',
     });
     await insertEvent({
       message_id: 2,
       event_type: 'Bounce',
       recipient_email: 'b@example.com',
       event_at: rangeDate + 1000,
-      ses_message_id: 'ses-2',
       bounce_type: 'Permanent',
     });
 
@@ -361,7 +333,6 @@ describe('open rate and click rate calculations', () => {
       event_type: 'Send',
       recipient_email: 'a@example.com',
       event_at: rangeDate,
-      ses_message_id: 'ses-1',
     });
 
     const response = await SELF.fetch(

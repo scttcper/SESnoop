@@ -17,7 +17,7 @@ const eventCount = (eventType: EventType) =>
 
 const uniqueEventCount = (eventType: EventType) =>
   countDistinct(
-    sql`case when ${eq(events.event_type, eventType)} then ${events.recipient_email} || '|' || ${events.ses_message_id} end`,
+    sql`case when ${eq(events.event_type, eventType)} then ${events.recipient_email} || '|' || ${messages.id} end`,
   );
 
 const rate = (numerator: number, denominator: number) =>

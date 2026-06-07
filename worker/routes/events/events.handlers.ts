@@ -149,7 +149,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
       event_type: events.event_type,
       recipient_email: events.recipient_email,
       event_at: events.event_at,
-      ses_message_id: events.ses_message_id,
+      ses_message_id: messages.ses_message_id,
       bounce_type: events.bounce_type,
       message_subject: messages.subject,
     })

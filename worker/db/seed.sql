@@ -132,227 +132,203 @@ FROM sources
 WHERE token = 'seed-betalist';
 
 -- Events for message 1
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Send',
   'alex@example.com',
-  unixepoch('now', '-5 minutes', '+45 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1'
+  unixepoch('now', '-5 minutes', '+45 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Delivery',
   'alex@example.com',
-  unixepoch('now', '-5 minutes', '+120 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1'
+  unixepoch('now', '-5 minutes', '+120 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Open',
   'alex@example.com',
-  unixepoch('now', '-5 minutes', '+300 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1'
+  unixepoch('now', '-5 minutes', '+300 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1';
 
 -- Events for message 2
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Send',
   'priya@example.com',
-  unixepoch('now', '-1 hour', '+45 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2'
+  unixepoch('now', '-1 hour', '+45 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Delivery',
   'priya@example.com',
-  unixepoch('now', '-1 hour', '+120 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2'
+  unixepoch('now', '-1 hour', '+120 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Open',
   'priya@example.com',
-  unixepoch('now', '-1 hour', '+300 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2'
+  unixepoch('now', '-1 hour', '+300 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Click',
   'priya@example.com',
-  unixepoch('now', '-1 hour', '+540 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2'
+  unixepoch('now', '-1 hour', '+540 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2';
 
 -- Events for message 3
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Send',
   'sam@example.com',
-  unixepoch('now', '-3 hours', '+45 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3'
+  unixepoch('now', '-3 hours', '+45 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Delivery',
   'sam@example.com',
-  unixepoch('now', '-3 hours', '+120 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3'
+  unixepoch('now', '-3 hours', '+120 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3';
 
 -- Events for message 4
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id, bounce_type)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, bounce_type)
 SELECT id,
   'Send',
   'taylor@example.com',
   unixepoch('now', '-1 day', '+45 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4',
   NULL
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id, bounce_type)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, bounce_type)
 SELECT id,
   'Bounce',
   'taylor@example.com',
   unixepoch('now', '-1 day', '+120 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4',
   'Permanent'
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4';
 
 -- Events for message 5
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Send',
   'jordan@example.com',
-  unixepoch('now', '-2 days', '+45 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5'
+  unixepoch('now', '-2 days', '+45 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Delivery',
   'jordan@example.com',
-  unixepoch('now', '-2 days', '+120 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5'
+  unixepoch('now', '-2 days', '+120 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Open',
   'jordan@example.com',
-  unixepoch('now', '-2 days', '+300 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5'
+  unixepoch('now', '-2 days', '+300 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Open',
   'jordan@example.com',
-  unixepoch('now', '-2 days', '+540 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5'
+  unixepoch('now', '-2 days', '+540 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Click',
   'jordan@example.com',
-  unixepoch('now', '-2 days', '+900 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5'
+  unixepoch('now', '-2 days', '+900 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5';
 
 -- Events for message 6
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Send',
   'alex@example.com',
-  unixepoch('now', '-7 days', '+45 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6'
+  unixepoch('now', '-7 days', '+45 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Delivery',
   'alex@example.com',
-  unixepoch('now', '-7 days', '+120 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6'
+  unixepoch('now', '-7 days', '+120 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Complaint',
   'alex@example.com',
-  unixepoch('now', '-7 days', '+300 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6'
+  unixepoch('now', '-7 days', '+300 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6';
 
 -- Events for message 7
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Send',
   'priya@example.com',
-  unixepoch('now', '-14 days', '+45 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7'
+  unixepoch('now', '-14 days', '+45 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Delivery',
   'priya@example.com',
-  unixepoch('now', '-14 days', '+120 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7'
+  unixepoch('now', '-14 days', '+120 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Open',
   'priya@example.com',
-  unixepoch('now', '-14 days', '+300 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7'
+  unixepoch('now', '-14 days', '+300 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Click',
   'priya@example.com',
-  unixepoch('now', '-14 days', '+540 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7'
+  unixepoch('now', '-14 days', '+540 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7';
 
-INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at, ses_message_id)
+INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
   'Click',
   'priya@example.com',
-  unixepoch('now', '-14 days', '+900 seconds') * 1000,
-  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7'
+  unixepoch('now', '-14 days', '+900 seconds') * 1000
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7';
 

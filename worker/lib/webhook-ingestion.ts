@@ -89,7 +89,6 @@ async function persistNotification(
           event_type: eventPayload.eventType,
           recipient_email: recipient,
           event_at: eventPayload.timestamp,
-          ses_message_id: eventPayload.messageId,
           event_data: eventPayload.eventData,
           raw_payload: eventPayload.raw,
           bounce_type: eventPayload.bounceType,

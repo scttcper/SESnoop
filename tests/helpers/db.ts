@@ -71,7 +71,6 @@ export const insertEvent = async (overrides: {
   event_type: string;
   recipient_email: string;
   event_at: number;
-  ses_message_id: string;
   bounce_type?: string | null;
 }) => {
   const id = overrides.id ?? null;
@@ -79,8 +78,8 @@ export const insertEvent = async (overrides: {
 
   await env.DB.prepare(
     `INSERT INTO events
-     (id, message_id, event_type, recipient_email, event_at, ses_message_id, bounce_type, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch() * 1000, unixepoch() * 1000)`,
+     (id, message_id, event_type, recipient_email, event_at, bounce_type, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, unixepoch() * 1000, unixepoch() * 1000)`,
   )
     .bind(
       id,
@@ -88,7 +87,6 @@ export const insertEvent = async (overrides: {
       overrides.event_type,
       overrides.recipient_email,
       overrides.event_at,
-      overrides.ses_message_id,
       bounceType,
     )
     .run();

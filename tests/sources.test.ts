@@ -132,14 +132,12 @@ describe('sources routes', () => {
       event_type: 'Delivery',
       recipient_email: 'old@example.com',
       event_at: now - 31 * dayMs,
-      ses_message_id: 'old-message',
     });
     await insertEvent({
       message_id: 2,
       event_type: 'Delivery',
       recipient_email: 'new@example.com',
       event_at: now - dayMs,
-      ses_message_id: 'new-message',
     });
 
     const response = await SELF.fetch('http://example.com/api/sources/1/cleanup', {

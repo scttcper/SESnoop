@@ -30,14 +30,12 @@ beforeEach(async () => {
     event_type: 'Delivery',
     recipient_email: 'a@example.com',
     event_at: firstEventAt,
-    ses_message_id: 'ses-1',
   });
   await insertEvent({
     message_id: 1,
     event_type: 'Open',
     recipient_email: 'a@example.com',
     event_at: secondEventAt,
-    ses_message_id: 'ses-1',
   });
 });
 

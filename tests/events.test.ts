@@ -21,14 +21,12 @@ beforeEach(async () => {
     event_type: 'Delivery',
     recipient_email: 'a@example.com',
     event_at: day,
-    ses_message_id: 'ses-1',
   });
   await insertEvent({
     message_id: 1,
     event_type: 'Bounce',
     recipient_email: 'b@example.com',
     event_at: day + 1000,
-    ses_message_id: 'ses-1',
     bounce_type: 'Permanent',
   });
 });

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import {
   createRootRoute,
   createRoute,
@@ -5,26 +6,30 @@ import {
   Outlet,
   HeadContent,
   Scripts,
+  lazyRouteComponent,
   redirect,
 } from '@tanstack/react-router';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 
-import { AppLayout } from './components/layout/AppLayout';
 import { AuthError, getSession } from './lib/auth';
 import { DEFAULT_DATE_RANGE, DEFAULT_PAGE } from './lib/constants';
-import DashboardPage from './pages/Dashboard';
-import EventsPage from './pages/Events';
-import LoginPage from './pages/Login';
-import MessageDetailPage from './pages/MessageDetail';
-import SourcesPage from './pages/Sources';
-import SourceSettingsPage from './pages/SourceSettings';
-import SourceSetupPage from './pages/SourceSetup';
+
+const AppLayout = lazyRouteComponent(() => import('./components/layout/AppLayout'), 'AppLayout');
+const DashboardPage = lazyRouteComponent(() => import('./pages/Dashboard'));
+const EventsPage = lazyRouteComponent(() => import('./pages/Events'));
+const LoginPage = lazyRouteComponent(() => import('./pages/Login'));
+const MessageDetailPage = lazyRouteComponent(() => import('./pages/MessageDetail'));
+const SourcesPage = lazyRouteComponent(() => import('./pages/Sources'));
+const SourceSettingsPage = lazyRouteComponent(() => import('./pages/SourceSettings'));
+const SourceSetupPage = lazyRouteComponent(() => import('./pages/SourceSetup'));
 
 const RootLayout = () => (
   <>
     <HeadContent />
-    <Outlet />
+    <Suspense fallback={<div className="p-8 text-white/50">Loading...</div>}>
+      <Outlet />
+    </Suspense>
     <Scripts />
   </>
 );

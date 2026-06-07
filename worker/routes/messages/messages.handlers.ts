@@ -4,121 +4,15 @@ import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 import { createDb } from '../../db';
 import { events } from '../../db/schema';
+import {
+  extractDestinations,
+  extractEventDetail,
+  normalizeMailTags,
+  toRecord,
+} from '../../lib/event-payload';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetOneRoute } from './messages.routes';
-
-const parseJsonRecord = (value: unknown): Record<string, unknown> => {
-  if (!value) {
-    return {};
-  }
-  if (typeof value === 'object') {
-    return value as Record<string, unknown>;
-  }
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value) as Record<string, unknown>;
-      return typeof parsed === 'object' && parsed ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-  return {};
-};
-
-const toTrimmedString = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const readString = (record: Record<string, unknown>, key: string): string | null =>
-  toTrimmedString(record[key]);
-
-const extractBounceDiagnostic = (eventData: Record<string, unknown>): string | null => {
-  const recipients = eventData.bouncedRecipients;
-  if (!Array.isArray(recipients)) {
-    return null;
-  }
-  for (const recipient of recipients) {
-    if (recipient && typeof recipient === 'object') {
-      const diagnostic = toTrimmedString((recipient as Record<string, unknown>).diagnosticCode);
-      if (diagnostic) {
-        return diagnostic;
-      }
-    }
-  }
-  return null;
-};
-
-const extractEventDetail = (
-  eventType: string,
-  eventData: Record<string, unknown>,
-  bounceType: string | null,
-): string | null => {
-  switch (eventType) {
-    case 'Bounce': {
-      return (
-        readString(eventData, 'bounceSubType') ??
-        bounceType ??
-        readString(eventData, 'bounceType') ??
-        extractBounceDiagnostic(eventData)
-      );
-    }
-    case 'Delivery': {
-      return readString(eventData, 'smtpResponse') ?? readString(eventData, 'reportingMTA');
-    }
-    case 'Complaint': {
-      return readString(eventData, 'complaintFeedbackType') ?? readString(eventData, 'feedbackId');
-    }
-    case 'Reject': {
-      return readString(eventData, 'reason');
-    }
-    case 'RenderingFailure': {
-      return readString(eventData, 'errorMessage') ?? readString(eventData, 'failureType');
-    }
-    case 'DeliveryDelay': {
-      return readString(eventData, 'delayType');
-    }
-    case 'Subscription': {
-      return readString(eventData, 'subscriptionType');
-    }
-    default: {
-      return null;
-    }
-  }
-};
-
-const normalizeTags = (mail: Record<string, unknown>): string[] => {
-  const tagsValue = mail.tags;
-  if (!tagsValue || typeof tagsValue !== 'object') {
-    return [];
-  }
-  const tags = tagsValue as Record<string, unknown>;
-  return Object.entries(tags)
-    .filter(([key]) => !key.toLowerCase().startsWith('ses:'))
-    .flatMap(([key, value]) => {
-      if (Array.isArray(value)) {
-        return value
-          .map((entry) => (typeof entry === 'string' ? `${key}:${entry}` : null))
-          .filter((entry): entry is string => Boolean(entry));
-      }
-      if (typeof value === 'string') {
-        return [`${key}:${value}`];
-      }
-      return [key];
-    });
-};
-
-const extractDestinations = (mail: Record<string, unknown>): string[] => {
-  const destination = mail.destination;
-  if (!Array.isArray(destination)) {
-    return [];
-  }
-  return destination.filter((entry): entry is string => typeof entry === 'string');
-};
 
 export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
   const db = createDb(c.env);
@@ -155,7 +49,7 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
     .where(eq(events.message_id, message.id))
     .orderBy(desc(events.event_at));
 
-  const mailMetadata = parseJsonRecord(message.mail_metadata);
+  const mailMetadata = toRecord(message.mail_metadata);
 
   return c.json(
     {
@@ -165,7 +59,7 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
       source_email: message.source_email,
       destination_emails: extractDestinations(mailMetadata),
       sent_at: message.sent_at?.getTime() ?? null,
-      tags: normalizeTags(mailMetadata),
+      tags: normalizeMailTags(mailMetadata),
       mail_metadata: mailMetadata,
       events: messageEvents.map((event) => ({
         id: event.id,
@@ -174,7 +68,7 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
         event_at: event.event_at.getTime(),
         event_detail: extractEventDetail(
           event.event_type,
-          parseJsonRecord(event.event_data),
+          toRecord(event.event_data),
           event.bounce_type,
         ),
       })),

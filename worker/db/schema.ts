@@ -45,8 +45,11 @@ export const messages = sqliteTable(
     updated_at: timestampMs('updated_at'),
   },
   (table) => ({
-    // Webhook ingestion + message detail lookup by SES message id.
-    sesMessageIdUnique: uniqueIndex('messages_ses_message_id_unique').on(table.ses_message_id),
+    // Webhook ingestion + message detail lookup by source-scoped SES message id.
+    sourceIdSesMessageIdUnique: uniqueIndex('messages_source_id_ses_message_id_unique').on(
+      table.source_id,
+      table.ses_message_id,
+    ),
     // Retention cleanup: WHERE source_id = ? AND sent_at < ?
     sourceIdSentAtIndex: index('messages_source_id_sent_at_index').on(
       table.source_id,
@@ -102,7 +105,7 @@ export const events = sqliteTable(
   (table) => ({
     // Dedupe webhook inserts with onConflictDoNothing.
     dedupeUnique: uniqueIndex('events_dedupe_unique').on(
-      table.ses_message_id,
+      table.message_id,
       table.event_type,
       table.recipient_email,
       table.event_at,

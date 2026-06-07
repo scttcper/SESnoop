@@ -5,6 +5,7 @@ import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 import { createDb } from '../../db';
 import { events, messages, sources } from '../../db/schema';
 import { EVENT_TYPES, EVENT_TYPE_VALUES } from '../../lib/constants';
+import { resolveBounceReason, toRecord } from '../../lib/event-payload';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetRoute } from './overview.routes';
@@ -36,78 +37,6 @@ const parseDateInput = (value?: string) => {
   }
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-const parseJsonRecord = (value: unknown): Record<string, unknown> => {
-  if (!value) {
-    return {};
-  }
-  if (typeof value === 'object') {
-    return value as Record<string, unknown>;
-  }
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value) as Record<string, unknown>;
-      return typeof parsed === 'object' && parsed ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-  return {};
-};
-
-const toTrimmedString = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const readString = (record: Record<string, unknown>, key: string): string | null =>
-  toTrimmedString(record[key]);
-
-const extractBounceDiagnostic = (eventData: Record<string, unknown>): string | null => {
-  const recipients = eventData.bouncedRecipients;
-  if (!Array.isArray(recipients)) {
-    return null;
-  }
-  for (const recipient of recipients) {
-    if (recipient && typeof recipient === 'object') {
-      const diagnostic = toTrimmedString((recipient as Record<string, unknown>).diagnosticCode);
-      if (diagnostic) {
-        return diagnostic;
-      }
-    }
-  }
-  return null;
-};
-
-const formatReasonLabel = (value: string | null): string => {
-  if (!value) {
-    return 'Unknown';
-  }
-  const normalized = value
-    .replaceAll('_', ' ')
-    .replaceAll(/([a-z])([A-Z])/g, '$1 $2')
-    .replaceAll(/\s+/g, ' ')
-    .trim();
-  if (!normalized) {
-    return 'Unknown';
-  }
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-};
-
-const resolveBounceReason = (
-  eventData: Record<string, unknown>,
-  bounceType: string | null,
-): string => {
-  const reason =
-    readString(eventData, 'bounceSubType') ??
-    readString(eventData, 'bounceType') ??
-    bounceType ??
-    extractBounceDiagnostic(eventData);
-  return formatReasonLabel(reason);
 };
 
 const resolveRange = (from?: string, to?: string) => {
@@ -340,7 +269,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
 
   const reasonCounts = new Map<string, number>();
   for (const row of bounceEvents) {
-    const reason = resolveBounceReason(parseJsonRecord(row.event_data), row.bounce_type);
+    const reason = resolveBounceReason(toRecord(row.event_data), row.bounce_type);
     reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
   }
 

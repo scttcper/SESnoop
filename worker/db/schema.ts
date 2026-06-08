@@ -41,8 +41,6 @@ export const messages = sqliteTable(
     mail_metadata: text({ mode: 'json' })
       .notNull()
       .default(sql`'{}'`),
-    created_at: timestampMs('created_at'),
-    updated_at: timestampMs('updated_at'),
   },
   (table) => ({
     // Webhook ingestion + message detail lookup by source-scoped SES message id.
@@ -68,8 +66,6 @@ export const webhooks = sqliteTable(
     raw_payload: text({ mode: 'json' })
       .notNull()
       .default(sql`'{}'`),
-    created_at: timestampMs('created_at'),
-    updated_at: timestampMs('updated_at'),
   },
   (table) => ({
     // Webhook dedupe/lookup by SNS message id.
@@ -91,8 +87,6 @@ export const events = sqliteTable(
       .notNull()
       .default(sql`'{}'`),
     bounce_type: text(),
-    created_at: timestampMs('created_at'),
-    updated_at: timestampMs('updated_at'),
   },
   (table) => ({
     // Dedupe webhook inserts with onConflictDoNothing.

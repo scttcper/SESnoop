@@ -43,6 +43,13 @@
       "when": 1780864008433,
       "tag": "0005_light_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1780878809994,
+      "tag": "0006_regular_colleen_wing",
+      "breakpoints": true
     }
   ]
 }

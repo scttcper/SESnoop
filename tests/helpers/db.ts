@@ -48,8 +48,8 @@ export const insertMessage = async (overrides: {
 
   await env.DB.prepare(
     `INSERT INTO messages
-     (id, source_id, ses_message_id, source_email, subject, sent_at, mail_metadata, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch() * 1000, unixepoch() * 1000)`,
+     (id, source_id, ses_message_id, source_email, subject, sent_at, mail_metadata)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -78,8 +78,8 @@ export const insertEvent = async (overrides: {
 
   await env.DB.prepare(
     `INSERT INTO events
-     (id, message_id, event_type, recipient_email, event_at, bounce_type, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, unixepoch() * 1000, unixepoch() * 1000)`,
+     (id, message_id, event_type, recipient_email, event_at, bounce_type)
+     VALUES (?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,

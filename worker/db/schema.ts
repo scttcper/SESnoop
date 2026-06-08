@@ -80,6 +80,12 @@ export const events = sqliteTable(
     message_id: integer({ mode: 'number' })
       .notNull()
       .references(() => messages.id, { onDelete: 'cascade' }),
+    // Denormalized from messages.source_id so source-scoped + time-ranged event
+    // queries (events list, overview dashboard) can use a single index without
+    // joining messages. Populated at ingestion from the source already in hand.
+    source_id: integer({ mode: 'number' })
+      .notNull()
+      .references(() => sources.id, { onDelete: 'cascade' }),
     event_type: text().notNull(),
     recipient_email: text().notNull(),
     event_at: timestampMsNullable('event_at').notNull(),
@@ -97,9 +103,14 @@ export const events = sqliteTable(
       table.event_at,
     ),
     // Message detail: WHERE message_id = ? ORDER BY event_at DESC.
-    // Also supports the join path from messages for events list/overview queries.
     messageIdEventAtIndex: index('events_message_id_event_at_index').on(
       table.message_id,
+      table.event_at,
+    ),
+    // Events list + overview: WHERE source_id = ? AND event_at BETWEEN ? AND ?
+    // ORDER BY event_at DESC.
+    sourceIdEventAtIndex: index('events_source_id_event_at_index').on(
+      table.source_id,
       table.event_at,
     ),
   }),

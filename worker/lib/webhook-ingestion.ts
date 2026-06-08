@@ -74,6 +74,7 @@ async function persistNotification(
       .values(
         recipients.map((recipient) => ({
           message_id: messageId,
+          source_id: source.id,
           event_type: eventPayload.eventType,
           recipient_email: recipient,
           event_at: eventPayload.timestamp,

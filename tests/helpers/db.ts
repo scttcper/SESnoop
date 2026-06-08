@@ -68,6 +68,7 @@ export const insertMessage = async (overrides: {
 export const insertEvent = async (overrides: {
   id?: number;
   message_id: number;
+  source_id?: number;
   event_type: string;
   recipient_email: string;
   event_at: number;
@@ -75,14 +76,18 @@ export const insertEvent = async (overrides: {
 }) => {
   const id = overrides.id ?? null;
   const bounceType = overrides.bounce_type ?? null;
+  // source_id is denormalized onto events; default it from the parent message.
+  const sourceId = overrides.source_id ?? null;
 
   await env.DB.prepare(
     `INSERT INTO events
-     (id, message_id, event_type, recipient_email, event_at, bounce_type)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     (id, message_id, source_id, event_type, recipient_email, event_at, bounce_type)
+     VALUES (?, ?, COALESCE(?, (SELECT source_id FROM messages WHERE id = ?)), ?, ?, ?, ?)`,
   )
     .bind(
       id,
+      overrides.message_id,
+      sourceId,
       overrides.message_id,
       overrides.event_type,
       overrides.recipient_email,

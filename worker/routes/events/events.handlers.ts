@@ -123,7 +123,7 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const endMs = end ? end.getTime() : null;
 
   const baseFilters = filterSql([
-    eq(messages.source_id, source.id),
+    eq(events.source_id, source.id),
     buildSearchFilter(query.search),
     startMs ? sql`${events.event_at} >= ${startMs}` : undefined,
     endMs ? sql`${events.event_at} <= ${endMs}` : undefined,

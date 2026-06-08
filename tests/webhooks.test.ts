@@ -91,10 +91,16 @@ describe('webhooks ingestion', () => {
     expect(messages.results).toHaveLength(1);
     expect(messages.results[0]?.ses_message_id).toBe('ses-123');
 
-    const events = await env.DB.prepare('SELECT recipient_email, bounce_type FROM events').all();
+    const events = await env.DB.prepare(
+      `SELECT events.recipient_email, events.bounce_type, events.source_id, messages.source_id AS message_source_id
+       FROM events
+       INNER JOIN messages ON events.message_id = messages.id`,
+    ).all();
     expect(events.results).toHaveLength(1);
     expect(events.results[0]?.recipient_email).toBe('test@example.com');
     expect(events.results[0]?.bounce_type).toBe('Permanent');
+    // Ingestion must denormalize source_id onto the event, matching its message.
+    expect(events.results[0]?.source_id).toBe(events.results[0]?.message_source_id);
 
     const webhooks = await env.DB.prepare('SELECT sns_message_id FROM webhooks').all();
     expect(webhooks.results).toHaveLength(1);

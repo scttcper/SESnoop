@@ -3,7 +3,7 @@ import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 import { createDb } from '../../db';
-import { events, messages, sources } from '../../db/schema';
+import { events, sources } from '../../db/schema';
 import { EVENT_TYPES, EVENT_TYPE_VALUES } from '../../lib/constants';
 import { resolveBounceReason, toRecord } from '../../lib/event-payload';
 import type { AppRouteHandler } from '../../lib/types';
@@ -17,7 +17,7 @@ const eventCount = (eventType: EventType) =>
 
 const uniqueEventCount = (eventType: EventType) =>
   countDistinct(
-    sql`case when ${eq(events.event_type, eventType)} then ${events.recipient_email} || '|' || ${messages.id} end`,
+    sql`case when ${eq(events.event_type, eventType)} then ${events.recipient_email} || '|' || ${events.message_id} end`,
   );
 
 const rate = (numerator: number, denominator: number) =>
@@ -88,7 +88,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const dayKeys = buildDayRange(start, end);
 
   const rangeFilter = and(
-    eq(messages.source_id, source.id),
+    eq(events.source_id, source.id),
     sql`${events.event_at} >= ${startMs}`,
     sql`${events.event_at} <= ${endMs}`,
   );
@@ -113,7 +113,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       unique_clicks: uniqueEventCount(EVENT_TYPES.click),
     })
     .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter);
 
   const [lastEvent] = await db
@@ -121,8 +120,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       event_at: events.event_at,
     })
     .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
-    .where(eq(messages.source_id, source.id))
+    .where(eq(events.source_id, source.id))
     .orderBy(desc(events.event_at))
     .limit(1);
 
@@ -131,10 +129,9 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       sent_today: eventCount(EVENT_TYPES.send),
     })
     .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
     .where(
       and(
-        eq(messages.source_id, source.id),
+        eq(events.source_id, source.id),
         sql`${events.event_at} >= ${todayStartMs}`,
         sql`${events.event_at} <= ${todayEndMs}`,
       ),
@@ -152,7 +149,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       unique_recipients: countDistinct(sql`lower(${events.recipient_email})`),
     })
     .from(events)
-    .innerJoin(messages, eq(events.message_id, messages.id))
     .where(rangeFilter)
     .groupBy(dayExpr);
 
@@ -185,7 +181,6 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
         recipient_email: events.recipient_email,
       })
       .from(events)
-      .innerJoin(messages, eq(events.message_id, messages.id))
       .where(and(rangeFilter, eq(events.event_type, EVENT_TYPES.bounce)));
   }
 

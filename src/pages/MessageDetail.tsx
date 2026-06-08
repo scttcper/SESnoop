@@ -4,6 +4,14 @@ import { Link, getRouteApi } from '@tanstack/react-router';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import {
+  EventBadge,
+  RecipientAvatar,
+  countBadgeClassName,
+  eventDotClassName,
+  formatCompactEventTime,
+  formatDateTime,
+} from '../components/EventPresentation';
 import { messageQueryOptions, type MessageDetail } from '../lib/queries';
 
 const routeApi = getRouteApi('/app/s/$sourceId/messages/$sesMessageId');
@@ -11,19 +19,7 @@ const routeApi = getRouteApi('/app/s/$sourceId/messages/$sesMessageId');
 const RECIPIENT_SKELETON_ROWS = ['recipient-1', 'recipient-2', 'recipient-3', 'recipient-4'];
 const TIMELINE_SKELETON_ITEMS = ['timeline-1', 'timeline-2', 'timeline-3'];
 
-const formatDateTime = (value?: number | null) => (value ? new Date(value).toLocaleString() : '—');
-
 const formatJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
-
-const eventBadgeClassNames: Record<string, string> = {
-  Bounce: 'border-red-500/20 bg-red-500/10 text-red-400',
-  Delivery: 'border-green-500/20 bg-green-500/10 text-green-400',
-  Complaint: 'border-orange-500/20 bg-orange-500/10 text-orange-400',
-  Send: 'border-blue-500/20 bg-blue-500/10 text-blue-400',
-};
-
-const eventBadgeClassName = (eventType: string) =>
-  eventBadgeClassNames[eventType] ?? 'border-white/10 bg-white/5 text-white/60';
 
 export default function MessageDetailPage() {
   const { sourceId: sourceIdStr, sesMessageId } = routeApi.useParams();
@@ -227,17 +223,28 @@ export default function MessageDetailPage() {
         </section>
 
         <section className="space-y-6">
-          <div className="border-b border-white/10 pb-4">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
             <h2 className="text-lg font-semibold text-white">Recipients</h2>
+            {message ? (
+              <span className={countBadgeClassName}>{recipientRows.length} recipients</span>
+            ) : null}
           </div>
           {loading ? (
             <div className="min-h-[220px] overflow-hidden rounded-lg border border-white/10">
-              <table className="w-full text-left text-sm">
+              <table className="w-full table-fixed text-left text-sm">
+                <colgroup>
+                  <col className="w-[34%]" />
+                  <col className="w-32" />
+                  <col className="w-36" />
+                  <col />
+                </colgroup>
                 <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Recipient</th>
                     <th className="px-4 py-3 font-semibold">Latest event</th>
-                    <th className="px-4 py-3 font-semibold">Latest event time</th>
+                    <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">
+                      Latest event time
+                    </th>
                     <th className="px-4 py-3 font-semibold">Reason</th>
                   </tr>
                 </thead>
@@ -250,8 +257,8 @@ export default function MessageDetailPage() {
                       <td className="px-4 py-3">
                         <div className="h-4 w-20 rounded bg-white/10" />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="h-4 w-28 rounded bg-white/10" />
+                      <td className="px-3 py-3 text-right">
+                        <div className="ml-auto h-4 w-24 rounded bg-white/10" />
                       </td>
                       <td className="px-4 py-3">
                         <div className="h-4 w-64 rounded bg-white/10" />
@@ -264,12 +271,20 @@ export default function MessageDetailPage() {
           ) : message ? (
             message.events.length > 0 ? (
               <div className="overflow-hidden rounded-lg border border-white/10">
-                <table className="w-full text-left text-sm">
+                <table className="w-full table-fixed text-left text-sm">
+                  <colgroup>
+                    <col className="w-[34%]" />
+                    <col className="w-32" />
+                    <col className="w-36" />
+                    <col />
+                  </colgroup>
                   <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Recipient</th>
                       <th className="px-4 py-3 font-semibold">Latest event</th>
-                      <th className="px-4 py-3 font-semibold">Latest event time</th>
+                      <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">
+                        Latest event time
+                      </th>
                       <th className="px-4 py-3 font-semibold">Reason</th>
                     </tr>
                   </thead>
@@ -279,20 +294,27 @@ export default function MessageDetailPage() {
                         key={event.recipient_email}
                         className="transition-colors hover:bg-white/5"
                       >
-                        <td className="px-4 py-3 text-white">{event.recipient_email}</td>
+                        <td className="px-4 py-3 text-white">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <RecipientAvatar email={event.recipient_email} />
+                            <span className="min-w-0 truncate font-medium">
+                              {event.recipient_email}
+                            </span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${eventBadgeClassName(
-                              event.event_type,
-                            )}`}
+                          <EventBadge eventType={event.event_type} />
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <time
+                            className="block font-mono text-xs whitespace-nowrap text-white/60 tabular-nums"
+                            dateTime={new Date(event.event_at).toISOString()}
+                            title={formatDateTime(event.event_at)}
                           >
-                            {event.event_type}
-                          </span>
+                            {formatCompactEventTime(event.event_at)}
+                          </time>
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-white/60">
-                          {formatDateTime(event.event_at)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-white/70">
+                        <td className="px-4 py-3 text-sm break-words text-white/70">
                           {event.event_detail ?? '—'}
                         </td>
                       </tr>
@@ -309,15 +331,11 @@ export default function MessageDetailPage() {
         </section>
 
         <section className="space-y-6">
-          <div className="border-b border-white/10 pb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-white">Event timeline</h2>
-              {message ? (
-                <span className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">
-                  {message.events.length} events
-                </span>
-              ) : null}
-            </div>
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <h2 className="text-lg font-semibold text-white">Event timeline</h2>
+            {message ? (
+              <span className={countBadgeClassName}>{message.events.length} events</span>
+            ) : null}
           </div>
           {loading ? (
             <div className="min-h-[240px] space-y-4">
@@ -339,45 +357,35 @@ export default function MessageDetailPage() {
               {message.events.map((event: MessageDetail['events'][number], index: number) => (
                 <div key={event.id} className="group relative pb-8 pl-10 last:pb-0">
                   {index > 0 && (
-                    <div className="absolute top-0 left-4 h-5 w-px -translate-x-1/2 bg-white/10" />
+                    <div className="absolute top-0 left-4 h-4 w-px -translate-x-1/2 bg-white/10" />
                   )}
                   {index < message.events.length - 1 && (
-                    <div className="absolute top-5 bottom-0 left-4 w-px -translate-x-1/2 bg-white/10" />
+                    <div className="absolute top-4 bottom-0 left-4 w-px -translate-x-1/2 bg-white/10" />
                   )}
                   <div
-                    className={`absolute top-5 left-4 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0B0C0E] ${
-                      event.event_type === 'Bounce'
-                        ? 'bg-red-500'
-                        : event.event_type === 'Delivery'
-                          ? 'bg-green-500'
-                          : event.event_type === 'Complaint'
-                            ? 'bg-orange-500'
-                            : event.event_type === 'Send'
-                              ? 'bg-blue-500'
-                              : 'bg-white/40'
-                    }`}
+                    className={`absolute top-4 left-4 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0B0C0E] ${eventDotClassName(event.event_type)}`}
                   />
-                  <div className="flex flex-col rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04] md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-col gap-1">
-                      <div className="mb-2 flex items-center space-x-3 md:mb-0">
-                        <span
-                          className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${eventBadgeClassName(
-                            event.event_type,
-                          )}`}
-                        >
-                          {event.event_type}
+                  <div className="flex items-start justify-between gap-4 rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04]">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <EventBadge eventType={event.event_type} />
+                        <span className="min-w-0 truncate text-sm font-medium text-white">
+                          {event.recipient_email}
                         </span>
-                        <span className="text-sm text-white">{event.recipient_email}</span>
                       </div>
                       {event.event_detail ? (
-                        <span className="text-xs text-white/50">
+                        <span className="text-xs break-words text-white/50">
                           <span className="text-white/40">Reason:</span> {event.event_detail}
                         </span>
                       ) : null}
                     </div>
-                    <span className="font-mono text-xs text-white/40">
-                      {formatDateTime(event.event_at)}
-                    </span>
+                    <time
+                      className="shrink-0 font-mono text-xs whitespace-nowrap text-white/40 tabular-nums"
+                      dateTime={new Date(event.event_at).toISOString()}
+                      title={formatDateTime(event.event_at)}
+                    >
+                      {formatCompactEventTime(event.event_at)}
+                    </time>
                   </div>
                 </div>
               ))}

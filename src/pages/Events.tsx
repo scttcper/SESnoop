@@ -13,7 +13,7 @@ import {
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
-import { BOUNCE_TYPES, DATE_PRESETS, EVENT_TYPES } from '../lib/constants';
+import { BOUNCE_TYPES, DATE_PRESETS, DEFAULT_EVENT_TYPES, EVENT_TYPES } from '../lib/constants';
 import {
   eventsQueryOptions,
   sourcesQueryOptions,
@@ -62,7 +62,8 @@ export default function EventsPage() {
   const detailNavigate = useNavigate();
 
   const search = searchParams.search;
-  const selectedEventTypes = searchParams.event_types;
+  const eventTypeSearchValues = searchParams.event_types;
+  const selectedEventTypes: readonly string[] = eventTypeSearchValues ?? DEFAULT_EVENT_TYPES;
   const selectedBounceTypes = searchParams.bounce_types;
   const datePreset = searchParams.date_range;
   const from = searchParams.from;
@@ -118,14 +119,14 @@ export default function EventsPage() {
   const detailSearch = useMemo(
     () => ({
       search,
-      event_types: selectedEventTypes,
+      event_types: eventTypeSearchValues,
       bounce_types: selectedBounceTypes,
       date_range: datePreset,
       from,
       to,
       page,
     }),
-    [datePreset, from, page, search, selectedBounceTypes, selectedEventTypes, to],
+    [datePreset, eventTypeSearchValues, from, page, search, selectedBounceTypes, to],
   );
 
   const {
@@ -145,7 +146,9 @@ export default function EventsPage() {
     const newTypes = selectedEventTypes.includes(value)
       ? selectedEventTypes.filter((entry: string) => entry !== value)
       : [...selectedEventTypes, value];
-    updateFilter({ event_types: newTypes });
+    updateFilter({
+      event_types: newTypes,
+    });
   };
 
   const toggleBounceType = (value: string) => {

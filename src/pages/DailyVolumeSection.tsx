@@ -4,6 +4,7 @@ import { BarChart, LineChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
+import { useEffect, useState } from 'react';
 
 echarts.use([
   BarChart,
@@ -26,6 +27,22 @@ const connectOverviewChart = (instance: EChartsType) => {
   echarts.connect(OVERVIEW_CHART_GROUP);
 };
 
+const useIsNarrowViewport = () => {
+  const [isNarrow, setIsNarrow] = useState(() =>
+    typeof window === 'undefined' ? false : window.matchMedia('(max-width: 640px)').matches,
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsNarrow(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener('change', update);
+    return () => mediaQuery.removeEventListener('change', update);
+  }, []);
+
+  return isNarrow;
+};
+
 type OverviewChart = {
   days: string[];
   sent: number[];
@@ -36,6 +53,7 @@ type OverviewChart = {
 };
 
 export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) {
+  const isNarrow = useIsNarrowViewport();
   const chartData = chart.days.map((day, index) => ({
     day,
     sent: chart.sent[index] ?? 0,
@@ -52,24 +70,26 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
   }));
 
   const chartSeries = [
-    { label: 'Delivered', color: 'rgba(45, 212, 191, 0.42)', isRate: false },
-    { label: 'Bounced', color: '#f43f5e', isRate: false },
-    { label: 'Open rate', color: '#60a5fa', isRate: true },
+    { label: 'Delivered', color: '#2dd4bf', isRate: false },
+    { label: 'Bounced', color: '#fb7185', isRate: false },
+    { label: 'Open rate', color: '#fbbf24', isRate: true },
   ] as const;
+  const labelInterval = Math.max(0, Math.ceil(chartData.length / (isNarrow ? 5 : 8)) - 1);
 
   const chartOption = {
     backgroundColor: 'transparent',
     color: chartSeries.map((series) => series.color),
     animationDuration: 250,
     grid: {
-      top: 12,
-      right: 44,
-      bottom: 48,
-      left: 40,
+      top: 8,
+      right: isNarrow ? 34 : 44,
+      bottom: isNarrow ? 34 : 48,
+      left: isNarrow ? 28 : 40,
       containLabel: false,
     },
     legend: {
       bottom: 0,
+      show: !isNarrow,
       icon: 'roundRect',
       itemWidth: 8,
       itemHeight: 8,
@@ -136,7 +156,8 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
       axisTick: { show: false },
       axisLabel: {
         color: 'rgba(255, 255, 255, 0.45)',
-        margin: 10,
+        interval: labelInterval,
+        margin: isNarrow ? 6 : 10,
         formatter: (value: string) => value.slice(5),
       },
     },
@@ -147,7 +168,8 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         axisTick: { show: false },
         axisLabel: {
           color: 'rgba(255, 255, 255, 0.28)',
-          margin: 8,
+          margin: isNarrow ? 4 : 8,
+          fontSize: isNarrow ? 10 : 12,
         },
         splitLine: {
           lineStyle: {
@@ -164,7 +186,8 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         axisTick: { show: false },
         axisLabel: {
           color: 'rgba(255, 255, 255, 0.55)',
-          margin: 8,
+          margin: isNarrow ? 4 : 8,
+          fontSize: isNarrow ? 10 : 12,
           formatter: (value: number) => `${(value * 100).toFixed(0)}%`,
         },
         splitLine: { show: false },
@@ -176,19 +199,11 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         type: 'bar',
         stack: 'outcome',
         yAxisIndex: 0,
-        barMaxWidth: 18,
-        barCategoryGap: '45%',
+        barMaxWidth: isNarrow ? 12 : 18,
+        barCategoryGap: isNarrow ? '55%' : '45%',
         itemStyle: {
-          color: 'rgba(45, 212, 191, 0.14)',
-          decal: {
-            symbol: 'rect',
-            symbolSize: 1,
-            rotation: -Math.PI / 4,
-            dashArrayX: [1, 0],
-            dashArrayY: [4, 4],
-            color: 'rgba(45, 212, 191, 0.5)',
-            backgroundColor: 'rgba(45, 212, 191, 0.1)',
-          },
+          color: 'rgba(45, 212, 191, 0.72)',
+          borderRadius: [3, 3, 0, 0],
         },
         emphasis: {
           focus: 'series',
@@ -200,10 +215,10 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         type: 'bar',
         stack: 'outcome',
         yAxisIndex: 0,
-        barMaxWidth: 18,
-        barCategoryGap: '45%',
+        barMaxWidth: isNarrow ? 12 : 18,
+        barCategoryGap: isNarrow ? '55%' : '45%',
         itemStyle: {
-          color: '#f43f5e',
+          color: '#fb7185',
           borderRadius: [3, 3, 0, 0],
         },
         emphasis: {
@@ -217,13 +232,13 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         yAxisIndex: 1,
         lineStyle: {
           width: 2.5,
-          color: '#60a5fa',
+          color: '#fbbf24',
         },
         smooth: true,
         showSymbol: false,
         symbol: 'circle',
         itemStyle: {
-          color: '#60a5fa',
+          color: '#fbbf24',
         },
         emphasis: {
           focus: 'series',
@@ -234,8 +249,8 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
   } satisfies EChartsOption;
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+    <section className="space-y-3 md:space-y-6">
+      <div className="flex items-center justify-between border-b border-white/10 pb-3 md:pb-4">
         <h2 className="text-lg font-semibold text-white">Daily delivery trend</h2>
       </div>
       <ReactEChartsCore
@@ -244,8 +259,8 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         notMerge
         lazyUpdate
         onChartReady={connectOverviewChart}
-        className="h-[260px] w-full"
-        style={{ height: 260 }}
+        className="h-[190px] w-full md:h-[260px]"
+        style={{ height: isNarrow ? 190 : 260 }}
         opts={{ renderer: 'canvas' }}
       />
     </section>

@@ -179,37 +179,6 @@ function EmptySourceState({ sources }: { sources: SourceItem[] }) {
   );
 }
 
-function DashboardHeader({
-  sourceId,
-  sources,
-  loadingOverview,
-  overview,
-}: {
-  sourceId: number;
-  sources: SourceItem[];
-  loadingOverview: boolean;
-  overview: OverviewData | undefined;
-}) {
-  const sourceName = sources.find((source) => source.id === sourceId)?.name ?? 'Selected project';
-
-  return (
-    <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-      <div className="flex flex-wrap items-center gap-1 space-x-4">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
-          {sourceName} Dashboard
-        </h1>
-      </div>
-      <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
-        {loadingOverview
-          ? 'Loading…'
-          : overview
-            ? `${overview.range.from} → ${overview.range.to}`
-            : '—'}
-      </span>
-    </header>
-  );
-}
-
 function SummarySection({
   overview,
   error,
@@ -226,16 +195,16 @@ function SummarySection({
       ) : null}
 
       {overview ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 md:rounded-xl md:p-4">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-4">
               <div className="min-w-0">
-                <span className="block text-sm font-medium text-white/70">Sent</span>
-                <span className="mt-1 block truncate text-sm leading-snug whitespace-nowrap text-white/45">
-                  {format.integer(overview.metrics.sent_today)} today
+                <span className="block text-xs font-medium text-white/70 md:text-sm">Sent</span>
+                <span className="mt-1 block truncate text-xs leading-snug whitespace-nowrap text-white/45 md:text-sm">
+                  Today {format.integer(overview.metrics.sent_today)}
                 </span>
               </div>
-              <span className="font-display shrink-0 text-right text-3xl leading-none font-medium text-blue-300">
+              <span className="font-display shrink-0 text-2xl leading-none font-medium text-blue-300 md:text-right md:text-3xl">
                 {format.integer(overview.metrics.sent)}
               </span>
             </div>
@@ -245,7 +214,7 @@ function SummarySection({
             {
               label: 'Open rate',
               value: overview.metrics.open_rate,
-              detail: `${format.integer(overview.metrics.unique_opens)} unique opens`,
+              detail: `${format.integer(overview.metrics.unique_opens)} opens`,
               color: 'text-blue-300',
               accent: 'bg-blue-400',
               track: 'bg-blue-400/10',
@@ -253,7 +222,7 @@ function SummarySection({
             {
               label: 'Click rate',
               value: overview.metrics.click_rate,
-              detail: `${format.integer(overview.metrics.unique_clicks)} unique clicks`,
+              detail: `${format.integer(overview.metrics.unique_clicks)} clicks`,
               color: 'text-emerald-300',
               accent: 'bg-emerald-400',
               track: 'bg-emerald-400/10',
@@ -261,22 +230,24 @@ function SummarySection({
           ].map((metric) => (
             <div
               key={metric.label}
-              className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
+              className="rounded-lg border border-white/10 bg-white/[0.02] p-3 md:rounded-xl md:p-4"
             >
-              <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+              <div className="mb-3 grid gap-2 md:mb-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-4">
                 <div className="min-w-0">
-                  <span className="block text-sm font-medium text-white/70">{metric.label}</span>
-                  <span className="mt-1 block truncate text-sm leading-snug whitespace-nowrap text-white/45">
+                  <span className="block text-xs font-medium text-white/70 md:text-sm">
+                    {metric.label}
+                  </span>
+                  <span className="mt-1 block truncate text-xs leading-snug whitespace-nowrap text-white/45 md:text-sm">
                     {metric.detail}
                   </span>
                 </div>
                 <span
-                  className={`font-display shrink-0 text-right text-3xl leading-none font-medium ${metric.color}`}
+                  className={`font-display shrink-0 text-2xl leading-none font-medium md:text-right md:text-3xl ${metric.color}`}
                 >
                   {format.percent(metric.value)}
                 </span>
               </div>
-              <div className={`h-2 overflow-hidden rounded-full ${metric.track}`}>
+              <div className={`h-1.5 overflow-hidden rounded-full md:h-2 ${metric.track}`}>
                 <div
                   className={`h-full rounded-full ${metric.accent}`}
                   style={{ width: `${Math.min(100, Math.max(0, metric.value * 100))}%` }}
@@ -306,20 +277,20 @@ function ActivitySection({ overview }: { overview: OverviewData }) {
         <div className="mb-2 text-xs font-semibold tracking-wider text-white/40 uppercase">
           Latest
         </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-2">
-          <span className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap text-white/45">
+        <div className="flex flex-wrap gap-x-2 gap-y-1.5 md:gap-x-3 md:gap-y-2">
+          <span className="inline-flex items-baseline gap-1 text-sm whitespace-nowrap text-white/45 md:gap-1.5">
             Last event
             <span className="font-mono text-xs text-white/70">
               {format.dateTime(overview.activity.last_event_at)}
             </span>
           </span>
-          <span className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap text-white/45">
+          <span className="inline-flex items-baseline gap-1 text-sm whitespace-nowrap text-white/45 md:gap-1.5">
             Bounce rate
             <span className="font-mono text-xs text-white/70">
               {format.percent(overview.metrics.bounce_rate)}
             </span>
           </span>
-          <span className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap text-white/45">
+          <span className="inline-flex items-baseline gap-1 text-sm whitespace-nowrap text-white/45 md:gap-1.5">
             Complaints
             <span
               className={`font-mono text-xs ${
@@ -336,11 +307,11 @@ function ActivitySection({ overview }: { overview: OverviewData }) {
         <div className="mb-2 text-xs font-semibold tracking-wider text-white/40 uppercase">
           Events
         </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-2">
+        <div className="flex flex-wrap gap-x-2 gap-y-1.5 md:gap-x-3 md:gap-y-2">
           {eventMix.map((item) => (
             <span
               key={item.label}
-              className="inline-flex items-baseline gap-1.5 text-sm whitespace-nowrap"
+              className="inline-flex items-baseline gap-1 text-sm whitespace-nowrap md:gap-1.5"
             >
               <span className="text-white/45">{item.label}</span>
               <span className="font-mono text-xs text-white/70">{format.integer(item.value)}</span>
@@ -416,12 +387,9 @@ function FailureAnalysisSection({ overview }: { overview: OverviewData }) {
     overview.bounce_breakdown.length === 0 && top_reasons.length === 0 && top_domains.length === 0;
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+    <section className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between border-b border-white/10 pb-3 md:pb-4">
         <h2 className="text-lg font-semibold text-white">Failure analysis</h2>
-        <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
-          {overview.range.from} → {overview.range.to}
-        </span>
       </div>
       {isEmpty ? (
         <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-6">
@@ -467,14 +435,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col border-x border-white/10 bg-[#0B0C0E]">
-      <DashboardHeader
-        sourceId={sourceId}
-        sources={sources}
-        loadingOverview={loadingOverview}
-        overview={overview}
-      />
-
-      <div className="flex-1 space-y-8 overflow-y-auto p-6">
+      <div className="flex-1 space-y-6 overflow-y-auto p-4 min-[380px]:p-6 md:space-y-8">
         <SummarySection overview={overview} error={error} />
 
         {overview ? (

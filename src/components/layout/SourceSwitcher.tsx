@@ -30,7 +30,7 @@ export function SourceSwitcher() {
 
   return (
     <Select value={currentSourceId?.toString() || ''} onValueChange={handleSelect}>
-      <SelectTrigger className="w-[200px] border-white/10 bg-white/5 text-white hover:bg-white/10 focus:ring-0">
+      <SelectTrigger className="w-[170px] border-white/10 bg-white/5 text-white hover:bg-white/10 focus:ring-0 min-[380px]:w-[200px]">
         <div className="flex items-center gap-2 truncate">
           {selectedSource ? (
             <>

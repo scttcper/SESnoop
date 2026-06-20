@@ -16,13 +16,13 @@ importers:
         version: 5.2.8
       '@hono/zod-openapi':
         specifier: ^1.4.0
-        version: 1.4.0(hono@4.12.23)(zod@4.4.3)
+        version: 1.4.0(hono@4.12.25)(zod@4.4.3)
       '@libsql/client':
         specifier: ^0.17.3
         version: 0.17.3
       '@scalar/hono-api-reference':
         specifier: ^0.10.20
-        version: 0.10.20(hono@4.12.23)
+        version: 0.10.20(hono@4.12.25)
       '@tanstack/react-query':
         specifier: ^5.101.0
         version: 5.101.0(react@19.2.7)
@@ -54,8 +54,8 @@ importers:
         specifier: 3.0.6
         version: 3.0.6(echarts@6.1.0)(react@19.2.7)
       hono:
-        specifier: ^4.12.23
-        version: 4.12.23
+        specifier: ^4.12.25
+        version: 4.12.25
       lucide-react:
         specifier: ^1.17.0
         version: 1.17.0(react@19.2.7)
@@ -76,7 +76,7 @@ importers:
         version: 2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       stoker:
         specifier: ^2.0.1
-        version: 2.0.1(@asteasolutions/zod-to-openapi@8.5.0(zod@4.4.3))(@hono/zod-openapi@1.4.0(hono@4.12.23)(zod@4.4.3))(hono@4.12.23)(openapi3-ts@4.6.0)
+        version: 2.0.1(@asteasolutions/zod-to-openapi@8.5.0(zod@4.4.3))(@hono/zod-openapi@1.4.0(hono@4.12.25)(zod@4.4.3))(hono@4.12.25)(openapi3-ts@4.6.0)
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -2668,8 +2668,8 @@ packages:
   headers-polyfill@5.0.1:
     resolution: {integrity: sha512-1TJ6Fih/b8h5TIcv+1+Hw0PDQWJTKDKzFZzcKOiW1wJza3XoAQlkCuXLbymPYB8+ZQyw8mHvdw560e8zVFIWyA==}
 
-  hono@4.12.23:
-    resolution: {integrity: sha512-eIaZ9qDgu7XV0pxOCrg7/WhnQ6Ivm22UcxhXx/A3dcbqbbYgBEkc6e/J/s7j2tS96zoB0S9VBdLwQNCWwUo4LA==}
+  hono@4.12.25:
+    resolution: {integrity: sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ==}
     engines: {node: '>=16.9.0'}
 
   http-errors@2.0.1:
@@ -4420,21 +4420,21 @@ snapshots:
 
   '@fontsource-variable/inter@5.2.8': {}
 
-  '@hono/node-server@1.19.14(hono@4.12.23)':
+  '@hono/node-server@1.19.14(hono@4.12.25)':
     dependencies:
-      hono: 4.12.23
+      hono: 4.12.25
 
-  '@hono/zod-openapi@1.4.0(hono@4.12.23)(zod@4.4.3)':
+  '@hono/zod-openapi@1.4.0(hono@4.12.25)(zod@4.4.3)':
     dependencies:
       '@asteasolutions/zod-to-openapi': 8.5.0(zod@4.4.3)
-      '@hono/zod-validator': 0.8.0(hono@4.12.23)(zod@4.4.3)
-      hono: 4.12.23
+      '@hono/zod-validator': 0.8.0(hono@4.12.25)(zod@4.4.3)
+      hono: 4.12.25
       openapi3-ts: 4.6.0
       zod: 4.4.3
 
-  '@hono/zod-validator@0.8.0(hono@4.12.23)(zod@4.4.3)':
+  '@hono/zod-validator@0.8.0(hono@4.12.25)(zod@4.4.3)':
     dependencies:
-      hono: 4.12.23
+      hono: 4.12.25
       zod: 4.4.3
 
   '@img/colour@1.1.0': {}
@@ -4644,7 +4644,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.29.0(zod@3.25.76)':
     dependencies:
-      '@hono/node-server': 1.19.14(hono@4.12.23)
+      '@hono/node-server': 1.19.14(hono@4.12.25)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -4654,7 +4654,7 @@ snapshots:
       eventsource-parser: 3.1.0
       express: 5.2.1
       express-rate-limit: 8.5.2(express@5.2.1)
-      hono: 4.12.23
+      hono: 4.12.25
       jose: 6.2.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -4900,10 +4900,10 @@ snapshots:
 
   '@scalar/helpers@0.8.1': {}
 
-  '@scalar/hono-api-reference@0.10.20(hono@4.12.23)':
+  '@scalar/hono-api-reference@0.10.20(hono@4.12.25)':
     dependencies:
       '@scalar/client-side-rendering': 0.1.13
-      hono: 4.12.23
+      hono: 4.12.25
 
   '@scalar/schemas@0.3.3':
     dependencies:
@@ -5775,7 +5775,7 @@ snapshots:
       '@types/set-cookie-parser': 2.4.10
       set-cookie-parser: 3.1.0
 
-  hono@4.12.23: {}
+  hono@4.12.25: {}
 
   http-errors@2.0.1:
     dependencies:
@@ -6510,12 +6510,12 @@ snapshots:
 
   stdin-discarder@0.2.2: {}
 
-  stoker@2.0.1(@asteasolutions/zod-to-openapi@8.5.0(zod@4.4.3))(@hono/zod-openapi@1.4.0(hono@4.12.23)(zod@4.4.3))(hono@4.12.23)(openapi3-ts@4.6.0):
+  stoker@2.0.1(@asteasolutions/zod-to-openapi@8.5.0(zod@4.4.3))(@hono/zod-openapi@1.4.0(hono@4.12.25)(zod@4.4.3))(hono@4.12.25)(openapi3-ts@4.6.0):
     dependencies:
-      hono: 4.12.23
+      hono: 4.12.25
     optionalDependencies:
       '@asteasolutions/zod-to-openapi': 8.5.0(zod@4.4.3)
-      '@hono/zod-openapi': 1.4.0(hono@4.12.23)(zod@4.4.3)
+      '@hono/zod-openapi': 1.4.0(hono@4.12.25)(zod@4.4.3)
       openapi3-ts: 4.6.0
 
   strict-event-emitter@0.5.1: {}

@@ -21,6 +21,8 @@ const format = {
 };
 
 const OVERVIEW_CHART_GROUP = 'dashboard-overview';
+const ROUNDED_BAR_CAP: [number, number, number, number] = [3, 3, 0, 0];
+const SQUARE_BAR_CAP: [number, number, number, number] = [0, 0, 0, 0];
 
 const connectOverviewChart = (instance: EChartsType) => {
   instance.group = OVERVIEW_CHART_GROUP;
@@ -203,12 +205,16 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         barCategoryGap: isNarrow ? '55%' : '45%',
         itemStyle: {
           color: 'rgba(45, 212, 191, 0.72)',
-          borderRadius: [3, 3, 0, 0],
         },
         emphasis: {
           focus: 'series',
         },
-        data: chartData.map((item) => item.delivered),
+        data: chartData.map((item) => ({
+          value: item.delivered,
+          itemStyle: {
+            borderRadius: item.bounced > 0 ? SQUARE_BAR_CAP : ROUNDED_BAR_CAP,
+          },
+        })),
       },
       {
         name: 'Bounced',
@@ -219,12 +225,16 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
         barCategoryGap: isNarrow ? '55%' : '45%',
         itemStyle: {
           color: '#fb7185',
-          borderRadius: [3, 3, 0, 0],
         },
         emphasis: {
           focus: 'series',
         },
-        data: chartData.map((item) => item.bounced),
+        data: chartData.map((item) => ({
+          value: item.bounced,
+          itemStyle: {
+            borderRadius: item.bounced > 0 ? ROUNDED_BAR_CAP : SQUARE_BAR_CAP,
+          },
+        })),
       },
       {
         name: 'Open rate',

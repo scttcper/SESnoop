@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams, getRouteApi, useNavigate } from '@tanstack/react-router';
+import { Link, useParams, getRouteApi } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -59,7 +59,6 @@ export default function EventsPage() {
 
   const searchParams = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
-  const detailNavigate = useNavigate();
 
   const search = searchParams.search;
   const eventTypeSearchValues = searchParams.event_types;
@@ -212,32 +211,6 @@ export default function EventsPage() {
     } finally {
       setExporting(false);
     }
-  };
-
-  const openEventDetail = (event: EventRow) => {
-    if (!sourceId) {
-      return;
-    }
-
-    detailNavigate({
-      to: '/s/$sourceId/messages/$sesMessageId',
-      params: {
-        sourceId: sourceId.toString(),
-        sesMessageId: event.ses_message_id,
-      },
-      search: detailSearch,
-    });
-  };
-
-  const handleEventRowKeyDown = (
-    keyboardEvent: KeyboardEvent<HTMLTableRowElement>,
-    event: EventRow,
-  ) => {
-    if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') {
-      return;
-    }
-    keyboardEvent.preventDefault();
-    openEventDetail(event);
   };
 
   const totalLabel = pagination ? `${pagination.total} events` : '—';
@@ -468,56 +441,75 @@ export default function EventsPage() {
                   const recipientEmail = event.recipient_email || 'Unknown recipient';
                   const messageSubject = event.message_subject || '[no subject]';
                   const bounceType = event.bounce_type;
+                  const messageLinkProps = {
+                    to: '/s/$sourceId/messages/$sesMessageId',
+                    params: {
+                      sourceId: sourceId.toString(),
+                      sesMessageId: event.ses_message_id,
+                    },
+                    search: detailSearch,
+                  } as const;
+                  const linkClassName =
+                    'block focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30';
 
                   return (
                     <tr
                       key={event.id}
-                      tabIndex={0}
-                      role="link"
-                      aria-label={`Open ${event.event_type} event for ${recipientEmail}`}
-                      className="group cursor-pointer transition-colors hover:bg-white/[0.04] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30"
-                      onClick={() => openEventDetail(event)}
-                      onKeyDown={(keyboardEvent) => handleEventRowKeyDown(keyboardEvent, event)}
+                      className="group transition-colors focus-within:bg-white/[0.06] hover:bg-white/[0.04]"
                     >
-                      <td className="px-4 py-2.5 align-middle">
-                        <div className="flex min-w-0 flex-col items-start gap-1">
-                          <EventBadge eventType={event.event_type} />
-                          {bounceType ? (
-                            <span className="max-w-full truncate text-xs text-white/35">
-                              {bounceType}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 align-middle">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <RecipientAvatar email={recipientEmail} />
-                          <span className="min-w-0 truncate font-medium text-white">
-                            {recipientEmail}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 align-middle">
-                        <div className="min-w-0">
-                          <span className="block truncate text-white/75" title={messageSubject}>
-                            {messageSubject}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-right align-middle">
-                        <time
-                          className="block font-mono text-xs whitespace-nowrap text-white/55 tabular-nums"
-                          dateTime={new Date(event.event_at).toISOString()}
-                          title={formatDateTime(event.event_at)}
+                      <td className="align-middle">
+                        <Link
+                          {...messageLinkProps}
+                          aria-label={`Open ${event.event_type} event for ${recipientEmail}`}
+                          className={`${linkClassName} px-4 py-2.5`}
                         >
-                          {formatCompactEventTime(event.event_at)}
-                        </time>
+                          <div className="flex min-w-0 flex-col items-start gap-1">
+                            <EventBadge eventType={event.event_type} />
+                            {bounceType ? (
+                              <span className="max-w-full truncate text-xs text-white/35">
+                                {bounceType}
+                              </span>
+                            ) : null}
+                          </div>
+                        </Link>
                       </td>
-                      <td className="px-2 py-2.5 align-middle text-white/25">
-                        <ChevronRight
-                          className="size-4 transition-colors group-hover:text-white/55"
-                          aria-hidden="true"
-                        />
+                      <td className="align-middle">
+                        <Link {...messageLinkProps} className={`${linkClassName} px-4 py-2.5`}>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <RecipientAvatar email={recipientEmail} />
+                            <span className="min-w-0 truncate font-medium text-white">
+                              {recipientEmail}
+                            </span>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="align-middle">
+                        <Link {...messageLinkProps} className={`${linkClassName} px-4 py-2.5`}>
+                          <div className="min-w-0">
+                            <span className="block truncate text-white/75" title={messageSubject}>
+                              {messageSubject}
+                            </span>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="text-right align-middle">
+                        <Link {...messageLinkProps} className={`${linkClassName} px-3 py-2.5`}>
+                          <time
+                            className="block font-mono text-xs whitespace-nowrap text-white/55 tabular-nums"
+                            dateTime={new Date(event.event_at).toISOString()}
+                            title={formatDateTime(event.event_at)}
+                          >
+                            {formatCompactEventTime(event.event_at)}
+                          </time>
+                        </Link>
+                      </td>
+                      <td className="align-middle text-white/25">
+                        <Link {...messageLinkProps} className={`${linkClassName} px-2 py-2.5`}>
+                          <ChevronRight
+                            className="size-4 transition-colors group-hover:text-white/55"
+                            aria-hidden="true"
+                          />
+                        </Link>
                       </td>
                     </tr>
                   );

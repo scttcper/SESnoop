@@ -25,13 +25,73 @@ Based on [marckohlbrugge/sessy](https://github.com/marckohlbrugge/sessy), a Rail
 - Hono and OpenAPI on Cloudflare Workers for the API.
 - Cloudflare D1, SQLite, and Drizzle ORM for storage.
 
-## Local Setup
+## Deploy to Cloudflare
 
 Prerequisites:
 
+- A Cloudflare account.
 - Node.js.
 - pnpm `11.9.0`; the repo pins this in `packageManager`.
-- A Cloudflare account and Wrangler credentials for deploys or remote D1 work.
+
+1. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+2. Sign in to Cloudflare:
+
+   ```bash
+   pnpm exec wrangler login
+   ```
+
+3. Create a D1 database:
+
+   ```bash
+   pnpm exec wrangler d1 create sesnoop
+   ```
+
+4. Update `wrangler.jsonc`:
+
+   - Set `d1_databases[0].database_id` to the ID returned by Wrangler.
+   - Keep the binding name as `DB`.
+
+5. Optional: set auth secrets:
+
+   ```bash
+   pnpm exec wrangler secret put AUTH_USERNAME
+   pnpm exec wrangler secret put AUTH_PASSWORD
+   pnpm exec wrangler secret put AUTH_JWT_SECRET
+   ```
+
+6. Deploy:
+
+   ```bash
+   pnpm deploy
+   ```
+
+   The deploy script builds the UI, applies remote D1 migrations to the `DB` binding, and deploys the Worker.
+
+## Connect SES
+
+After deployment:
+
+1. Open the SESnoop dashboard.
+2. Go to **Sources** and create a source.
+3. Click **Setup** for that source.
+4. Use the generated SNS topic name, SES configuration set name, and webhook URL to configure Amazon SES.
+
+The webhook URL has this shape:
+
+```text
+https://<your-worker>/api/webhooks/<source_token>
+```
+
+For lower webhook and D1 usage, start with delivery, bounce, complaint, reject, delivery delay, and rendering failure events. Enable open, click, and subscription events only if you need engagement data.
+
+SESnoop handles SNS `SubscriptionConfirmation` requests automatically.
+
+## Local Development
 
 1. Install dependencies:
 
@@ -79,60 +139,6 @@ pnpm exec wrangler d1 execute DB --local --file .wrangler/remote-d1-data.sql
 ```
 
 Use a fresh local D1 state when possible; existing local rows may conflict with imported IDs. The export can contain real email metadata, so keep it out of git and delete it when done.
-
-## Deploy
-
-1. Sign in to Cloudflare:
-
-   ```bash
-   pnpm exec wrangler login
-   ```
-
-2. Create a D1 database:
-
-   ```bash
-   pnpm exec wrangler d1 create sesnoop
-   ```
-
-3. Update `wrangler.jsonc`:
-
-   - Set `d1_databases[0].database_id` to the ID returned by Wrangler.
-   - Keep the binding name as `DB`.
-
-4. Optional: set auth secrets:
-
-   ```bash
-   pnpm exec wrangler secret put AUTH_USERNAME
-   pnpm exec wrangler secret put AUTH_PASSWORD
-   pnpm exec wrangler secret put AUTH_JWT_SECRET
-   ```
-
-5. Deploy:
-
-   ```bash
-   pnpm deploy
-   ```
-
-   The deploy script builds the UI, applies remote D1 migrations to the `DB` binding, and deploys the Worker.
-
-## Connect SES
-
-After deployment:
-
-1. Open the SESnoop dashboard.
-2. Go to **Sources** and create a source.
-3. Click **Setup** for that source.
-4. Use the generated SNS topic name, SES configuration set name, and webhook URL to configure Amazon SES.
-
-The webhook URL has this shape:
-
-```text
-https://<your-worker>/api/webhooks/<source_token>
-```
-
-For lower webhook and D1 usage, start with delivery, bounce, complaint, reject, delivery delay, and rendering failure events. Enable open, click, and subscription events only if you need engagement data.
-
-SESnoop handles SNS `SubscriptionConfirmation` requests automatically.
 
 ## Configuration
 

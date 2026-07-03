@@ -2,11 +2,9 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/scttcper/SESnoop)
 
-SESnoop is a cloudflare worker dashboard for Amazon SES delivery events. It ingests SNS notifications (deliveries, bounces, complaints) via webhooks and provides a modern React UI to explore message history and delivery metrics.
+SESnoop is a Cloudflare Workers dashboard for Amazon SES event monitoring. It receives Amazon SNS notifications, stores them in D1, and provides a React UI for event search, message timelines, source setup, and delivery metrics.
 
-Built on Cloudflare Workers and D1, it offers a serverless, low-cost alternative to third-party email monitoring tools.
-
-Based on the excellent work by [marckohlbrugge/sessy](https://github.com/marckohlbrugge/sessy), a Rails app for the same purpose.
+Based on [marckohlbrugge/sessy](https://github.com/marckohlbrugge/sessy), a Rails app for the same purpose.
 
 |                                                 |                                            |
 | ----------------------------------------------- | ------------------------------------------ |
@@ -14,142 +12,179 @@ Based on the excellent work by [marckohlbrugge/sessy](https://github.com/marckoh
 
 ## Features
 
-- **Webhook Ingestion**: Accepts SNS notifications securely, verifies signatures, and deduplicates events.
-- **Event Explorer**: Search and filter event history by type (Delivery, Bounce, Complaint), date range, and specific message IDs.
-- **Message Insight**: Detailed timeline view for individual messages, including metadata and tags.
-- **Dashboard Metrics**: Analyze daily volume, open rates, click rates, and bounce statistics.
-- **Multi-Source Support**: Manage multiple SES identities or environments (e.g., staging vs. prod) with unique webhook URLs.
-- **Data Retention**: Configurable per-source retention policies with automatic cleanup of old data.
-- **Security**: Optional Basic Auth for the UI and API.
+- SNS webhook ingestion with signature verification and SNS message deduplication.
+- Searchable SES event history for sends, deliveries, bounces, complaints, rejects, delivery delays, rendering failures, subscriptions, opens, and clicks.
+- Message timelines with SES metadata, recipients, tags, and event details.
+- Dashboard metrics for volume, delivery health, open/click rates, bounces, and complaints.
+- Multiple sources with separate webhook URLs, colors, and retention policies.
+- Optional cookie-based auth for the UI and API.
 
-## Architecture
+## Stack
 
-- **UI**: React + TanStack Router + TanStack Query.
-- **API**: Hono (OpenAPI compliant) running on Cloudflare Workers.
-- **Database**: Cloudflare D1 (SQLite) with Drizzle ORM.
+- React, TanStack Router, and TanStack Query for the UI.
+- Hono and OpenAPI on Cloudflare Workers for the API.
+- Cloudflare D1, SQLite, and Drizzle ORM for storage.
 
-## Quickstart
+## Local Setup
 
-To run the project locally:
+Prerequisites:
 
-1.  **Install dependencies**:
+- Node.js.
+- pnpm `11.9.0`; the repo pins this in `packageManager`.
+- A Cloudflare account and Wrangler credentials for deploys or remote D1 work.
 
-    ```bash
-    pnpm install
-    ```
+1. Install dependencies:
 
-2.  **Start the development server**:
-    ```bash
-    pnpm dev
-    ```
-    This starts Vite and the Worker in local mode. Open the URL provided (default: `http://localhost:5173`).
+   ```bash
+   pnpm install
+   ```
 
-## Deployment
+2. Optional: enable local auth:
 
-### 1. Database Setup
+   ```bash
+   cp .env.example .dev.vars
+   ```
 
-Before deploying, you need to set up the D1 database.
+   This uses the sample `admin` / `admin` login. Leave `.dev.vars` absent to run locally without auth, or replace the values with your own.
+   `.dev.vars` is ignored by git; do not commit real secrets.
 
-1.  Create a new D1 database:
+3. Apply the D1 schema to the local database:
 
-    ```bash
-    wrangler d1 create sesnoop
-    ```
+   ```bash
+   pnpm exec wrangler d1 migrations apply DB --local
+   ```
 
-2.  Update `wrangler.jsonc` with your new database ID:
-    - Set `d1_databases[0].database_id` to the ID returned by the create command.
-    - Ensure the binding name remains `DB`.
+4. Optional: load seed data:
 
-3.  Apply migrations to create the schema:
-    ```bash
-    wrangler d1 migrations apply sesnoop
-    ```
+   ```bash
+   pnpm db:seed
+   ```
 
-### 2. Deploy Worker
+5. Start the app:
 
-Build the UI and deploy the worker to Cloudflare:
+   ```bash
+   pnpm dev
+   ```
+
+   Open the Vite URL printed in the terminal, usually `http://localhost:5173`.
+
+### Clone remote D1 to local (for testing)
+
+For a throwaway local copy of remote data, apply the local schema first, then import a data-only export:
 
 ```bash
-pnpm deploy
+pnpm exec wrangler d1 migrations apply DB --local
+pnpm exec wrangler d1 export sesnoop --remote --no-schema --output .wrangler/remote-d1-data.sql
+pnpm exec wrangler d1 execute DB --local --file .wrangler/remote-d1-data.sql
 ```
+
+Use a fresh local D1 state when possible; existing local rows may conflict with imported IDs. The export can contain real email metadata, so keep it out of git and delete it when done.
+
+## Deploy
+
+1. Sign in to Cloudflare:
+
+   ```bash
+   pnpm exec wrangler login
+   ```
+
+2. Create a D1 database:
+
+   ```bash
+   pnpm exec wrangler d1 create sesnoop
+   ```
+
+3. Update `wrangler.jsonc`:
+
+   - Set `d1_databases[0].database_id` to the ID returned by Wrangler.
+   - Keep the binding name as `DB`.
+
+4. Optional: set auth secrets:
+
+   ```bash
+   pnpm exec wrangler secret put AUTH_USERNAME
+   pnpm exec wrangler secret put AUTH_PASSWORD
+   pnpm exec wrangler secret put AUTH_JWT_SECRET
+   ```
+
+5. Deploy:
+
+   ```bash
+   pnpm deploy
+   ```
+
+   The deploy script builds the UI, applies remote D1 migrations to the `DB` binding, and deploys the Worker.
+
+## Connect SES
+
+After deployment:
+
+1. Open the SESnoop dashboard.
+2. Go to **Sources** and create a source.
+3. Click **Setup** for that source.
+4. Use the generated SNS topic name, SES configuration set name, and webhook URL to configure Amazon SES.
+
+The webhook URL has this shape:
+
+```text
+https://<your-worker>/api/webhooks/<source_token>
+```
+
+For lower webhook and D1 usage, start with delivery, bounce, complaint, reject, delivery delay, and rendering failure events. Enable open, click, and subscription events only if you need engagement data.
+
+SESnoop handles SNS `SubscriptionConfirmation` requests automatically.
 
 ## Configuration
 
-### Webhook Setup (Connect SES to SESnoop)
+Set these in `.dev.vars` for local development or with `wrangler secret put` for production.
 
-Once deployed, you need to tell Amazon SES where to send events.
+Auth is disabled unless both `AUTH_USERNAME` and `AUTH_PASSWORD` are set. If they are set, `AUTH_JWT_SECRET` is required.
 
-1.  Open your deployed SESnoop dashboard.
-2.  Navigate to **Sources** and create a new source.
-3.  Click **Setup** on the new source to view detailed instructions.
-4.  The guide will provide:
-    - A unique Webhook URL: `https://<your-worker>/api/webhooks/<source_token>`
-    - Instructions for creating an SES Configuration Set and SNS Topic.
-    - Steps to subscribe your unique URL to the SNS Topic.
+| Variable                  | Description                                                        |
+| ------------------------- | ------------------------------------------------------------------ |
+| `AUTH_USERNAME`           | Username for cookie-based auth.                                    |
+| `AUTH_PASSWORD`           | Password for cookie-based auth.                                    |
+| `AUTH_JWT_SECRET`         | Secret used to sign auth cookies.                                  |
+| `AUTH_COOKIE_NAME`        | Optional cookie name. Defaults to `sesnoop_auth`.                  |
+| `AUTH_COOKIE_TTL_SECONDS` | Optional cookie lifetime. Defaults to 30 days.                     |
+| `IGNORED_SES_EVENT_TYPES` | Optional comma-separated event types to acknowledge but not store. |
 
-For lower webhook and D1 usage, start with delivery, bounce, complaint, reject, delivery delay, and
-rendering failure events. Enable open, click, and subscription events only if you need engagement
-data.
+Each source also has an optional retention period. When set, the scheduled Worker deletes that source's messages and events older than the retention window. Without a retention period, data is kept indefinitely.
 
-_Note: The webhook endpoint handles SNS `SubscriptionConfirmation` automatically._
+## Cloudflare Notes
 
-### Environment Variables and Authentication
+- `wrangler.jsonc` is the source of truth for the Worker name, assets, D1 binding, cron trigger, and observability settings.
+- Keep the D1 binding name as `DB`; the app, migrations, and generated Cloudflare types expect it.
+- Static assets are served by Cloudflare Workers assets with SPA fallback, while `/api/*` routes run through the Worker first.
+- Retention cleanup runs from the configured cron trigger at 02:00 UTC daily.
+- To inspect remote migration state, run `pnpm exec wrangler d1 migrations list DB --remote`.
+- To stream deployed Worker logs, run `pnpm exec wrangler tail sesnoop`.
 
-Configure these via the Cloudflare Dashboard or Wrangler: Setup AUTH_USERNAME, AUTH_PASSWORD, and AUTH_JWT_SECRET to enable authentication.
+## API Reference
 
-| Variable                  | Description                                                                                |
-| :------------------------ | :----------------------------------------------------------------------------------------- |
-| `AUTH_USERNAME`           | Optional. Username for cookie-based auth.                                                  |
-| `AUTH_PASSWORD`           | Optional. Password for cookie-based auth.                                                  |
-| `AUTH_JWT_SECRET`         | Required when auth is enabled. Secret used to sign JWT cookies.                            |
-| `AUTH_COOKIE_NAME`        | Optional. Cookie name (default: `sesnoop_auth`).                                           |
-| `AUTH_COOKIE_TTL_SECONDS` | Optional. Cookie lifetime in seconds (default: 30 days).                                   |
-| `IGNORED_SES_EVENT_TYPES` | Optional. Comma-separated SES event types to acknowledge but not store, e.g. `Open,Click`. |
+- OpenAPI JSON: `/api/doc`
+- Scalar API reference: `/api/reference`
 
-### Data Retention
+Useful endpoints:
 
-Each source has a `retention_days` setting. A daily cron job (configured in `wrangler.jsonc`) automatically removes messages and events older than the configured limit to save storage. If unset, data is kept indefinitely.
+| Endpoint                            | Purpose                       |
+| ----------------------------------- | ----------------------------- |
+| `GET /api/sources/:id/events`       | Search and filter events.     |
+| `GET /api/sources/:id/overview`     | Read dashboard metrics.       |
+| `GET /api/sources/:id/messages/:id` | Read one message timeline.    |
+| `POST /api/webhooks/:source_token`  | Receive SNS webhook payloads. |
 
-## API & Documentation
+## Scripts
 
-The application includes a fully documented OpenAPI specification.
-
-- **JSON Spec**: `/api/doc`
-- **Swagger UI**: `/api/reference`
-
-**Key Endpoints**:
-
-- `GET /api/sources/:id/events` - Search and filter events.
-- `GET /api/sources/:id/overview` - Aggregate dashboard metrics.
-- `GET /api/sources/:id/messages/:id` - Detailed message view.
-- `POST /api/webhooks/:source_token` - Public endpoint for SNS ingestion.
-
-## Development Scripts
-
-```bash
-pnpm dev        # Run locally (Vite + Wrangler)
-pnpm build      # Build the React UI
-pnpm preview    # Build and preview locally
-pnpm deploy     # Build and deploy to Cloudflare
-pnpm test       # Run tests (Vitest)
-pnpm cf-typegen # Generate types from Wrangler bindings
-```
-
-#### Clone remote D1 to local (for testing)
-
-If you want a local copy of production data for testing, export the remote DB, rebuild the local DB from schema first, then import data.
-
-```bash
-# 1) Export remote DB to SQL
-wrangler d1 export sesnoop --remote --output dump.sql
-
-# 2) Split schema and data (the export interleaves CREATE/INSERT)
-awk 'BEGIN{in_create=0} { if ($0 ~ /^PRAGMA/) { print > "schema.sql"; print > "data.sql"; next } if ($0 ~ /^CREATE/) { in_create=1; print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if (in_create) { print > "schema.sql"; if ($0 ~ /;[[:space:]]*$/) in_create=0; next } if ($0 ~ /^INSERT/) { print > "data.sql"; next } }' dump.sql
-
-# 3) Reset local DB (destructive for local dev data)
-rm -f .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite*
-
-# 4) Import schema, then data
-wrangler d1 execute sesnoop --local --file schema.sql
-wrangler d1 execute sesnoop --local --file data.sql
-```
+| Command               | Description                        |
+| --------------------- | ---------------------------------- |
+| `pnpm dev`            | Run the local Vite and Worker app. |
+| `pnpm build`          | Build the React UI.                |
+| `pnpm preview`        | Build and preview locally.         |
+| `pnpm deploy`         | Build, migrate remote D1, deploy.  |
+| `pnpm test`           | Run the Vitest suite.              |
+| `pnpm test -- <file>` | Run one test file.                 |
+| `pnpm typecheck`      | Run TypeScript checks.             |
+| `pnpm lint`           | Run lint and format checks.        |
+| `pnpm cf-typegen`     | Generate Cloudflare binding types. |
+| `pnpm db:seed`        | Seed the local D1 database.        |

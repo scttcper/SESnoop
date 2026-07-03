@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lte, sql, type SQL } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
@@ -29,17 +29,6 @@ const buildEventSearchFilter = (search: string) => {
   )`;
 };
 
-const buildJoinedSearchFilter = (search: string) => {
-  if (!search) {
-    return;
-  }
-  const normalized = `%${search.toLowerCase()}%`;
-  return sql`(
-    lower(${events.recipient_email}) like ${normalized}
-    or lower(${messages.subject}) like ${normalized}
-  )`;
-};
-
 const buildTagFilter = (sourceId: number, tag: SelectedTag) =>
   sql`exists (
     select 1
@@ -58,7 +47,11 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const { id } = c.req.valid('param');
   const query = c.req.valid('query');
 
-  const [source] = await db.select({ id: sources.id }).from(sources).where(eq(sources.id, id));
+  const [source] = await db
+    .select({ id: sources.id })
+    .from(sources)
+    .where(eq(sources.id, id))
+    .limit(1);
 
   if (!source) {
     return c.json(
@@ -78,20 +71,12 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
     perPage,
     range: { start, end },
   } = parseEventListQuery(query);
-  const startMs = start ? start.getTime() : null;
-  const endMs = end ? end.getTime() : null;
 
   const baseFilters = filterSql([
     eq(events.source_id, source.id),
     buildEventSearchFilter(search),
-    startMs ? sql`${events.event_at} >= ${startMs}` : undefined,
-    endMs ? sql`${events.event_at} <= ${endMs}` : undefined,
-  ]);
-  const joinedBaseFilters = filterSql([
-    eq(events.source_id, source.id),
-    buildJoinedSearchFilter(search),
-    startMs ? sql`${events.event_at} >= ${startMs}` : undefined,
-    endMs ? sql`${events.event_at} <= ${endMs}` : undefined,
+    start ? gte(events.event_at, start) : undefined,
+    end ? lte(events.event_at, end) : undefined,
   ]);
 
   const listFilters = filterSql([
@@ -100,18 +85,28 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
     bounceTypes.length > 0 ? inArray(events.bounce_type, bounceTypes) : undefined,
     ...selectedTags.map((tag) => buildTagFilter(source.id, tag)),
   ]);
-  const joinedListFilters = filterSql([
-    ...joinedBaseFilters,
-    eventTypes.length > 0 ? inArray(events.event_type, eventTypes) : undefined,
-    bounceTypes.length > 0 ? inArray(events.bounce_type, bounceTypes) : undefined,
-    ...selectedTags.map((tag) => buildTagFilter(source.id, tag)),
-  ]);
-
   const nonTagListFilters = filterSql([
     ...baseFilters,
     eventTypes.length > 0 ? inArray(events.event_type, eventTypes) : undefined,
     bounceTypes.length > 0 ? inArray(events.bounce_type, bounceTypes) : undefined,
   ]);
+
+  const pagedEvents = db.$with('paged_events').as(
+    db
+      .select({
+        id: events.id,
+        event_type: events.event_type,
+        recipient_email: events.recipient_email,
+        event_at: events.event_at,
+        message_id: events.message_id,
+        bounce_type: events.bounce_type,
+      })
+      .from(events)
+      .where(and(...listFilters))
+      .orderBy(desc(events.event_at))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
+  );
 
   const [totalRows, rows, countRows, tagCountRows] = await Promise.all([
     db
@@ -119,22 +114,20 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
       .from(events)
       .where(and(...listFilters)),
     db
+      .with(pagedEvents)
       .select({
-        id: events.id,
-        event_type: events.event_type,
-        recipient_email: events.recipient_email,
-        event_at: events.event_at,
-        message_id: messages.id,
+        id: pagedEvents.id,
+        event_type: pagedEvents.event_type,
+        recipient_email: pagedEvents.recipient_email,
+        event_at: pagedEvents.event_at,
+        message_id: pagedEvents.message_id,
         ses_message_id: messages.ses_message_id,
-        bounce_type: events.bounce_type,
+        bounce_type: pagedEvents.bounce_type,
         message_subject: messages.subject,
       })
-      .from(events)
-      .innerJoin(messages, eq(events.message_id, messages.id))
-      .where(and(...joinedListFilters))
-      .orderBy(desc(events.event_at))
-      .limit(perPage)
-      .offset((page - 1) * perPage),
+      .from(pagedEvents)
+      .innerJoin(messages, eq(pagedEvents.message_id, messages.id))
+      .orderBy(desc(pagedEvents.event_at)),
     db
       .select({
         event_type: events.event_type,

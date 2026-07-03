@@ -31,27 +31,28 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
     );
   }
 
-  const messageEvents = await db
-    .select({
-      id: events.id,
-      event_type: events.event_type,
-      recipient_email: events.recipient_email,
-      event_at: events.event_at,
-      event_data: events.event_data,
-      bounce_type: events.bounce_type,
-    })
-    .from(events)
-    .where(eq(events.message_id, message.id))
-    .orderBy(desc(events.event_at));
-
-  const tags = await db
-    .select({
-      key: messageTags.key,
-      value: messageTags.value,
-    })
-    .from(messageTags)
-    .where(eq(messageTags.message_id, message.id))
-    .orderBy(asc(messageTags.key), asc(messageTags.value));
+  const [messageEvents, tags] = await Promise.all([
+    db
+      .select({
+        id: events.id,
+        event_type: events.event_type,
+        recipient_email: events.recipient_email,
+        event_at: events.event_at,
+        event_data: events.event_data,
+        bounce_type: events.bounce_type,
+      })
+      .from(events)
+      .where(eq(events.message_id, message.id))
+      .orderBy(desc(events.event_at)),
+    db
+      .select({
+        key: messageTags.key,
+        value: messageTags.value,
+      })
+      .from(messageTags)
+      .where(eq(messageTags.message_id, message.id))
+      .orderBy(asc(messageTags.key), asc(messageTags.value)),
+  ]);
 
   const mailMetadata = toRecord(message.mail_metadata);
 

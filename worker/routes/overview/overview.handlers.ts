@@ -1,4 +1,5 @@
-import { and, count, countDistinct, desc, eq, sql } from 'drizzle-orm';
+import { and, count, countDistinct, desc, eq, gt, gte, isNotNull, lte, ne, sql } from 'drizzle-orm';
+import { unionAll } from 'drizzle-orm/sqlite-core';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
@@ -17,8 +18,13 @@ import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetRoute } from './overview.routes';
 
+type BounceInsightBucket = 'type' | 'reason' | 'domain';
+
+const MS_PER_UTC_DAY = 86_400_000;
+const dayBucketExpr = sql<number>`cast(${events.event_at} / ${sql.raw(String(MS_PER_UTC_DAY))} as integer)`;
+
 const eventCount = (eventType: EventType) =>
-  count(sql`case when ${eq(events.event_type, eventType)} then 1 end`);
+  sql<number>`coalesce(sum(${eq(events.event_type, eventType)}), 0)`;
 
 const uniqueEventCount = (eventType: EventType) =>
   countDistinct(
@@ -37,130 +43,129 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   const resolvedRange = resolveDateRange({ from, to, now, fillMissingCustomBounds: true });
   const start = resolvedRange.start ?? startOfDayUtc(now);
   const end = resolvedRange.end ?? endOfDayUtc(now);
-  const startMs = start.getTime();
-  const endMs = end.getTime();
   const dayKeys = buildDayRange(start, end);
 
   const rangeFilter = and(
     eq(events.source_id, id),
-    sql`${events.event_at} >= ${startMs}`,
-    sql`${events.event_at} <= ${endMs}`,
+    gte(events.event_at, start),
+    lte(events.event_at, end),
   );
 
   const todayRange = {
     start: startOfDayUtc(now),
     end: endOfDayUtc(now),
   };
-  const todayStartMs = todayRange.start.getTime();
-  const todayEndMs = todayRange.end.getTime();
 
-  const dayExpr = sql<string>`strftime('%Y-%m-%d', ${events.event_at} / 1000, 'unixepoch')`;
   const bounceFilter = and(rangeFilter, eq(events.event_type, EVENT_TYPES.bounce));
+  const bounceEvents = db.$with('bounce_events').as(
+    db
+      .select({
+        event_data: events.event_data,
+        bounce_type: events.bounce_type,
+        recipient_email: events.recipient_email,
+      })
+      .from(events)
+      .where(bounceFilter),
+  );
   const bounceDiagnosticExpr = sql<string | null>`(
     select json_extract(value, '$.diagnosticCode')
-    from json_each(${events.event_data}, '$.bouncedRecipients')
+    from json_each(${bounceEvents.event_data}, '$.bouncedRecipients')
     where json_extract(value, '$.diagnosticCode') is not null
       and json_extract(value, '$.diagnosticCode') <> ''
     limit 1
   )`;
   const bounceReasonExpr = sql<string>`coalesce(
-    nullif(json_extract(${events.event_data}, '$.bounceSubType'), ''),
-    nullif(json_extract(${events.event_data}, '$.bounceType'), ''),
-    nullif(${events.bounce_type}, ''),
+    nullif(json_extract(${bounceEvents.event_data}, '$.bounceSubType'), ''),
+    nullif(json_extract(${bounceEvents.event_data}, '$.bounceType'), ''),
+    nullif(${bounceEvents.bounce_type}, ''),
     nullif(${bounceDiagnosticExpr}, ''),
     'Unknown'
   )`;
   const recipientDomainExpr = sql<string>`lower(trim(substr(
-    ${events.recipient_email},
-    instr(${events.recipient_email}, '@') + 1
+    ${bounceEvents.recipient_email},
+    instr(${bounceEvents.recipient_email}, '@') + 1
   )))`;
-
-  const [
-    sourceRows,
-    rangeTotalRows,
-    lastEventRows,
-    sentTodayRows,
-    dailyRows,
-    bounceBreakdownRows,
-    reasonRows,
-    topDomainRows,
-  ] = await Promise.all([
-    db.select({ id: sources.id }).from(sources).where(eq(sources.id, id)).limit(1),
+  const bounceInsightRowsQuery = unionAll(
     db
+      .with(bounceEvents)
       .select({
-        sent: eventCount(EVENT_TYPES.send),
-        delivered: eventCount(EVENT_TYPES.delivery),
-        bounced: eventCount(EVENT_TYPES.bounce),
-        complaints: eventCount(EVENT_TYPES.complaint),
-        opens: eventCount(EVENT_TYPES.open),
-        clicks: eventCount(EVENT_TYPES.click),
-        unique_emails: countDistinct(sql`lower(${events.recipient_email})`),
-        unique_opens: uniqueEventCount(EVENT_TYPES.open),
-        unique_clicks: uniqueEventCount(EVENT_TYPES.click),
-      })
-      .from(events)
-      .where(rangeFilter),
-    db
-      .select({
-        event_at: events.event_at,
-      })
-      .from(events)
-      .where(eq(events.source_id, id))
-      .orderBy(desc(events.event_at))
-      .limit(1),
-    db
-      .select({
-        sent_today: eventCount(EVENT_TYPES.send),
-      })
-      .from(events)
-      .where(
-        and(
-          eq(events.source_id, id),
-          sql`${events.event_at} >= ${todayStartMs}`,
-          sql`${events.event_at} <= ${todayEndMs}`,
-        ),
-      ),
-    db
-      .select({
-        day: dayExpr,
-        sent: eventCount(EVENT_TYPES.send),
-        delivered: eventCount(EVENT_TYPES.delivery),
-        bounced: eventCount(EVENT_TYPES.bounce),
-        unique_opens: uniqueEventCount(EVENT_TYPES.open),
-        unique_recipients: countDistinct(sql`lower(${events.recipient_email})`),
-      })
-      .from(events)
-      .where(rangeFilter)
-      .groupBy(dayExpr),
-    db
-      .select({
-        bounce_type: events.bounce_type,
+        bucket: sql<BounceInsightBucket>`'type'`,
+        label: sql<string>`${bounceEvents.bounce_type}`,
         count: count(),
       })
-      .from(events)
-      .where(
-        and(bounceFilter, sql`${events.bounce_type} is not null`, sql`${events.bounce_type} <> ''`),
-      )
-      .groupBy(events.bounce_type),
+      .from(bounceEvents)
+      .where(and(isNotNull(bounceEvents.bounce_type), ne(bounceEvents.bounce_type, '')))
+      .groupBy(bounceEvents.bounce_type),
     db
       .select({
-        reason: bounceReasonExpr,
+        bucket: sql<BounceInsightBucket>`'reason'`,
+        label: bounceReasonExpr,
         count: count(),
       })
-      .from(events)
-      .where(bounceFilter)
+      .from(bounceEvents)
       .groupBy(bounceReasonExpr),
     db
       .select({
-        domain: recipientDomainExpr,
+        bucket: sql<BounceInsightBucket>`'domain'`,
+        label: recipientDomainExpr,
         count: count(),
       })
-      .from(events)
-      .where(and(bounceFilter, sql`instr(${events.recipient_email}, '@') > 0`))
-      .groupBy(recipientDomainExpr)
-      .orderBy(desc(count()))
-      .limit(5),
-  ]);
+      .from(bounceEvents)
+      .where(gt(sql<number>`instr(${bounceEvents.recipient_email}, '@')`, 0))
+      .groupBy(recipientDomainExpr),
+  );
+
+  const [sourceRows, rangeTotalRows, lastEventRows, sentTodayRows, dailyRows, bounceInsightRows] =
+    await Promise.all([
+      db.select({ id: sources.id }).from(sources).where(eq(sources.id, id)).limit(1),
+      db
+        .select({
+          sent: eventCount(EVENT_TYPES.send),
+          delivered: eventCount(EVENT_TYPES.delivery),
+          bounced: eventCount(EVENT_TYPES.bounce),
+          complaints: eventCount(EVENT_TYPES.complaint),
+          opens: eventCount(EVENT_TYPES.open),
+          clicks: eventCount(EVENT_TYPES.click),
+          unique_emails: countDistinct(sql`lower(${events.recipient_email})`),
+          unique_opens: uniqueEventCount(EVENT_TYPES.open),
+          unique_clicks: uniqueEventCount(EVENT_TYPES.click),
+        })
+        .from(events)
+        .where(rangeFilter),
+      db
+        .select({
+          event_at: events.event_at,
+        })
+        .from(events)
+        .where(eq(events.source_id, id))
+        .orderBy(desc(events.event_at))
+        .limit(1),
+      db
+        .select({
+          sent_today: eventCount(EVENT_TYPES.send),
+        })
+        .from(events)
+        .where(
+          and(
+            eq(events.source_id, id),
+            gte(events.event_at, todayRange.start),
+            lte(events.event_at, todayRange.end),
+          ),
+        ),
+      db
+        .select({
+          day_bucket: dayBucketExpr,
+          sent: eventCount(EVENT_TYPES.send),
+          delivered: eventCount(EVENT_TYPES.delivery),
+          bounced: eventCount(EVENT_TYPES.bounce),
+          unique_opens: uniqueEventCount(EVENT_TYPES.open),
+          unique_recipients: countDistinct(sql`lower(${events.recipient_email})`),
+        })
+        .from(events)
+        .where(rangeFilter)
+        .groupBy(dayBucketExpr),
+      bounceInsightRowsQuery,
+    ]);
 
   const [source] = sourceRows;
 
@@ -192,7 +197,9 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   eventMix.Open = opens;
   eventMix.Click = rangeTotals.clicks;
 
-  const dailyMap = new Map(dailyRows.map((row) => [row.day, row]));
+  const dailyMap = new Map(
+    dailyRows.map((row) => [formatDay(new Date(row.day_bucket * MS_PER_UTC_DAY)), row]),
+  );
   type DailyMetric = 'sent' | 'delivered' | 'bounced' | 'unique_opens' | 'unique_recipients';
   const series = (metric: DailyMetric) => dayKeys.map((day) => dailyMap.get(day)?.[metric] ?? 0);
 
@@ -230,11 +237,26 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     last_event_at: lastEvent?.event_at?.getTime() ?? null,
   };
 
+  const bounceBreakdownRows: Array<{ bounce_type: string; count: number }> = [];
   const reasonCounts = new Map<string, number>();
+  const domainCounts = new Map<string, number>();
 
-  for (const row of reasonRows) {
-    const reason = formatReasonLabel(row.reason);
-    reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + row.count);
+  for (const row of bounceInsightRows) {
+    if (row.bucket === 'type') {
+      bounceBreakdownRows.push({
+        bounce_type: row.label,
+        count: row.count,
+      });
+      continue;
+    }
+
+    if (row.bucket === 'reason') {
+      const reason = formatReasonLabel(row.label);
+      reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + row.count);
+      continue;
+    }
+
+    domainCounts.set(row.label, (domainCounts.get(row.label) ?? 0) + row.count);
   }
 
   const topReasons = [...reasonCounts.entries()]
@@ -246,11 +268,14 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       percentage: rate(reasonCount, bounced),
     }));
 
-  const topDomains = topDomainRows.map((row) => ({
-    label: row.domain,
-    count: row.count,
-    percentage: rate(row.count, bounced),
-  }));
+  const topDomains = [...domainCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([label, domainCount]) => ({
+      label,
+      count: domainCount,
+      percentage: rate(domainCount, bounced),
+    }));
 
   return c.json(
     {
@@ -263,12 +288,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       activity,
       event_mix: eventMix,
       chart,
-      bounce_breakdown: bounceBreakdownRows
-        .filter((row): row is { bounce_type: string; count: number } => row.bounce_type != null)
-        .map((row) => ({
-          bounce_type: row.bounce_type,
-          count: row.count,
-        })),
+      bounce_breakdown: bounceBreakdownRows,
       failure_insights: {
         top_reasons: topReasons,
         top_domains: topDomains,

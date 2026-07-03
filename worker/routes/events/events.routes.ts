@@ -21,11 +21,18 @@ const listQuerySchema = z.object({
   search: z.string().optional(),
   event_types: z.string().optional(),
   bounce_types: z.string().optional(),
+  tags: z.string().optional(),
   date_range: datePresetSchema.optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   page: z.string().optional(),
   per_page: z.string().optional(),
+});
+
+const tagSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  label: z.string(),
 });
 
 const eventRowSchema = z.object({
@@ -36,6 +43,7 @@ const eventRowSchema = z.object({
   ses_message_id: z.string(),
   bounce_type: z.string().nullable(),
   message_subject: z.string().nullable(),
+  tags: z.array(tagSchema),
 });
 
 export type EventRow = z.infer<typeof eventRowSchema>;
@@ -51,6 +59,7 @@ const responseSchema = z.object({
   counts: z.object({
     event_types: z.record(z.string(), z.number()),
     bounce_types: z.record(z.string(), z.number()),
+    tags: z.record(z.string(), z.number()),
   }),
 });
 

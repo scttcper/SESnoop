@@ -56,6 +56,34 @@ export const messages = sqliteTable(
   }),
 );
 
+export const messageTags = sqliteTable(
+  'message_tags',
+  {
+    id: integer({ mode: 'number' }).primaryKey({ autoIncrement: true }),
+    source_id: integer({ mode: 'number' })
+      .notNull()
+      .references(() => sources.id, { onDelete: 'cascade' }),
+    message_id: integer({ mode: 'number' })
+      .notNull()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    key: text().notNull(),
+    value: text().notNull(),
+  },
+  (table) => ({
+    messageTagUnique: uniqueIndex('message_tags_message_id_key_value_unique').on(
+      table.message_id,
+      table.key,
+      table.value,
+    ),
+    sourceKeyValueIndex: index('message_tags_source_id_key_value_index').on(
+      table.source_id,
+      table.key,
+      table.value,
+      table.message_id,
+    ),
+  }),
+);
+
 export const webhooks = sqliteTable(
   'webhooks',
   {

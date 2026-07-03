@@ -55,6 +55,11 @@ describe('webhooks ingestion', () => {
         commonHeaders: {
           subject: 'Hello',
         },
+        tags: {
+          campaign: ['spring', 'spring'],
+          environment: 'prod',
+          'ses:configuration-set': ['ignored'],
+        },
       },
       bounce: {
         bounceType: 'Permanent',
@@ -105,6 +110,16 @@ describe('webhooks ingestion', () => {
     const webhooks = await env.DB.prepare('SELECT sns_message_id FROM webhooks').all();
     expect(webhooks.results).toHaveLength(1);
     expect(webhooks.results[0]?.sns_message_id).toBe('sns-1');
+
+    const tags = await env.DB.prepare(
+      `SELECT key, value
+       FROM message_tags
+       ORDER BY key, value`,
+    ).all();
+    expect(tags.results).toEqual([
+      { key: 'campaign', value: 'spring' },
+      { key: 'environment', value: 'prod' },
+    ]);
   });
 
   it('creates events for multiple notifications and recipients', async () => {

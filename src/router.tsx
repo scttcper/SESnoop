@@ -8,7 +8,7 @@ import {
   lazyRouteComponent,
   redirect,
 } from '@tanstack/react-router';
-import { fallback, zodValidator } from '@tanstack/zod-adapter';
+import { zodValidator } from '@tanstack/zod-adapter';
 import { Suspense } from 'react';
 import { z } from 'zod';
 
@@ -73,7 +73,7 @@ const appRoute = createRoute({
 });
 
 const loginSearchSchema = z.object({
-  redirect: fallback(z.string(), '').default(''),
+  redirect: z.string().catch('').default(''),
 });
 
 const loginRoute = createRoute({
@@ -120,13 +120,14 @@ const sourceMonitorRoute = createRoute({
 });
 
 const eventsSearchSchema = z.object({
-  search: fallback(z.string(), '').default(''),
+  search: z.string().catch('').default(''),
   event_types: z.array(z.string()).optional().catch(undefined),
-  bounce_types: fallback(z.array(z.string()), []).default([]),
-  date_range: fallback(z.string(), DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
-  from: fallback(z.string(), '').default(''),
-  to: fallback(z.string(), '').default(''),
-  page: fallback(z.number(), DEFAULT_PAGE).default(DEFAULT_PAGE),
+  bounce_types: z.array(z.string()).catch([]).default([]),
+  tags: z.array(z.string()).catch([]).default([]),
+  date_range: z.string().catch(DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
+  from: z.string().catch('').default(''),
+  to: z.string().catch('').default(''),
+  page: z.number().catch(DEFAULT_PAGE).default(DEFAULT_PAGE),
 });
 
 export type EventsSearchParams = z.infer<typeof eventsSearchSchema>;
@@ -169,13 +170,14 @@ const sourceDashboardRoute = createRoute({
 });
 
 const messageDetailSearchSchema = z.object({
-  search: z.string().optional().catch(undefined),
+  search: z.string().catch('').default(''),
   event_types: z.array(z.string()).optional().catch(undefined),
-  bounce_types: z.array(z.string()).optional().catch(undefined),
-  date_range: z.string().optional().catch(undefined),
-  from: z.string().optional().catch(undefined),
-  to: z.string().optional().catch(undefined),
-  page: z.number().optional().catch(undefined),
+  bounce_types: z.array(z.string()).catch([]).default([]),
+  tags: z.array(z.string()).catch([]).default([]),
+  date_range: z.string().catch(DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
+  from: z.string().catch('').default(''),
+  to: z.string().catch('').default(''),
+  page: z.number().catch(DEFAULT_PAGE).default(DEFAULT_PAGE),
 });
 
 export type MessageDetailSearchParams = z.infer<typeof messageDetailSearchSchema>;

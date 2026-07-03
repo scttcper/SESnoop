@@ -13,6 +13,12 @@ export type SesEventType =
 
 type SesMailTags = Record<string, string[]>;
 
+export interface NormalizedMailTag {
+  key: string;
+  value: string;
+  label: string;
+}
+
 interface SesMailCommonHeaders extends Record<string, unknown> {
   subject?: string;
 }
@@ -143,6 +149,14 @@ const parseDate = (value: unknown): Date => {
 const stringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
 
+const stringList = (value: unknown): string[] => {
+  const asString = toString(value);
+  if (asString) {
+    return [asString];
+  }
+  return stringArray(value);
+};
+
 const toSesEventType = (value: unknown): SesEventType | undefined => {
   const eventType = toString(value);
   switch (eventType) {
@@ -171,7 +185,7 @@ const toSesMailTags = (value: unknown): SesMailTags | undefined => {
   }
 
   const entries = Object.entries(value)
-    .map(([key, entry]) => [key, stringArray(entry)] as const)
+    .map(([key, entry]) => [key, stringList(entry)] as const)
     .filter(([, entry]) => entry.length > 0);
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 };
@@ -393,15 +407,36 @@ export const extractDestinations = (mail: Record<string, unknown>): string[] => 
   return stringArray(toSesMail(mail)?.destination);
 };
 
-export const normalizeMailTags = (mail: Record<string, unknown>): string[] => {
+export const normalizeMailTags = (mail: Record<string, unknown>): NormalizedMailTag[] => {
   const tags = toSesMail(mail)?.tags;
   if (!tags) {
     return [];
   }
 
-  return Object.entries(tags)
-    .filter(([key]) => !key.toLowerCase().startsWith('ses:'))
-    .flatMap(([key, values]) => values.map((value) => `${key}:${value}`));
+  const normalized: NormalizedMailTag[] = [];
+  const seen = new Set<string>();
+
+  for (const [rawKey, rawValues] of Object.entries(tags)) {
+    const key = rawKey.trim();
+    if (!key || key.toLowerCase().startsWith('ses:')) {
+      continue;
+    }
+
+    for (const rawValue of rawValues) {
+      const value = rawValue.trim();
+      if (!value) {
+        continue;
+      }
+      const dedupeKey = `${key}\0${value}`;
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+      seen.add(dedupeKey);
+      normalized.push({ key, value, label: `${key}:${value}` });
+    }
+  }
+
+  return normalized;
 };
 
 export const extractEventDetail = (

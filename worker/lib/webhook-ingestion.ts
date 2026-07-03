@@ -2,9 +2,9 @@ import { sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
 import * as schema from '../db/schema';
-import { events, messages, sources, webhooks } from '../db/schema';
+import { events, messages, messageTags, sources, webhooks } from '../db/schema';
 
-import { EventPayload, normalizeRecipients } from './event-payload';
+import { EventPayload, normalizeMailTags, normalizeRecipients } from './event-payload';
 import type { SnsMessage } from './sns';
 
 type Db = DrizzleD1Database<typeof schema>;
@@ -68,6 +68,22 @@ async function persistNotification(
     })
     .onConflictDoNothing();
 
+  const normalizedTags = normalizeMailTags(eventPayload.mail);
+  const insertTags =
+    normalizedTags.length > 0
+      ? db
+          .insert(messageTags)
+          .values(
+            normalizedTags.map((tag) => ({
+              source_id: source.id,
+              message_id: messageId,
+              key: tag.key,
+              value: tag.value,
+            })),
+          )
+          .onConflictDoNothing()
+      : null;
+
   if (recipients.length > 0) {
     const insertEventRows = db
       .insert(events)
@@ -84,7 +100,17 @@ async function persistNotification(
       )
       .onConflictDoNothing();
 
+    if (insertTags) {
+      await db.batch([insertWebhook, insertMessage, insertTags, insertEventRows]);
+      return;
+    }
+
     await db.batch([insertWebhook, insertMessage, insertEventRows]);
+    return;
+  }
+
+  if (insertTags) {
+    await db.batch([insertWebhook, insertMessage, insertTags]);
     return;
   }
 

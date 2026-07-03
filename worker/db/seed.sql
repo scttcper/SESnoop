@@ -131,6 +131,45 @@ SELECT
 FROM sources
 WHERE token = 'seed-betalist';
 
+INSERT OR IGNORE INTO message_tags (source_id, message_id, key, value)
+SELECT source_id, id, tag_key, tag_value
+FROM messages
+CROSS JOIN (
+  SELECT 'environment' AS tag_key, 'demo' AS tag_value
+  UNION ALL
+  SELECT 'campaign', 'seed-data'
+) base_tags
+WHERE ses_message_id LIKE '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a%';
+
+INSERT OR IGNORE INTO message_tags (source_id, message_id, key, value)
+SELECT source_id, id, 'campaign', 'onboarding'
+FROM messages
+WHERE ses_message_id IN (
+  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1',
+  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3'
+);
+
+INSERT OR IGNORE INTO message_tags (source_id, message_id, key, value)
+SELECT source_id, id, 'campaign', 'newsletter'
+FROM messages
+WHERE ses_message_id IN (
+  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2',
+  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5'
+);
+
+INSERT OR IGNORE INTO message_tags (source_id, message_id, key, value)
+SELECT source_id, id, 'campaign', 'invite'
+FROM messages
+WHERE ses_message_id IN (
+  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4',
+  '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7'
+);
+
+INSERT OR IGNORE INTO message_tags (source_id, message_id, key, value)
+SELECT source_id, id, 'audience', 'beta'
+FROM messages
+WHERE ses_message_id LIKE '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a%';
+
 -- Events for message 1
 INSERT OR IGNORE INTO events (message_id, event_type, recipient_email, event_at)
 SELECT id,
@@ -332,6 +371,10 @@ SELECT id,
 FROM messages
 WHERE ses_message_id = '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7';
 
+UPDATE events
+SET source_id = (SELECT source_id FROM messages WHERE messages.id = events.message_id)
+WHERE source_id IS NULL;
+
 COMMIT;
 
 -- Quick summary for local verification
@@ -339,3 +382,8 @@ SELECT id, name, token, color FROM sources WHERE token = 'seed-betalist';
 SELECT ses_message_id, subject FROM messages
 WHERE ses_message_id LIKE '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a%'
 ORDER BY sent_at DESC;
+SELECT key, value, count(*) AS messages
+FROM message_tags
+WHERE source_id = (SELECT id FROM sources WHERE token = 'seed-betalist')
+GROUP BY key, value
+ORDER BY key, value;

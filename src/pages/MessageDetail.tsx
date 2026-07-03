@@ -63,6 +63,7 @@ export default function MessageDetailPage() {
       search: searchParams.search,
       event_types: searchParams.event_types,
       bounce_types: searchParams.bounce_types,
+      tags: searchParams.tags,
       date_range: searchParams.date_range,
       from: searchParams.from,
       to: searchParams.to,
@@ -75,9 +76,19 @@ export default function MessageDetailPage() {
       searchParams.from,
       searchParams.page,
       searchParams.search,
+      searchParams.tags,
       searchParams.to,
     ],
   );
+
+  const buildTagSearch = (tag: string) => {
+    const existingTags = searchParams.tags;
+    return {
+      ...backToEventsSearch,
+      tags: existingTags.includes(tag) ? existingTags : [...existingTags, tag],
+      page: 1,
+    };
+  };
 
   const handleCopy = (field: CopyField, text: string) => {
     if (!text) {
@@ -95,6 +106,7 @@ export default function MessageDetailPage() {
       copyTimeoutRef.current = null;
     }, 2000);
   };
+
   const recipientRows = useMemo(() => {
     if (!message || message.events.length === 0) {
       return [];
@@ -254,13 +266,16 @@ export default function MessageDetailPage() {
                   <dt className="text-sm/6 font-semibold text-white/70">Tags</dt>
                   <dd className="mt-1 flex flex-wrap gap-2 text-sm/6 text-white/70">
                     {message.tags.length > 0 ? (
-                      message.tags.map((tag: string) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-white/10 px-2 py-1 font-mono text-xs text-white/80"
+                      message.tags.map((tag) => (
+                        <Link
+                          key={tag.label}
+                          to="/s/$sourceId/events"
+                          params={{ sourceId: sourceId.toString() }}
+                          search={buildTagSearch(tag.label)}
+                          className="rounded-full bg-emerald-500/10 px-2 py-1 font-mono text-xs text-emerald-100/80 transition-colors hover:bg-emerald-500/20 hover:text-emerald-50"
                         >
-                          {tag}
-                        </span>
+                          {tag.label}
+                        </Link>
                       ))
                     ) : (
                       <span className="text-sm text-white/40">—</span>

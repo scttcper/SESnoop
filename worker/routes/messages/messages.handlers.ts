@@ -1,15 +1,10 @@
-import { desc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 import { createDb } from '../../db';
-import { events } from '../../db/schema';
-import {
-  extractDestinations,
-  extractEventDetail,
-  normalizeMailTags,
-  toRecord,
-} from '../../lib/event-payload';
+import { events, messageTags } from '../../db/schema';
+import { extractDestinations, extractEventDetail, toRecord } from '../../lib/event-payload';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetOneRoute } from './messages.routes';
@@ -49,6 +44,15 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
     .where(eq(events.message_id, message.id))
     .orderBy(desc(events.event_at));
 
+  const tags = await db
+    .select({
+      key: messageTags.key,
+      value: messageTags.value,
+    })
+    .from(messageTags)
+    .where(eq(messageTags.message_id, message.id))
+    .orderBy(asc(messageTags.key), asc(messageTags.value));
+
   const mailMetadata = toRecord(message.mail_metadata);
 
   return c.json(
@@ -59,7 +63,7 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
       source_email: message.source_email,
       destination_emails: extractDestinations(mailMetadata),
       sent_at: message.sent_at?.getTime() ?? null,
-      tags: normalizeMailTags(mailMetadata),
+      tags: tags.map((tag) => ({ ...tag, label: `${tag.key}:${tag.value}` })),
       mail_metadata: mailMetadata,
       events: messageEvents.map((event) => ({
         id: event.id,

@@ -2,10 +2,27 @@ import { env } from 'cloudflare:test';
 
 export const resetDb = async () => {
   // Clear data in correct order to respect foreign key constraints
+  await env.DB.prepare('DELETE FROM message_tags').run();
   await env.DB.prepare('DELETE FROM events').run();
   await env.DB.prepare('DELETE FROM messages').run();
   await env.DB.prepare('DELETE FROM webhooks').run();
   await env.DB.prepare('DELETE FROM sources').run();
+};
+
+export const insertMessageTags = async (
+  messageId: number,
+  tags: Array<{ key: string; value: string }>,
+) => {
+  for (const tag of tags) {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO message_tags (source_id, message_id, key, value)
+       SELECT source_id, id, ?, ?
+       FROM messages
+       WHERE id = ?`,
+    )
+      .bind(tag.key, tag.value, messageId)
+      .run();
+  }
 };
 
 export const insertSource = async (overrides?: {

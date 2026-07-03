@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { MessageDetail } from '@/routes/messages/messages.routes';
 
-import { insertEvent, insertMessage, insertSource, resetDb } from './helpers/db';
+import { insertEvent, insertMessage, insertMessageTags, insertSource, resetDb } from './helpers/db';
 
 const firstEventAt = Date.UTC(2025, 0, 1, 8, 0, 0);
 const secondEventAt = Date.UTC(2025, 0, 1, 9, 0, 0);
@@ -25,6 +25,7 @@ beforeEach(async () => {
       },
     },
   });
+  await insertMessageTags(1, [{ key: 'campaign', value: 'spring' }]);
   await insertEvent({
     message_id: 1,
     event_type: 'Delivery',
@@ -46,7 +47,7 @@ describe('messages routes', () => {
     const json = (await response.json()) as MessageDetail;
     expect(json.ses_message_id).toBe('ses-1');
     expect(json.destination_emails).toEqual(['a@example.com', 'b@example.com']);
-    expect(json.tags).toEqual(['campaign:spring']);
+    expect(json.tags).toEqual([{ key: 'campaign', value: 'spring', label: 'campaign:spring' }]);
     expect(json.events).toHaveLength(2);
     expect(json.events[0]?.event_at).toBe(secondEventAt);
   });

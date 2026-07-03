@@ -20,6 +20,12 @@ const eventSchema = z.object({
   event_detail: z.string().nullable(),
 });
 
+const tagSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  label: z.string(),
+});
+
 const messageSchema = z.object({
   id: z.number(),
   ses_message_id: z.string(),
@@ -27,8 +33,8 @@ const messageSchema = z.object({
   source_email: z.string().nullable(),
   destination_emails: z.array(z.string()),
   sent_at: z.number().nullable(),
-  tags: z.array(z.string()),
-  mail_metadata: z.record(z.string(), z.any()),
+  tags: z.array(tagSchema),
+  mail_metadata: z.record(z.string(), z.unknown()),
   events: z.array(eventSchema),
 });
 

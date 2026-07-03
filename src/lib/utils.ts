@@ -5,6 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const formatShortMessageId = (messageId: string) => {
+  const trimmedMessageId = messageId.trim();
+  if (trimmedMessageId.length <= 12) {
+    return trimmedMessageId;
+  }
+
+  const uuidPrefix = trimmedMessageId.match(/^([0-9a-f]{8})-[0-9a-f-]+$/i)?.[1];
+  if (uuidPrefix) {
+    return uuidPrefix;
+  }
+
+  return `${trimmedMessageId.slice(0, 8)}...${trimmedMessageId.slice(-4)}`;
+};
+
 export const COLOR_STYLES: Record<string, string> = {
   purple: 'bg-purple-500/80 shadow-[0_0_8px_rgba(var(--color-purple-500),0.5)]',
   blue: 'bg-blue-500/80 shadow-[0_0_8px_rgba(var(--color-blue-500),0.5)]',

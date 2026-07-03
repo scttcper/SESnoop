@@ -13,21 +13,25 @@ import {
   formatDateTime,
 } from '../components/EventPresentation';
 import { messageQueryOptions, type MessageDetail } from '../lib/queries';
+import { formatShortMessageId } from '../lib/utils';
 
 const routeApi = getRouteApi('/app/s/$sourceId/messages/$sesMessageId');
 
 const RECIPIENT_SKELETON_ROWS = ['recipient-1', 'recipient-2', 'recipient-3', 'recipient-4'];
 const TIMELINE_SKELETON_ITEMS = ['timeline-1', 'timeline-2', 'timeline-3'];
+const COPY_BUTTON_CLASS_NAME =
+  'rounded px-1.5 py-0.5 text-xs font-medium text-white/35 transition-colors hover:bg-white/5 hover:text-white/70';
 
 const formatJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
+type CopyField = 'from' | 'to' | 'subject';
 
 export default function MessageDetailPage() {
   const { sourceId: sourceIdStr, sesMessageId } = routeApi.useParams();
   const searchParams = routeApi.useSearch();
   const sourceId = Number(sourceIdStr);
 
-  const [toCopied, setToCopied] = useState(false);
-  const toCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copiedField, setCopiedField] = useState<CopyField | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     data: message,
@@ -37,10 +41,23 @@ export default function MessageDetailPage() {
 
   const error = queryError instanceof Error ? queryError.message : null;
 
-  const messageTitle = useMemo(() => message?.subject ?? 'Message detail', [message?.subject]);
+  const shortMessageId = useMemo(() => formatShortMessageId(sesMessageId), [sesMessageId]);
   const destinationEmails = message?.destination_emails.join(', ') ?? '';
+  const messageSubject = message?.subject?.trim() || null;
+  const messageTitle = messageSubject || `Message ${shortMessageId}`;
   const sentAtLabel = formatDateTime(message?.sent_at);
   const sentAtIso = message?.sent_at ? new Date(message.sent_at).toISOString() : undefined;
+  const headerContext = useMemo(() => {
+    if (!message) {
+      return null;
+    }
+
+    const sourceEmail = message.source_email ?? 'Unknown sender';
+    const sentAtContext = message.sent_at ? `Sent ${sentAtLabel}` : 'Sent time unknown';
+    return `Message ${shortMessageId} - ${sentAtContext} from ${sourceEmail} to ${
+      destinationEmails || 'Unknown recipient'
+    }`;
+  }, [destinationEmails, message, sentAtLabel, shortMessageId]);
   const backToEventsSearch = useMemo(
     () => ({
       search: searchParams.search,
@@ -61,6 +78,23 @@ export default function MessageDetailPage() {
       searchParams.to,
     ],
   );
+
+  const handleCopy = (field: CopyField, text: string) => {
+    if (!text) {
+      return;
+    }
+
+    void navigator.clipboard.writeText(text);
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+    setCopiedField(field);
+    toast.success('Copied to clipboard');
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopiedField(null);
+      copyTimeoutRef.current = null;
+    }, 2000);
+  };
   const recipientRows = useMemo(() => {
     if (!message || message.events.length === 0) {
       return [];
@@ -79,16 +113,21 @@ export default function MessageDetailPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col border-x border-white/10 bg-[#0B0C0E]">
-      <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-        <div className="flex flex-col">
+      <header className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-4">
+        <div className="flex min-w-0 flex-col">
           <h1
             className="font-display max-w-4xl truncate text-2xl font-semibold tracking-tight text-white"
             title={messageTitle}
           >
-            Message detail
+            {loading ? 'Loading message' : messageTitle}
           </h1>
+          {headerContext ? (
+            <p className="mt-1 max-w-4xl truncate text-sm text-white/50" title={headerContext}>
+              {headerContext}
+            </p>
+          ) : null}
         </div>
-        <div className="topbar-actions">
+        <div className="topbar-actions shrink-0">
           <Link
             to="/s/$sourceId/events"
             params={{ sourceId: sourceId.toString() }}
@@ -147,8 +186,17 @@ export default function MessageDetailPage() {
               <dl className="flex flex-wrap">
                 <div className="flex w-full items-baseline gap-2 px-6 pt-6">
                   <dt className="text-sm/6 font-semibold text-white/70">From</dt>
-                  <dd className="text-sm font-semibold break-all text-white">
-                    {message.source_email ?? '—'}
+                  <dd className="flex flex-wrap items-center gap-2 text-sm font-semibold text-white">
+                    <span className="break-all">{message.source_email ?? '—'}</span>
+                    {message.source_email ? (
+                      <button
+                        type="button"
+                        className={COPY_BUTTON_CLASS_NAME}
+                        onClick={() => handleCopy('from', message.source_email ?? '')}
+                      >
+                        {copiedField === 'from' ? '✓ Copied' : 'Copy'}
+                      </button>
+                    ) : null}
                   </dd>
                 </div>
                 <Separator className="my-4 h-px w-full bg-white/5" />
@@ -159,44 +207,46 @@ export default function MessageDetailPage() {
                     {destinationEmails ? (
                       <button
                         type="button"
-                        className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-                        onClick={() => {
-                          const text = destinationEmails;
-                          if (!text) {
-                            return;
-                          }
-                          navigator.clipboard.writeText(text);
-                          if (toCopyTimeoutRef.current) {
-                            clearTimeout(toCopyTimeoutRef.current);
-                          }
-                          setToCopied(true);
-                          toast.success('Copied to clipboard');
-                          toCopyTimeoutRef.current = setTimeout(() => {
-                            setToCopied(false);
-                            toCopyTimeoutRef.current = null;
-                          }, 2000);
-                        }}
+                        className={COPY_BUTTON_CLASS_NAME}
+                        onClick={() => handleCopy('to', destinationEmails)}
                       >
-                        {toCopied ? '✓ Copied' : 'Copy'}
+                        {copiedField === 'to' ? '✓ Copied' : 'Copy'}
                       </button>
                     ) : null}
                   </dd>
                 </div>
                 <div className="mt-4 w-full px-6">
                   <dt className="text-sm/6 font-semibold text-white/70">Subject</dt>
-                  <dd className="mt-1 text-sm break-words text-white/80">
-                    {message.subject ?? '—'}
+                  <dd className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/80">
+                    <span className="break-words">{message.subject ?? '—'}</span>
+                    {message.subject ? (
+                      <button
+                        type="button"
+                        className={COPY_BUTTON_CLASS_NAME}
+                        onClick={() => handleCopy('subject', message.subject ?? '')}
+                      >
+                        {copiedField === 'subject' ? '✓ Copied' : 'Copy'}
+                      </button>
+                    ) : null}
                   </dd>
                 </div>
                 <div className="mt-6 w-full border-t border-white/5 px-6 pt-6">
                   <dt className="text-sm/6 font-semibold text-white/70">Sent at</dt>
-                  <dd className="mt-1 text-sm/6 text-white/70">
+                  <dd className="mt-1 space-y-1 text-sm/6 text-white/70">
                     <time dateTime={sentAtIso}>{sentAtLabel}</time>
+                    {sentAtIso ? (
+                      <time
+                        className="block font-mono text-xs break-all text-white/45 select-all"
+                        dateTime={sentAtIso}
+                      >
+                        {sentAtIso}
+                      </time>
+                    ) : null}
                   </dd>
                 </div>
                 <div className="mt-4 w-full px-6">
                   <dt className="text-sm/6 font-semibold text-white/70">SES Message ID</dt>
-                  <dd className="mt-1 font-mono text-sm/6 break-all text-white/70 select-all">
+                  <dd className="mt-1 font-mono text-xs/5 break-all text-white/45 tabular-nums select-all">
                     {message.ses_message_id}
                   </dd>
                 </div>
@@ -357,15 +407,15 @@ export default function MessageDetailPage() {
               {message.events.map((event: MessageDetail['events'][number], index: number) => (
                 <div key={event.id} className="group relative pb-8 pl-10 last:pb-0">
                   {index > 0 && (
-                    <div className="absolute top-0 left-4 h-4 w-px -translate-x-1/2 bg-white/10" />
+                    <div className="absolute top-0 left-4 h-6 w-px -translate-x-1/2 bg-white/10" />
                   )}
                   {index < message.events.length - 1 && (
-                    <div className="absolute top-4 bottom-0 left-4 w-px -translate-x-1/2 bg-white/10" />
+                    <div className="absolute top-6 bottom-0 left-4 w-px -translate-x-1/2 bg-white/10" />
                   )}
                   <div
-                    className={`absolute top-4 left-4 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0B0C0E] ${eventDotClassName(event.event_type)}`}
+                    className={`absolute top-6 left-4 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0B0C0E] ${eventDotClassName(event.event_type)}`}
                   />
-                  <div className="flex items-start justify-between gap-4 rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04]">
+                  <div className="flex items-start justify-between gap-6 rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3 pr-5 transition-colors hover:bg-white/[0.04]">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex min-w-0 items-center gap-2">
                         <EventBadge eventType={event.event_type} />
@@ -380,7 +430,7 @@ export default function MessageDetailPage() {
                       ) : null}
                     </div>
                     <time
-                      className="shrink-0 font-mono text-xs whitespace-nowrap text-white/40 tabular-nums"
+                      className="shrink-0 pt-0.5 text-right font-mono text-xs leading-5 whitespace-nowrap text-white/40 tabular-nums"
                       dateTime={new Date(event.event_at).toISOString()}
                       title={formatDateTime(event.event_at)}
                     >
@@ -397,10 +447,7 @@ export default function MessageDetailPage() {
           )}
         </section>
 
-        <section className="space-y-6">
-          <div className="border-b border-white/10 pb-4">
-            <h2 className="text-lg font-semibold text-white">Raw metadata</h2>
-          </div>
+        <section>
           {loading ? (
             <div className="min-h-[200px] animate-pulse overflow-hidden rounded-xl border border-white/10 bg-[#0D0E11]">
               <div className="flex items-center gap-3 border-b border-white/5 p-4">

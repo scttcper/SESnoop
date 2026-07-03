@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import { AuthError, getSession } from './lib/auth';
 import { DEFAULT_DATE_RANGE, DEFAULT_PAGE } from './lib/constants';
+import { formatShortMessageId } from './lib/utils';
 
 const AppLayout = lazyRouteComponent(() => import('./components/layout/AppLayout'), 'AppLayout');
 const DashboardPage = lazyRouteComponent(() => import('./pages/Dashboard'));
@@ -184,7 +185,7 @@ const sourceMessageDetailRoute = createRoute({
   validateSearch: zodValidator(messageDetailSearchSchema),
   component: MessageDetailPage,
   head: ({ params }) => ({
-    meta: [{ title: `Message ${params.sesMessageId} | SESnoop` }],
+    meta: [{ title: `Message ${formatShortMessageId(params.sesMessageId)} | SESnoop` }],
   }),
 });
 

@@ -51,7 +51,7 @@ export default function SourceSetupPage() {
   }
 
   const inlineCodeClass =
-    'cursor-pointer select-all rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-white/80 transition-colors hover:bg-white/20';
+    'cursor-pointer select-all rounded bg-white/10 px-1.5 py-0.5 font-mono text-[13px] text-white/80 transition-colors hover:bg-white/20';
   const codeTooltip = 'Click to copy to clipboard.';
   const steps = [
     {
@@ -132,10 +132,15 @@ export default function SourceSetupPage() {
       key: 'event-destination',
       content: (
         <>
-          In SES, start by publishing delivery, bounce, complaint, reject, delivery delay, and
-          rendering failure events to the SNS topic. Enable open, click, and subscription events
-          only if you need engagement tracking, since they can drive significantly more webhook and
-          database volume.
+          <span className="block">
+            <span className="font-medium text-white">Start with:</span> delivery, bounce, complaint,
+            reject, delivery delay, and rendering failure events.
+          </span>
+          <span className="mt-2 block">
+            <span className="font-medium text-white">Optional:</span> enable open, click, and
+            subscription events only if you need engagement tracking. They can significantly
+            increase webhook and database volume.
+          </span>
         </>
       ),
     },
@@ -266,17 +271,17 @@ export default function SourceSetupPage() {
               <div key={step.key} className="group relative pb-8 pl-10 last:pb-0">
                 {/* Connecting line */}
                 {i !== steps.length - 1 && (
-                  <div className="absolute top-6 bottom-0 left-3 w-px -translate-x-1/2 bg-white/10 transition-colors group-hover:bg-white/20" />
+                  <div className="absolute top-8 bottom-0 left-3 w-px -translate-x-1/2 bg-white/10 transition-colors group-hover:bg-white/20" />
                 )}
 
                 {/* Step Counter */}
-                <div className="absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/5 font-mono text-[10px] font-medium text-white/60 ring-4 ring-[#0B0C0E] transition-colors group-hover:border-white/30 group-hover:bg-white/10 group-hover:text-white">
+                <div className="absolute top-2 left-0 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/5 font-mono text-[10px] font-medium text-white/60 ring-4 ring-[#0B0C0E] transition-colors group-hover:border-white/30 group-hover:bg-white/10 group-hover:text-white">
                   {i + 1}
                 </div>
 
                 {/* Content Card */}
                 <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 transition-all hover:border-white/10 hover:bg-white/[0.04] hover:shadow-sm">
-                  <p className="text-sm leading-relaxed text-white/80">{step.content}</p>
+                  <p className="text-[15px] leading-relaxed text-white/80">{step.content}</p>
                 </div>
               </div>
             ))}

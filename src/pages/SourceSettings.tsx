@@ -334,12 +334,12 @@ export default function SourceSettingsPage() {
 
         {/* Danger Zone */}
         <section className="space-y-4 border-t border-white/10 pt-10">
-          <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
+          <h2 className="text-lg font-semibold text-white">Danger Zone</h2>
           <div className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/10 p-4">
             <div>
-              <h3 className="font-medium text-white">Run Retention Cleanup</h3>
+              <h3 className="font-medium text-white">Delete Expired Data</h3>
               <p className="mt-1 text-sm text-white/60">
-                Manually delete messages and events older than the retention period.
+                Permanently remove messages and events older than this source's retention period.
               </p>
             </div>
             <Button
@@ -348,7 +348,7 @@ export default function SourceSettingsPage() {
               disabled={cleanupMutation.isPending}
               onClick={handleCleanup}
             >
-              {cleanupMutation.isPending ? 'Running...' : 'Run Cleanup'}
+              {cleanupMutation.isPending ? 'Deleting...' : 'Delete Expired Data'}
             </Button>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/5 p-4">

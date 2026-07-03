@@ -23,7 +23,7 @@ export function parseNotificationPayload(snsMessage: SnsMessage): EventPayload |
   }
 
   const eventPayload = new EventPayload(notificationPayload);
-  if (!eventPayload.messageId) {
+  if (!eventPayload.messageId || !eventPayload.eventType) {
     return null;
   }
 
@@ -38,6 +38,11 @@ async function persistNotification(
   eventPayload: EventPayload,
 ): Promise<void> {
   const recipients = normalizeRecipients(eventPayload.recipients);
+  const eventType = eventPayload.eventType;
+  if (!eventType) {
+    return;
+  }
+
   const messageId = sql<number>`(
     select ${messages.id}
     from ${messages}
@@ -91,7 +96,7 @@ async function persistNotification(
         recipients.map((recipient) => ({
           message_id: messageId,
           source_id: source.id,
-          event_type: eventPayload.eventType,
+          event_type: eventType,
           recipient_email: recipient,
           event_at: eventPayload.timestamp,
           event_data: eventPayload.eventData,

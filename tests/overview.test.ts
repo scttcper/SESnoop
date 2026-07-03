@@ -111,6 +111,57 @@ describe('overview routes', () => {
     const response = await SELF.fetch('http://example.com/api/sources/nope/overview');
     expect(response.status).toBe(422);
   });
+
+  it('returns 422 for invalid date filters', async () => {
+    const response = await SELF.fetch('http://example.com/api/sources/1/overview?from=not-a-date');
+    expect(response.status).toBe(422);
+  });
+
+  it('aggregates bounce insights from grouped event data', async () => {
+    await resetDb();
+    await insertSource({ id: 1, name: 'Test', token: 'token' });
+    await insertMessage({ id: 1, source_id: 1, ses_message_id: 'ses-1' });
+
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Bounce',
+      recipient_email: 'a@Example.com',
+      event_at: rangeDate,
+      bounce_type: 'Permanent',
+      event_data: { bounceSubType: 'Suppressed' },
+    });
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Bounce',
+      recipient_email: 'b@example.com',
+      event_at: rangeDate + 1000,
+      bounce_type: 'Permanent',
+      event_data: { bounceSubType: 'Suppressed' },
+    });
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Bounce',
+      recipient_email: 'c@test.com',
+      event_at: rangeDate + 2000,
+      event_data: { bouncedRecipients: [{ diagnosticCode: 'mailbox full' }] },
+    });
+
+    const response = await SELF.fetch(
+      'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
+    );
+    const json = (await response.json()) as OverviewResponse;
+
+    expect(json.metrics.bounced).toBe(3);
+    expect(json.bounce_breakdown).toEqual([{ bounce_type: 'Permanent', count: 2 }]);
+    expect(json.failure_insights.top_reasons).toEqual([
+      { label: 'Suppressed', count: 2, percentage: 2 / 3 },
+      { label: 'Mailbox full', count: 1, percentage: 1 / 3 },
+    ]);
+    expect(json.failure_insights.top_domains).toEqual([
+      { label: 'example.com', count: 2, percentage: 2 / 3 },
+      { label: 'test.com', count: 1, percentage: 1 / 3 },
+    ]);
+  });
 });
 
 describe('daily recipient reach', () => {

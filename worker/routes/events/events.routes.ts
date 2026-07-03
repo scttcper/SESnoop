@@ -3,19 +3,20 @@ import * as HttpStatusCodes from 'stoker/http-status-codes';
 import { jsonContent } from 'stoker/openapi/helpers';
 import { createErrorSchema, IdParamsSchema } from 'stoker/openapi/schemas';
 
+import {
+  BOUNCE_TYPES,
+  DATE_RANGE_VALUES,
+  EVENT_TYPE_VALUES,
+  isValidDateInput,
+} from '../../../shared/event-filters';
 import { notFoundSchema } from '../../lib/constants';
 
 const tags = ['Events'];
 
-const datePresetSchema = z.enum([
-  'today',
-  'yesterday',
-  'last_7_days',
-  'last_30_days',
-  'last_45_days',
-  'last_90_days',
-  'all_time',
-]);
+const datePresetSchema = z.enum(DATE_RANGE_VALUES);
+const eventTypeSchema = z.enum(EVENT_TYPE_VALUES);
+const bounceTypeSchema = z.enum(BOUNCE_TYPES);
+const dateStringSchema = z.string().refine(isValidDateInput, { message: 'Invalid date' });
 
 const listQuerySchema = z.object({
   search: z.string().optional(),
@@ -23,10 +24,10 @@ const listQuerySchema = z.object({
   bounce_types: z.string().optional(),
   tags: z.string().optional(),
   date_range: datePresetSchema.optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  page: z.string().optional(),
-  per_page: z.string().optional(),
+  from: dateStringSchema.optional(),
+  to: dateStringSchema.optional(),
+  page: z.coerce.number().int().positive().optional(),
+  per_page: z.coerce.number().int().positive().optional(),
 });
 
 const tagSchema = z.object({
@@ -37,11 +38,11 @@ const tagSchema = z.object({
 
 const eventRowSchema = z.object({
   id: z.number(),
-  event_type: z.string(),
+  event_type: eventTypeSchema,
   recipient_email: z.string(),
   event_at: z.number(),
   ses_message_id: z.string(),
-  bounce_type: z.string().nullable(),
+  bounce_type: bounceTypeSchema.or(z.string()).nullable(),
   message_subject: z.string().nullable(),
   tags: z.array(tagSchema),
 });

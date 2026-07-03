@@ -1,6 +1,16 @@
 import { z } from '@hono/zod-openapi';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
+import {
+  BOUNCE_TYPES,
+  EVENT_TYPE_VALUES,
+  type BounceType,
+  type EventType,
+} from '../../shared/event-filters';
+
+export { BOUNCE_TYPES, EVENT_TYPE_VALUES };
+export type { BounceType, EventType };
+
 export const ZOD_ERROR_MESSAGES = {
   REQUIRED: 'Required',
   EXPECTED_NUMBER: 'Invalid input: expected number, received NaN',
@@ -27,22 +37,7 @@ export const EVENT_TYPES = {
   subscription: 'Subscription',
   open: 'Open',
   click: 'Click',
-} as const;
-
-export const EVENT_TYPE_VALUES = [
-  'Send',
-  'Delivery',
-  'Bounce',
-  'Complaint',
-  'Reject',
-  'DeliveryDelay',
-  'RenderingFailure',
-  'Subscription',
-  'Open',
-  'Click',
-] as const;
-
-export const BOUNCE_TYPES = ['Permanent', 'Transient', 'Undetermined'] as const;
+} as const satisfies Record<string, EventType>;
 
 export const SOURCE_COLORS = [
   'purple',

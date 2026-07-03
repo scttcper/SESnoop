@@ -1,20 +1,14 @@
 import { eq } from 'drizzle-orm';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 
+import { normalizeEventType, type EventType } from '../../../shared/event-filters';
 import { createDb } from '../../db';
 import { sources } from '../../db/schema';
-import { EVENT_TYPE_VALUES } from '../../lib/constants';
 import { createRouter } from '../../lib/create-app';
 import { parseSnsMessage, shouldVerifySnsSignature, verifySnsSignature } from '../../lib/sns';
 import { ingestNotification, parseNotificationPayload } from '../../lib/webhook-ingestion';
 
 const router = createRouter();
-
-type EventType = (typeof EVENT_TYPE_VALUES)[number];
-
-const EVENT_TYPE_BY_LOWERCASE = new Map<string, EventType>(
-  EVENT_TYPE_VALUES.map((eventType) => [eventType.toLowerCase(), eventType]),
-);
 
 const parseIgnoredEventTypes = (value: string | undefined): Set<EventType> => {
   if (!value) {
@@ -26,7 +20,7 @@ const parseIgnoredEventTypes = (value: string | undefined): Set<EventType> => {
       .split(',')
       .map((entry) => entry.trim())
       .filter((entry) => entry.length > 0)
-      .map((entry) => EVENT_TYPE_BY_LOWERCASE.get(entry.toLowerCase()))
+      .map(normalizeEventType)
       .filter((eventType): eventType is EventType => Boolean(eventType)),
   );
 };
@@ -86,8 +80,7 @@ router.post('/api/webhooks/:source_token', async (c) => {
         return c.json({ message: 'Invalid notification payload' }, HttpStatusCodes.BAD_REQUEST);
       }
 
-      const eventType = EVENT_TYPE_BY_LOWERCASE.get(eventPayload.eventType.toLowerCase());
-      if (eventType && ignoredEventTypes.has(eventType)) {
+      if (eventPayload.eventType && ignoredEventTypes.has(eventPayload.eventType)) {
         return c.json({ ok: true, ignored: true }, HttpStatusCodes.OK);
       }
 

@@ -1,15 +1,6 @@
-export type SesEventType =
-  | 'Bounce'
-  | 'Complaint'
-  | 'Delivery'
-  | 'Send'
-  | 'Reject'
-  | 'Open'
-  | 'Click'
-  | 'Rendering Failure'
-  | 'RenderingFailure'
-  | 'DeliveryDelay'
-  | 'Subscription';
+import { normalizeEventType, type EventType } from '../../shared/event-filters';
+
+export type SesEventType = EventType;
 
 type SesMailTags = Record<string, string[]>;
 
@@ -157,27 +148,8 @@ const stringList = (value: unknown): string[] => {
   return stringArray(value);
 };
 
-const toSesEventType = (value: unknown): SesEventType | undefined => {
-  const eventType = toString(value);
-  switch (eventType) {
-    case 'Bounce':
-    case 'Complaint':
-    case 'Delivery':
-    case 'Send':
-    case 'Reject':
-    case 'Open':
-    case 'Click':
-    case 'Rendering Failure':
-    case 'RenderingFailure':
-    case 'DeliveryDelay':
-    case 'Subscription': {
-      return eventType;
-    }
-    default: {
-      return undefined;
-    }
-  }
-};
+const toSesEventType = (value: unknown): SesEventType | undefined =>
+  normalizeEventType(value) ?? undefined;
 
 const toSesMailTags = (value: unknown): SesMailTags | undefined => {
   if (!isRecord(value)) {
@@ -384,7 +356,7 @@ const extractBounceReason = (bounce: SesBounce, storedBounceType: string | null)
   return extractBounceDiagnostic(bounce);
 };
 
-const formatReasonLabel = (value: string | null): string => {
+export const formatReasonLabel = (value: string | null): string => {
   if (!value) {
     return 'Unknown';
   }
@@ -491,8 +463,8 @@ export class EventPayload {
     this.payload = toSesEventPayload(this.raw);
   }
 
-  get eventType(): string {
-    return this.payload.eventType ?? this.payload.notificationType ?? 'Unknown';
+  get eventType(): EventType | null {
+    return this.payload.eventType ?? this.payload.notificationType ?? null;
   }
 
   get mail(): SesMail {

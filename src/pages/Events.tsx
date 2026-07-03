@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { buildEventsQueryString, type EventsQueryParams } from '../../shared/event-filters';
 import {
   EventBadge,
   RecipientAvatar,
@@ -14,7 +15,15 @@ import { TagFilterDropdown } from '../components/TagFilterDropdown';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
-import { BOUNCE_TYPES, DATE_PRESETS, DEFAULT_EVENT_TYPES, EVENT_TYPES } from '../lib/constants';
+import {
+  BOUNCE_TYPES,
+  DATE_PRESETS,
+  DEFAULT_EVENT_TYPES,
+  EVENT_TYPES,
+  type BounceType,
+  type DateRangeValue,
+  type EventType,
+} from '../lib/constants';
 import {
   eventsQueryOptions,
   sourcesQueryOptions,
@@ -65,7 +74,7 @@ export default function EventsPage() {
 
   const search = searchParams.search;
   const eventTypeSearchValues = searchParams.event_types;
-  const selectedEventTypes: readonly string[] = eventTypeSearchValues ?? DEFAULT_EVENT_TYPES;
+  const selectedEventTypes = eventTypeSearchValues ?? DEFAULT_EVENT_TYPES;
   const selectedBounceTypes = searchParams.bounce_types;
   const selectedTags: readonly string[] = searchParams.tags;
   const datePreset = searchParams.date_range;
@@ -90,37 +99,26 @@ export default function EventsPage() {
   const { data: sources = [] } = useQuery(sourcesQueryOptions);
   const currentSource = sources.find((s) => s.id === sourceId);
 
-  const filterQueryString = useMemo(() => {
-    const params = new URLSearchParams();
-    if (search.trim()) {
-      params.set('search', search.trim());
-    }
-    if (selectedEventTypes.length > 0) {
-      params.set('event_types', selectedEventTypes.join(','));
-    }
-    if (selectedBounceTypes.length > 0) {
-      params.set('bounce_types', selectedBounceTypes.join(','));
-    }
-    if (selectedTags.length > 0) {
-      params.set('tags', selectedTags.join(','));
-    }
-    if (datePreset && datePreset !== 'custom') {
-      params.set('date_range', datePreset);
-    }
-    if (datePreset === 'custom' && from) {
-      params.set('from', from);
-    }
-    if (datePreset === 'custom' && to) {
-      params.set('to', to);
-    }
-    return params.toString();
-  }, [datePreset, from, search, selectedBounceTypes, selectedEventTypes, selectedTags, to]);
+  const filterParams = useMemo<EventsQueryParams>(
+    () => ({
+      search,
+      event_types: selectedEventTypes,
+      bounce_types: selectedBounceTypes,
+      tags: selectedTags,
+      date_range: datePreset,
+      from,
+      to,
+    }),
+    [datePreset, from, search, selectedBounceTypes, selectedEventTypes, selectedTags, to],
+  );
 
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams(filterQueryString);
-    params.set('page', page.toString());
-    return params.toString();
-  }, [filterQueryString, page]);
+  const queryParams = useMemo<EventsQueryParams>(
+    () => ({
+      ...filterParams,
+      page,
+    }),
+    [filterParams, page],
+  );
 
   const detailSearch = useMemo(
     () => ({
@@ -142,7 +140,7 @@ export default function EventsPage() {
     isFetching: fetchingEvents,
     refetch: refetchEvents,
     error: queryError,
-  } = useQuery(eventsQueryOptions(sourceId, queryString));
+  } = useQuery(eventsQueryOptions(sourceId, queryParams));
 
   const events = eventsResponse?.data ?? [];
   const counts = eventsResponse?.counts ?? EMPTY_EVENT_COUNTS;
@@ -151,7 +149,7 @@ export default function EventsPage() {
 
   const loading = loadingEvents;
 
-  const toggleEventType = (value: string) => {
+  const toggleEventType = (value: EventType) => {
     const newTypes = selectedEventTypes.includes(value)
       ? selectedEventTypes.filter((entry: string) => entry !== value)
       : [...selectedEventTypes, value];
@@ -160,7 +158,7 @@ export default function EventsPage() {
     });
   };
 
-  const toggleBounceType = (value: string) => {
+  const toggleBounceType = (value: BounceType) => {
     const newTypes = selectedBounceTypes.includes(value)
       ? selectedBounceTypes.filter((entry: string) => entry !== value)
       : [...selectedBounceTypes, value];
@@ -185,11 +183,13 @@ export default function EventsPage() {
     }
     setExporting(true);
     try {
-      const params = new URLSearchParams(filterQueryString);
-      params.set('per_page', '200');
-      params.set('page', '1');
+      const firstPageQuery = buildEventsQueryString({
+        ...filterParams,
+        per_page: 200,
+        page: 1,
+      });
 
-      const response = await fetch(`/api/sources/${sourceId}/events?${params.toString()}`);
+      const response = await fetch(`/api/sources/${sourceId}/events?${firstPageQuery}`);
       if (!response.ok) {
         throw new Error('Failed to export events');
       }
@@ -198,8 +198,12 @@ export default function EventsPage() {
       const totalPages = firstPage.pagination?.total_pages ?? 1;
 
       for (let nextPage = 2; nextPage <= totalPages; nextPage += 1) {
-        params.set('page', nextPage.toString());
-        const pageResponse = await fetch(`/api/sources/${sourceId}/events?${params.toString()}`);
+        const pageQuery = buildEventsQueryString({
+          ...filterParams,
+          per_page: 200,
+          page: nextPage,
+        });
+        const pageResponse = await fetch(`/api/sources/${sourceId}/events?${pageQuery}`);
         if (!pageResponse.ok) {
           throw new Error('Failed to export events');
         }
@@ -281,7 +285,7 @@ export default function EventsPage() {
               <Select
                 value={datePreset}
                 onValueChange={(value) => {
-                  updateFilter({ date_range: value ?? undefined });
+                  updateFilter({ date_range: value as DateRangeValue });
                 }}
               >
                 <SelectTrigger className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors focus:border-white/30 focus:outline-none">

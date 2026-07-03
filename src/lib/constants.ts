@@ -1,46 +1,19 @@
-/**
- * Shared constants for event types, bounce types, and date range presets.
- * These are used across the router validation and UI components.
- */
+import {
+  BOUNCE_TYPES,
+  DATE_RANGE_VALUES,
+  DEFAULT_DATE_RANGE,
+  EVENT_TYPE_VALUES,
+  type BounceType,
+  type DateRangeValue,
+  type EventType,
+} from '../../shared/event-filters';
 
-// Event types from SES notifications
-export const EVENT_TYPES = [
-  'Send',
-  'Delivery',
-  'Open',
-  'Click',
-  'Bounce',
-  'Complaint',
-  'DeliveryDelay',
-  'Reject',
-  'RenderingFailure',
-  'Subscription',
-] as const;
+export { BOUNCE_TYPES, DATE_RANGE_VALUES, DEFAULT_DATE_RANGE };
+export type { BounceType, DateRangeValue, EventType };
 
-export type EventType = (typeof EVENT_TYPES)[number];
+export const EVENT_TYPES = EVENT_TYPE_VALUES;
 
 export const DEFAULT_EVENT_TYPES: readonly EventType[] = ['Send'];
-
-// Bounce types from SES notifications
-export const BOUNCE_TYPES = ['Permanent', 'Transient', 'Undetermined'] as const;
-
-export type BounceType = (typeof BOUNCE_TYPES)[number];
-
-// Date range preset values
-export const DATE_RANGE_VALUES = [
-  'last_30_days',
-  'today',
-  'yesterday',
-  'last_7_days',
-  'last_45_days',
-  'last_90_days',
-  'all_time',
-  'custom',
-] as const;
-
-export type DateRangeValue = (typeof DATE_RANGE_VALUES)[number];
-
-export const DEFAULT_DATE_RANGE: DateRangeValue = 'last_30_days';
 
 // Date range presets with display labels
 export const DATE_PRESETS: ReadonlyArray<{ value: DateRangeValue; label: string }> = [

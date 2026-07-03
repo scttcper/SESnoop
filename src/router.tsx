@@ -12,6 +12,8 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { Suspense } from 'react';
 import { z } from 'zod';
 
+import { BOUNCE_TYPES, DATE_RANGE_VALUES, EVENT_TYPE_VALUES } from '../shared/event-filters';
+
 import { AuthError, sessionQueryOptions } from './lib/auth';
 import { DEFAULT_DATE_RANGE, DEFAULT_PAGE } from './lib/constants';
 import { queryClient } from './lib/query-client';
@@ -119,23 +121,23 @@ const sourceMonitorRoute = createRoute({
   path: 's/$sourceId',
 });
 
-const eventsSearchSchema = z.object({
+const eventFilterSearchSchema = z.object({
   search: z.string().catch('').default(''),
-  event_types: z.array(z.string()).optional().catch(undefined),
-  bounce_types: z.array(z.string()).catch([]).default([]),
+  event_types: z.array(z.enum(EVENT_TYPE_VALUES)).optional().catch(undefined),
+  bounce_types: z.array(z.enum(BOUNCE_TYPES)).catch([]).default([]),
   tags: z.array(z.string()).catch([]).default([]),
-  date_range: z.string().catch(DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
+  date_range: z.enum(DATE_RANGE_VALUES).catch(DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
   from: z.string().catch('').default(''),
   to: z.string().catch('').default(''),
-  page: z.number().catch(DEFAULT_PAGE).default(DEFAULT_PAGE),
+  page: z.coerce.number().int().positive().catch(DEFAULT_PAGE).default(DEFAULT_PAGE),
 });
 
-export type EventsSearchParams = z.infer<typeof eventsSearchSchema>;
+export type EventsSearchParams = z.infer<typeof eventFilterSearchSchema>;
 
 const sourceEventsRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
   path: 'events',
-  validateSearch: zodValidator(eventsSearchSchema),
+  validateSearch: zodValidator(eventFilterSearchSchema),
   component: EventsPage,
   head: () => ({
     meta: [{ title: `Events | SESnoop` }],
@@ -169,23 +171,12 @@ const sourceDashboardRoute = createRoute({
   }),
 });
 
-const messageDetailSearchSchema = z.object({
-  search: z.string().catch('').default(''),
-  event_types: z.array(z.string()).optional().catch(undefined),
-  bounce_types: z.array(z.string()).catch([]).default([]),
-  tags: z.array(z.string()).catch([]).default([]),
-  date_range: z.string().catch(DEFAULT_DATE_RANGE).default(DEFAULT_DATE_RANGE),
-  from: z.string().catch('').default(''),
-  to: z.string().catch('').default(''),
-  page: z.number().catch(DEFAULT_PAGE).default(DEFAULT_PAGE),
-});
-
-export type MessageDetailSearchParams = z.infer<typeof messageDetailSearchSchema>;
+export type MessageDetailSearchParams = z.infer<typeof eventFilterSearchSchema>;
 
 const sourceMessageDetailRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
   path: 'messages/$sesMessageId',
-  validateSearch: zodValidator(messageDetailSearchSchema),
+  validateSearch: zodValidator(eventFilterSearchSchema),
   component: MessageDetailPage,
   head: ({ params }) => ({
     meta: [{ title: `Message ${formatShortMessageId(params.sesMessageId)} | SESnoop` }],

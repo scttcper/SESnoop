@@ -1,5 +1,6 @@
 import { queryOptions, skipToken } from '@tanstack/react-query';
 
+import { buildEventsQueryString, type EventsQueryParams } from '../../shared/event-filters';
 import type { Source } from '../../worker/db/schema';
 import type {
   EventCounts,
@@ -68,13 +69,14 @@ export const overviewQueryOptions = (sourceId: number | null | undefined) =>
 
 export const eventsQueryOptions = (
   sourceId: number | null | undefined,
-  params: string, // passed as pre-built query string for now to match existing logic
+  params: EventsQueryParams,
 ) =>
   queryOptions({
     queryKey: ['events', sourceId, params],
     queryFn: sourceId
       ? async () => {
-          const response = await fetch(`/api/sources/${sourceId}/events?${params}`);
+          const queryString = buildEventsQueryString(params);
+          const response = await fetch(`/api/sources/${sourceId}/events?${queryString}`);
           await ensureOk(response, 'Failed to load events');
           return (await response.json()) as EventResponse;
         }

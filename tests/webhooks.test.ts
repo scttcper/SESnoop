@@ -44,6 +44,72 @@ describe('webhooks ingestion', () => {
     expect(response.status).toBe(400);
   });
 
+  it('returns 400 for unknown SES event types', async () => {
+    const snsMessage = {
+      Type: 'Notification',
+      MessageId: 'sns-unknown-1',
+      Message: JSON.stringify({
+        eventType: 'UnexpectedType',
+        mail: {
+          messageId: 'ses-unknown',
+          timestamp: '2025-01-01T00:00:00.000Z',
+          source: 'sender@example.com',
+          destination: ['reader@example.com'],
+        },
+      }),
+      Timestamp: '2025-01-01T00:00:02.000Z',
+      SignatureVersion: '1',
+      Signature: 'ignored',
+      SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
+    };
+
+    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+      method: 'POST',
+      body: JSON.stringify(snsMessage),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(response.status).toBe(400);
+
+    const events = await env.DB.prepare('SELECT id FROM events').all();
+    expect(events.results).toHaveLength(0);
+  });
+
+  it('stores rendering failure notifications with canonical event type', async () => {
+    const snsMessage = {
+      Type: 'Notification',
+      MessageId: 'sns-rendering-1',
+      Message: JSON.stringify({
+        eventType: 'Rendering Failure',
+        mail: {
+          messageId: 'ses-rendering',
+          timestamp: '2025-01-01T00:00:00.000Z',
+          source: 'sender@example.com',
+          destination: ['reader@example.com'],
+          commonHeaders: { subject: 'Template render' },
+        },
+        failure: {
+          errorMessage: 'Missing template data',
+        },
+      }),
+      Timestamp: '2025-01-01T00:00:02.000Z',
+      SignatureVersion: '1',
+      Signature: 'ignored',
+      SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
+    };
+
+    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+      method: 'POST',
+      body: JSON.stringify(snsMessage),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(response.status).toBe(200);
+
+    const events = await env.DB.prepare('SELECT event_type FROM events').all();
+    expect(events.results).toEqual([{ event_type: 'RenderingFailure' }]);
+  });
+
   it('ingests notification events idempotently', async () => {
     const eventPayload = {
       eventType: 'Bounce',

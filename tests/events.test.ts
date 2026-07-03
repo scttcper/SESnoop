@@ -138,4 +138,14 @@ describe('events routes', () => {
     const response = await SELF.fetch('http://example.com/api/sources/nope/events');
     expect(response.status).toBe(422);
   });
+
+  it('returns 422 for invalid date filters', async () => {
+    const response = await SELF.fetch('http://example.com/api/sources/1/events?from=not-a-date');
+    expect(response.status).toBe(422);
+  });
+
+  it('returns 422 for invalid pagination filters', async () => {
+    const response = await SELF.fetch('http://example.com/api/sources/1/events?page=0');
+    expect(response.status).toBe(422);
+  });
 });

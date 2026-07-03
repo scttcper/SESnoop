@@ -3,13 +3,16 @@ import * as HttpStatusCodes from 'stoker/http-status-codes';
 import { jsonContent } from 'stoker/openapi/helpers';
 import { createErrorSchema, IdParamsSchema } from 'stoker/openapi/schemas';
 
+import { isValidDateInput } from '../../../shared/event-filters';
 import { notFoundSchema } from '../../lib/constants';
 
 const tags = ['Overview'];
 
+const dateStringSchema = z.string().refine(isValidDateInput, { message: 'Invalid date' });
+
 const querySchema = z.object({
-  from: z.string().optional(),
-  to: z.string().optional(),
+  from: dateStringSchema.optional(),
+  to: dateStringSchema.optional(),
 });
 
 const responseSchema = z.object({

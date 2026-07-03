@@ -10,6 +10,7 @@ import {
   formatCompactEventTime,
   formatDateTime,
 } from '../components/EventPresentation';
+import { TagFilterDropdown } from '../components/TagFilterDropdown';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
@@ -17,6 +18,7 @@ import { BOUNCE_TYPES, DATE_PRESETS, DEFAULT_EVENT_TYPES, EVENT_TYPES } from '..
 import {
   eventsQueryOptions,
   sourcesQueryOptions,
+  type EventCounts,
   type EventResponse,
   type EventRow,
 } from '../lib/queries';
@@ -25,6 +27,7 @@ import type { EventsSearchParams } from '../router';
 const routeApi = getRouteApi('/app/s/$sourceId/events');
 
 const EVENT_SKELETON_ROWS = ['event-1', 'event-2', 'event-3', 'event-4', 'event-5', 'event-6'];
+const EMPTY_EVENT_COUNTS: EventCounts = { event_types: {}, bounce_types: {}, tags: {} };
 
 const escapeCsvCell = (value: string | number | null | undefined) => {
   if (value === null || value === undefined) {
@@ -64,6 +67,7 @@ export default function EventsPage() {
   const eventTypeSearchValues = searchParams.event_types;
   const selectedEventTypes: readonly string[] = eventTypeSearchValues ?? DEFAULT_EVENT_TYPES;
   const selectedBounceTypes = searchParams.bounce_types;
+  const selectedTags: readonly string[] = searchParams.tags;
   const datePreset = searchParams.date_range;
   const from = searchParams.from;
   const to = searchParams.to;
@@ -97,6 +101,9 @@ export default function EventsPage() {
     if (selectedBounceTypes.length > 0) {
       params.set('bounce_types', selectedBounceTypes.join(','));
     }
+    if (selectedTags.length > 0) {
+      params.set('tags', selectedTags.join(','));
+    }
     if (datePreset && datePreset !== 'custom') {
       params.set('date_range', datePreset);
     }
@@ -107,7 +114,7 @@ export default function EventsPage() {
       params.set('to', to);
     }
     return params.toString();
-  }, [datePreset, from, search, selectedBounceTypes, selectedEventTypes, to]);
+  }, [datePreset, from, search, selectedBounceTypes, selectedEventTypes, selectedTags, to]);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams(filterQueryString);
@@ -120,22 +127,25 @@ export default function EventsPage() {
       search,
       event_types: eventTypeSearchValues,
       bounce_types: selectedBounceTypes,
+      tags: [...selectedTags],
       date_range: datePreset,
       from,
       to,
       page,
     }),
-    [datePreset, eventTypeSearchValues, from, page, search, selectedBounceTypes, to],
+    [datePreset, eventTypeSearchValues, from, page, search, selectedBounceTypes, selectedTags, to],
   );
 
   const {
     data: eventsResponse,
     isLoading: loadingEvents,
+    isFetching: fetchingEvents,
+    refetch: refetchEvents,
     error: queryError,
   } = useQuery(eventsQueryOptions(sourceId, queryString));
 
   const events = eventsResponse?.data ?? [];
-  const counts = eventsResponse?.counts ?? { event_types: {}, bounce_types: {} };
+  const counts = eventsResponse?.counts ?? EMPTY_EVENT_COUNTS;
   const pagination = eventsResponse?.pagination ?? null;
   const error = queryError instanceof Error ? queryError.message : null;
 
@@ -156,6 +166,18 @@ export default function EventsPage() {
       : [...selectedBounceTypes, value];
     updateFilter({ bounce_types: newTypes });
   };
+
+  const toggleTag = (value: string) => {
+    const newTags = selectedTags.includes(value)
+      ? selectedTags.filter((entry: string) => entry !== value)
+      : [...selectedTags, value];
+    updateFilter({ tags: newTags });
+  };
+
+  const tagCountEntries = useMemo(
+    () => Object.entries(counts.tags).sort(([a], [b]) => a.localeCompare(b)),
+    [counts.tags],
+  );
 
   const handleExport = async () => {
     if (!sourceId) {
@@ -186,11 +208,12 @@ export default function EventsPage() {
       }
 
       const csv = createCsv([
-        ['Event', 'Recipient', 'Subject', 'Time'],
+        ['Event', 'Recipient', 'Subject', 'Tags', 'Time'],
         ...allEvents.map((event) => [
           event.event_type,
           event.recipient_email ?? '',
           event.message_subject ?? '',
+          event.tags.map((tag) => tag.label).join(' '),
           formatDateTime(event.event_at),
         ]),
       ]);
@@ -225,31 +248,16 @@ export default function EventsPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col border-x border-white/10 bg-[#0B0C0E]">
-      <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+      <header className="border-b border-white/10 px-6 py-4">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
             {currentSource ? `${currentSource.name} Events` : 'Events'}
           </h1>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            className="ring-offset-background focus-visible:ring-ring inline-flex h-9 items-center justify-center rounded-md border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-            type="button"
-            onClick={() => updatePage(1)}
-          >
-            Refresh
-          </Button>
-        </div>
       </header>
 
-      <div className="flex-1 space-y-8 overflow-y-auto p-6">
+      <div className="flex-1 [scrollbar-gutter:stable] space-y-8 overflow-y-auto p-6">
         <section className="space-y-6">
-          <div className="space-y-3 border-b border-white/10 pb-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Filters</h2>
-            </div>
-          </div>
           {error ? (
             <p className="rounded-lg border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-400">
               {error}
@@ -370,31 +378,49 @@ export default function EventsPage() {
                 })}
               </div>
             </div>
+
+            <TagFilterDropdown
+              selectedTags={selectedTags}
+              tagCountEntries={tagCountEntries}
+              onClearTags={() => updateFilter({ tags: [] })}
+              onToggleTag={toggleTag}
+            />
           </div>
         </section>
 
         <section>
           <div className="mb-3 flex items-center justify-between">
             <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
-              {loading ? 'Loading…' : totalLabel}
+              {loading ? '… events' : totalLabel}
             </span>
-            <Button
-              variant="ghost"
-              type="button"
-              className="h-9 rounded-md border border-white/10 bg-white/10 px-3 text-xs text-white transition-colors hover:bg-white/20 disabled:opacity-50"
-              disabled={exporting}
-              onClick={handleExport}
-            >
-              {exporting ? 'Exporting…' : 'Export CSV'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                type="button"
+                className="h-9 rounded-md border border-white/10 bg-white/10 px-3 text-xs text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                disabled={fetchingEvents}
+                onClick={() => void refetchEvents()}
+              >
+                Refresh
+              </Button>
+              <Button
+                variant="ghost"
+                type="button"
+                className="h-9 rounded-md border border-white/10 bg-white/10 px-3 text-xs text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                disabled={exporting}
+                onClick={handleExport}
+              >
+                {exporting ? 'Exporting…' : 'Export CSV'}
+              </Button>
+            </div>
           </div>
-          <div className="min-h-[320px] overflow-hidden rounded-lg border border-white/10">
+          <div className="overflow-hidden rounded-lg border border-white/10">
             <table className="w-full table-fixed text-left text-sm">
               <colgroup>
                 <col className="w-28" />
                 <col className="w-56" />
                 <col />
-                <col className="w-36" />
+                <col className="w-40" />
                 <col className="w-8" />
               </colgroup>
               <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
@@ -402,7 +428,7 @@ export default function EventsPage() {
                   <th className="px-4 py-3 font-semibold tracking-wide whitespace-nowrap">Event</th>
                   <th className="px-4 py-3 font-semibold tracking-wide">Recipient</th>
                   <th className="px-4 py-3 font-semibold tracking-wide">Subject</th>
-                  <th className="px-3 py-3 text-right font-semibold tracking-wide">Time</th>
+                  <th className="px-4 py-3 text-right font-semibold tracking-wide">Time</th>
                   <th className="px-2 py-3">
                     <span className="sr-only">Open event</span>
                   </th>
@@ -419,19 +445,32 @@ export default function EventsPage() {
                 {loading
                   ? EVENT_SKELETON_ROWS.map((rowId) => (
                       <tr key={rowId} className="animate-pulse">
-                        <td className="px-4 py-3">
-                          <div className="h-5 w-16 rounded bg-white/10" />
+                        <td className="px-4 py-2.5">
+                          <div className="flex min-w-0 flex-col items-start gap-1">
+                            <div className="h-5 w-16 rounded-full bg-white/10" />
+                            <div className="h-3 w-14 rounded bg-white/10" />
+                          </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="h-4 w-40 rounded bg-white/10" />
+                        <td className="px-4 py-2.5">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="size-6 rounded-full bg-white/10" />
+                            <div className="h-4 w-40 rounded bg-white/10" />
+                          </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="h-4 w-56 rounded bg-white/10" />
+                        <td className="px-4 py-2.5">
+                          <div className="space-y-1.5">
+                            <div className="h-4 w-56 rounded bg-white/10" />
+                            <div className="flex gap-1">
+                              <div className="h-5 w-28 rounded-full bg-white/10" />
+                              <div className="h-5 w-24 rounded-full bg-white/10" />
+                              <div className="h-5 w-16 rounded-full bg-white/10" />
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-3 py-3 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           <div className="ml-auto h-4 w-20 rounded bg-white/10" />
                         </td>
-                        <td className="px-2 py-3">
+                        <td className="px-2 py-2.5">
                           <div className="h-4 w-4 rounded bg-white/10" />
                         </td>
                       </tr>
@@ -484,16 +523,45 @@ export default function EventsPage() {
                         </Link>
                       </td>
                       <td className="align-middle">
-                        <Link {...messageLinkProps} className={`${linkClassName} px-4 py-2.5`}>
-                          <div className="min-w-0">
+                        <div className="min-w-0 px-4 py-2.5">
+                          <Link {...messageLinkProps} className={linkClassName}>
                             <span className="block truncate text-white/75" title={messageSubject}>
                               {messageSubject}
                             </span>
-                          </div>
-                        </Link>
+                          </Link>
+                          {event.tags.length > 0 ? (
+                            <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+                              {event.tags.slice(0, 3).map((tag) => (
+                                <button
+                                  key={tag.label}
+                                  type="button"
+                                  className="max-w-[12rem] truncate rounded-full bg-white/5 px-2 py-0.5 font-mono text-[11px] text-white/45 transition-colors hover:bg-white/10 hover:text-white/75"
+                                  title={`Filter by ${tag.label}`}
+                                  onClick={() => toggleTag(tag.label)}
+                                >
+                                  {tag.label}
+                                </button>
+                              ))}
+                              {event.tags.length > 3 ? (
+                                <span
+                                  className="rounded-full bg-white/5 px-2 py-0.5 font-mono text-[11px] text-white/40"
+                                  title={event.tags
+                                    .slice(3)
+                                    .map((tag) => tag.label)
+                                    .join(', ')}
+                                >
+                                  +{event.tags.length - 3}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="text-right align-middle">
-                        <Link {...messageLinkProps} className={`${linkClassName} px-3 py-2.5`}>
+                        <Link
+                          {...messageLinkProps}
+                          className={`${linkClassName} flex min-h-14 items-center justify-end px-4 py-2.5`}
+                        >
                           <time
                             className="block font-mono text-xs whitespace-nowrap text-white/55 tabular-nums"
                             dateTime={new Date(event.event_at).toISOString()}

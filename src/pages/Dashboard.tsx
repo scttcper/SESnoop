@@ -414,11 +414,7 @@ export default function DashboardPage() {
   const sourceId = useActiveSourceId();
   const { data: sources = [], isLoading: loadingSources } = useQuery(sourcesQueryOptions);
 
-  const {
-    data: overview,
-    isLoading: loadingOverview,
-    error: queryError,
-  } = useQuery(overviewQueryOptions(sourceId));
+  const { data: overview, error: queryError } = useQuery(overviewQueryOptions(sourceId));
 
   // 1. Loading State
   if (loadingSources) {

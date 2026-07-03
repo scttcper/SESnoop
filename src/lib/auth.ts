@@ -1,3 +1,5 @@
+import { queryOptions } from '@tanstack/react-query';
+
 export type SessionResponse = {
   enabled: boolean;
   user: { username: string } | null;
@@ -20,6 +22,12 @@ export const getSession = async (): Promise<SessionResponse> => {
   }
   return (await response.json()) as SessionResponse;
 };
+
+export const sessionQueryOptions = queryOptions({
+  queryKey: ['auth', 'session'],
+  queryFn: getSession,
+  staleTime: 5 * 60_000,
+});
 
 export const safeRedirectPath = (value: string | null | undefined) => {
   if (!value) {

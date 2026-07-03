@@ -3,7 +3,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { AuthError, getSession, safeRedirectPath } from '../lib/auth';
+import { AuthError, safeRedirectPath, sessionQueryOptions } from '../lib/auth';
+import { queryClient } from '../lib/query-client';
 
 const routeApi = getRouteApi('/login');
 
@@ -17,7 +18,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     let active = true;
-    getSession()
+    queryClient
+      .fetchQuery(sessionQueryOptions)
       .then((session) => {
         if (!active) {
           return;
@@ -69,6 +71,7 @@ export default function LoginPage() {
       }
 
       const target = safeRedirectPath(redirect);
+      await queryClient.invalidateQueries({ queryKey: sessionQueryOptions.queryKey });
       navigate({ to: target, replace: true });
     } catch {
       setError('Login failed. Please try again.');

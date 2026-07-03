@@ -12,8 +12,9 @@ import { fallback, zodValidator } from '@tanstack/zod-adapter';
 import { Suspense } from 'react';
 import { z } from 'zod';
 
-import { AuthError, getSession } from './lib/auth';
+import { AuthError, sessionQueryOptions } from './lib/auth';
 import { DEFAULT_DATE_RANGE, DEFAULT_PAGE } from './lib/constants';
+import { queryClient } from './lib/query-client';
 import { formatShortMessageId } from './lib/utils';
 
 const AppLayout = lazyRouteComponent(() => import('./components/layout/AppLayout'), 'AppLayout');
@@ -52,7 +53,7 @@ const appRoute = createRoute({
   component: AppLayout,
   beforeLoad: async ({ location }) => {
     try {
-      const session = await getSession();
+      const session = await queryClient.fetchQuery(sessionQueryOptions);
       if (!session.enabled) {
         return;
       }

@@ -1,0 +1,541 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "4f0bca9a-2561-480f-9a2c-2b9f9879c36d",
+  "prevId": "f5ffd63c-9789-434e-a1c7-9294e4b033e8",
+  "tables": {
+    "events": {
+      "name": "events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "recipient_email": {
+          "name": "recipient_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "event_at": {
+          "name": "event_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "event_data": {
+          "name": "event_data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
+        "bounce_type": {
+          "name": "bounce_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "events_dedupe_unique": {
+          "name": "events_dedupe_unique",
+          "columns": ["message_id", "event_type", "recipient_email", "event_at"],
+          "isUnique": true
+        },
+        "events_message_id_event_at_index": {
+          "name": "events_message_id_event_at_index",
+          "columns": ["message_id", "event_at"],
+          "isUnique": false
+        },
+        "events_source_id_event_at_index": {
+          "name": "events_source_id_event_at_index",
+          "columns": ["source_id", "event_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "events_message_id_messages_id_fk": {
+          "name": "events_message_id_messages_id_fk",
+          "tableFrom": "events",
+          "tableTo": "messages",
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "events_source_id_sources_id_fk": {
+          "name": "events_source_id_sources_id_fk",
+          "tableFrom": "events",
+          "tableTo": "sources",
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "message_payloads": {
+      "name": "message_payloads",
+      "columns": {
+        "message_id": {
+          "name": "message_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mail_metadata": {
+          "name": "mail_metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "message_payloads_message_id_messages_id_fk": {
+          "name": "message_payloads_message_id_messages_id_fk",
+          "tableFrom": "message_payloads",
+          "tableTo": "messages",
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "message_recipients": {
+      "name": "message_recipients",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "message_recipients_message_id_email_unique": {
+          "name": "message_recipients_message_id_email_unique",
+          "columns": ["message_id", "email"],
+          "isUnique": true
+        },
+        "message_recipients_source_id_email_index": {
+          "name": "message_recipients_source_id_email_index",
+          "columns": ["source_id", "email", "message_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "message_recipients_source_id_sources_id_fk": {
+          "name": "message_recipients_source_id_sources_id_fk",
+          "tableFrom": "message_recipients",
+          "tableTo": "sources",
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "message_recipients_message_id_messages_id_fk": {
+          "name": "message_recipients_message_id_messages_id_fk",
+          "tableFrom": "message_recipients",
+          "tableTo": "messages",
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "message_tags": {
+      "name": "message_tags",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "message_tags_message_id_key_value_unique": {
+          "name": "message_tags_message_id_key_value_unique",
+          "columns": ["message_id", "key", "value"],
+          "isUnique": true
+        },
+        "message_tags_source_id_key_value_index": {
+          "name": "message_tags_source_id_key_value_index",
+          "columns": ["source_id", "key", "value", "message_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "message_tags_source_id_sources_id_fk": {
+          "name": "message_tags_source_id_sources_id_fk",
+          "tableFrom": "message_tags",
+          "tableTo": "sources",
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "message_tags_message_id_messages_id_fk": {
+          "name": "message_tags_message_id_messages_id_fk",
+          "tableFrom": "message_tags",
+          "tableTo": "messages",
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "messages": {
+      "name": "messages",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ses_message_id": {
+          "name": "ses_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_email": {
+          "name": "source_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "mail_metadata": {
+          "name": "mail_metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        }
+      },
+      "indexes": {
+        "messages_source_id_ses_message_id_unique": {
+          "name": "messages_source_id_ses_message_id_unique",
+          "columns": ["source_id", "ses_message_id"],
+          "isUnique": true
+        },
+        "messages_source_id_sent_at_index": {
+          "name": "messages_source_id_sent_at_index",
+          "columns": ["source_id", "sent_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "messages_source_id_sources_id_fk": {
+          "name": "messages_source_id_sources_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "sources",
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "sources": {
+      "name": "sources",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "retention_days": {
+          "name": "retention_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "sources_token_unique": {
+          "name": "sources_token_unique",
+          "columns": ["token"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "webhooks": {
+      "name": "webhooks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sns_message_id": {
+          "name": "sns_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sns_type": {
+          "name": "sns_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sns_timestamp": {
+          "name": "sns_timestamp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "raw_payload": {
+          "name": "raw_payload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        }
+      },
+      "indexes": {
+        "webhooks_sns_message_id_unique": {
+          "name": "webhooks_sns_message_id_unique",
+          "columns": ["sns_message_id"],
+          "isUnique": true
+        },
+        "webhooks_source_id_index": {
+          "name": "webhooks_source_id_index",
+          "columns": ["source_id"],
+          "isUnique": false
+        },
+        "webhooks_message_id_index": {
+          "name": "webhooks_message_id_index",
+          "columns": ["message_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "webhooks_source_id_sources_id_fk": {
+          "name": "webhooks_source_id_sources_id_fk",
+          "tableFrom": "webhooks",
+          "tableTo": "sources",
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "webhooks_message_id_messages_id_fk": {
+          "name": "webhooks_message_id_messages_id_fk",
+          "tableFrom": "webhooks",
+          "tableTo": "messages",
+          "columnsFrom": ["message_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

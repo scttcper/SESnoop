@@ -21,6 +21,10 @@ type WebhookCleanupOptions = {
   sentBefore?: number;
 };
 
+type CountResult = {
+  count: number;
+};
+
 const webhookSesMessageIdExpression = (tableAlias: string) => `
   CASE
     WHEN json_valid(json_extract(${tableAlias}.raw_payload, '$.Message'))
@@ -33,19 +37,41 @@ export async function deleteWebhooksForSourceMessages(
   sourceId: number,
   options: WebhookCleanupOptions = {},
 ): Promise<number> {
-  const sentBeforeFilter =
-    options.sentBefore == null ? '' : 'AND messages.sent_at IS NOT NULL AND messages.sent_at < ?';
-  const bindings = options.sentBefore == null ? [sourceId] : [sourceId, options.sentBefore];
+  const sentBefore = options.sentBefore;
+  const ownershipQuery =
+    sentBefore == null
+      ? `SELECT webhooks.id
+         FROM webhooks
+         WHERE webhooks.source_id = ?`
+      : `SELECT webhooks.id
+         FROM webhooks
+         INNER JOIN messages ON messages.id = webhooks.message_id
+         WHERE webhooks.source_id = ?
+           AND messages.sent_at IS NOT NULL
+           AND messages.sent_at < ?`;
+  const legacyQuery =
+    sentBefore == null
+      ? `SELECT webhooks.id
+         FROM webhooks
+         INNER JOIN messages
+           ON messages.source_id = ?
+          AND messages.ses_message_id = ${webhookSesMessageIdExpression('webhooks')}`
+      : `SELECT webhooks.id
+         FROM webhooks
+         INNER JOIN messages
+           ON messages.source_id = ?
+          AND messages.ses_message_id = ${webhookSesMessageIdExpression('webhooks')}
+          AND messages.sent_at IS NOT NULL
+          AND messages.sent_at < ?`;
+  const bindings =
+    sentBefore == null ? [sourceId, sourceId] : [sourceId, sentBefore, sourceId, sentBefore];
 
   const result = await env.DB.prepare(
     `DELETE FROM webhooks
      WHERE id IN (
-       SELECT webhooks.id
-       FROM webhooks
-       INNER JOIN messages
-         ON messages.source_id = ?
-        AND messages.ses_message_id = ${webhookSesMessageIdExpression('webhooks')}
-        ${sentBeforeFilter}
+       ${ownershipQuery}
+       UNION
+       ${legacyQuery}
      )`,
   )
     .bind(...bindings)
@@ -75,7 +101,26 @@ export async function runRetentionCleanupForSource(
     sentBefore: cutoff,
   });
 
-  const eventsResult = await env.DB.prepare(
+  const messagesCountResult = await env.DB.prepare(
+    `SELECT COUNT(*) AS count
+     FROM messages
+     WHERE source_id = ? AND sent_at IS NOT NULL AND sent_at < ?`,
+  )
+    .bind(source.id, cutoff)
+    .first<CountResult>();
+
+  const eventsCountResult = await env.DB.prepare(
+    `SELECT COUNT(*) AS count
+     FROM events
+     WHERE message_id IN (
+       SELECT id FROM messages
+       WHERE source_id = ? AND sent_at IS NOT NULL AND sent_at < ?
+     )`,
+  )
+    .bind(source.id, cutoff)
+    .first<CountResult>();
+
+  await env.DB.prepare(
     `DELETE FROM events
      WHERE message_id IN (
        SELECT id FROM messages
@@ -85,7 +130,7 @@ export async function runRetentionCleanupForSource(
     .bind(source.id, cutoff)
     .run();
 
-  const messagesResult = await env.DB.prepare(
+  await env.DB.prepare(
     `DELETE FROM messages
      WHERE source_id = ? AND sent_at IS NOT NULL AND sent_at < ?`,
   )
@@ -95,8 +140,8 @@ export async function runRetentionCleanupForSource(
   return {
     source_id: source.id,
     retention_days: retentionDays,
-    messages_deleted: messagesResult.meta?.changes ?? 0,
-    events_deleted: eventsResult.meta?.changes ?? 0,
+    messages_deleted: messagesCountResult?.count ?? 0,
+    events_deleted: eventsCountResult?.count ?? 0,
     webhooks_deleted: webhooksDeleted,
   };
 }

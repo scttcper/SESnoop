@@ -56,6 +56,40 @@ export const messages = sqliteTable(
   }),
 );
 
+export const messageRecipients = sqliteTable(
+  'message_recipients',
+  {
+    id: integer({ mode: 'number' }).primaryKey({ autoIncrement: true }),
+    source_id: integer({ mode: 'number' })
+      .notNull()
+      .references(() => sources.id, { onDelete: 'cascade' }),
+    message_id: integer({ mode: 'number' })
+      .notNull()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    email: text().notNull(),
+  },
+  (table) => ({
+    messageEmailUnique: uniqueIndex('message_recipients_message_id_email_unique').on(
+      table.message_id,
+      table.email,
+    ),
+    sourceEmailIndex: index('message_recipients_source_id_email_index').on(
+      table.source_id,
+      table.email,
+      table.message_id,
+    ),
+  }),
+);
+
+export const messagePayloads = sqliteTable('message_payloads', {
+  message_id: integer({ mode: 'number' })
+    .primaryKey()
+    .references(() => messages.id, { onDelete: 'cascade' }),
+  mail_metadata: text({ mode: 'json' })
+    .notNull()
+    .default(sql`'{}'`),
+});
+
 export const messageTags = sqliteTable(
   'message_tags',
   {
@@ -88,6 +122,8 @@ export const webhooks = sqliteTable(
   'webhooks',
   {
     id: integer({ mode: 'number' }).primaryKey({ autoIncrement: true }),
+    source_id: integer({ mode: 'number' }).references(() => sources.id, { onDelete: 'cascade' }),
+    message_id: integer({ mode: 'number' }).references(() => messages.id, { onDelete: 'cascade' }),
     sns_message_id: text().notNull(),
     sns_type: text().notNull(),
     sns_timestamp: timestampMsNullable('sns_timestamp').notNull(),
@@ -98,6 +134,8 @@ export const webhooks = sqliteTable(
   (table) => ({
     // Webhook dedupe/lookup by SNS message id.
     snsMessageIdUnique: uniqueIndex('webhooks_sns_message_id_unique').on(table.sns_message_id),
+    sourceIdIndex: index('webhooks_source_id_index').on(table.source_id),
+    messageIdIndex: index('webhooks_message_id_index').on(table.message_id),
   }),
 );
 

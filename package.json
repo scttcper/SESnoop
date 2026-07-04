@@ -16,6 +16,7 @@
     "db:seed": "wrangler d1 execute sesnoop --local --file worker/db/seed.sql",
     "db:migrations:generate": "drizzle-kit generate",
     "db:migrations:apply": "wrangler d1 migrations apply DB --remote",
+    "db:backfill:normalize": "node scripts/backfill-normalized-d1.mjs",
     "test": "vitest run",
     "lint": "oxlint . && oxfmt --check",
     "lint:fix": "oxlint . --fix && oxfmt"

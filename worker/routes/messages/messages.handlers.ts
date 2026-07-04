@@ -3,7 +3,7 @@ import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 import { createDb } from '../../db';
-import { events, messageTags } from '../../db/schema';
+import { events, messageRecipients, messageTags } from '../../db/schema';
 import { extractDestinations, extractEventDetail, toRecord } from '../../lib/event-payload';
 import type { AppRouteHandler } from '../../lib/types';
 
@@ -31,7 +31,7 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
     );
   }
 
-  const [messageEvents, tags] = await Promise.all([
+  const [messageEvents, tags, recipients, payload] = await Promise.all([
     db
       .select({
         id: events.id,
@@ -52,9 +52,25 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
       .from(messageTags)
       .where(eq(messageTags.message_id, message.id))
       .orderBy(asc(messageTags.key), asc(messageTags.value)),
+    db
+      .select({
+        email: messageRecipients.email,
+      })
+      .from(messageRecipients)
+      .where(eq(messageRecipients.message_id, message.id))
+      .orderBy(asc(messageRecipients.id)),
+    db.query.messagePayloads.findFirst({
+      where(fields, operators) {
+        return operators.eq(fields.message_id, message.id);
+      },
+    }),
   ]);
 
-  const mailMetadata = toRecord(message.mail_metadata);
+  const mailMetadata = toRecord(payload?.mail_metadata ?? message.mail_metadata);
+  const destinationEmails =
+    recipients.length > 0
+      ? recipients.map((recipient) => recipient.email)
+      : extractDestinations(mailMetadata);
 
   return c.json(
     {
@@ -62,7 +78,7 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
       ses_message_id: message.ses_message_id,
       subject: message.subject,
       source_email: message.source_email,
-      destination_emails: extractDestinations(mailMetadata),
+      destination_emails: destinationEmails,
       sent_at: message.sent_at?.getTime() ?? null,
       tags: tags.map((tag) => ({ ...tag, label: `${tag.key}:${tag.value}` })),
       mail_metadata: mailMetadata,

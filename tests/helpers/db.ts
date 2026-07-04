@@ -3,9 +3,11 @@ import { env } from 'cloudflare:test';
 export const resetDb = async () => {
   // Clear data in correct order to respect foreign key constraints
   await env.DB.prepare('DELETE FROM message_tags').run();
+  await env.DB.prepare('DELETE FROM message_recipients').run();
+  await env.DB.prepare('DELETE FROM message_payloads').run();
   await env.DB.prepare('DELETE FROM events').run();
-  await env.DB.prepare('DELETE FROM messages').run();
   await env.DB.prepare('DELETE FROM webhooks').run();
+  await env.DB.prepare('DELETE FROM messages').run();
   await env.DB.prepare('DELETE FROM sources').run();
 };
 
@@ -28,6 +30,8 @@ export const insertMessageTags = async (
 export const insertWebhook = async (overrides: {
   sns_message_id: string;
   ses_message_id?: string;
+  source_id?: number;
+  message_id?: number;
   sns_type?: string;
   sns_timestamp?: number;
   raw_payload?: Record<string, unknown>;
@@ -47,10 +51,27 @@ export const insertWebhook = async (overrides: {
     } satisfies Record<string, unknown>);
 
   await env.DB.prepare(
-    `INSERT INTO webhooks (sns_message_id, sns_type, sns_timestamp, raw_payload)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO webhooks
+     (source_id, message_id, sns_message_id, sns_type, sns_timestamp, raw_payload)
+     VALUES (
+       COALESCE(?, (SELECT source_id FROM messages WHERE ses_message_id = ? LIMIT 1)),
+       COALESCE(?, (SELECT id FROM messages WHERE ses_message_id = ? LIMIT 1)),
+       ?,
+       ?,
+       ?,
+       ?
+     )`,
   )
-    .bind(overrides.sns_message_id, snsType, snsTimestamp, JSON.stringify(rawPayload))
+    .bind(
+      overrides.source_id ?? null,
+      overrides.ses_message_id ?? null,
+      overrides.message_id ?? null,
+      overrides.ses_message_id ?? null,
+      overrides.sns_message_id,
+      snsType,
+      snsTimestamp,
+      JSON.stringify(rawPayload),
+    )
     .run();
 };
 
@@ -107,6 +128,28 @@ export const insertMessage = async (overrides: {
       mailMetadata,
     )
     .run();
+
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO message_payloads (message_id, mail_metadata)
+     VALUES (?, ?)`,
+  )
+    .bind(id, mailMetadata)
+    .run();
+
+  const destinations = Array.isArray(overrides.mail_metadata?.destination)
+    ? overrides.mail_metadata.destination.filter(
+        (entry): entry is string => typeof entry === 'string',
+      )
+    : [];
+
+  for (const destination of destinations) {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO message_recipients (source_id, message_id, email)
+       VALUES (?, ?, ?)`,
+    )
+      .bind(overrides.source_id, id, destination)
+      .run();
+  }
 
   return { id };
 };

@@ -2,13 +2,54 @@ import { sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
 import * as schema from '../db/schema';
-import { events, messages, messageTags, sources, webhooks } from '../db/schema';
+import {
+  events,
+  messagePayloads,
+  messageRecipients,
+  messages,
+  messageTags,
+  sources,
+  webhooks,
+} from '../db/schema';
 
-import { EventPayload, normalizeMailTags, normalizeRecipients } from './event-payload';
+import {
+  EventPayload,
+  extractDestinations,
+  normalizeMailTags,
+  normalizeRecipients,
+} from './event-payload';
 import type { SnsMessage } from './sns';
 
 type Db = DrizzleD1Database<typeof schema>;
 type Source = Pick<typeof sources.$inferSelect, 'id'>;
+
+const MAX_MULTI_ROW_INSERT_SIZE = 10;
+
+const uniqueList = (values: string[]): string[] => {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+
+  return normalized;
+};
+
+async function forEachChunk<T>(
+  values: T[],
+  size: number,
+  callback: (chunk: T[]) => Promise<unknown>,
+): Promise<void> {
+  for (let index = 0; index < values.length; index += size) {
+    await callback(values.slice(index, index + size));
+  }
+}
 
 export function parseNotificationPayload(snsMessage: SnsMessage): EventPayload | null {
   if (!snsMessage.Message) {
@@ -34,7 +75,7 @@ async function persistNotification(
   db: Db,
   source: Source,
   snsMessage: SnsMessage,
-  snsPayload: unknown,
+  _snsPayload: unknown,
   eventPayload: EventPayload,
 ): Promise<void> {
   const recipients = normalizeRecipients(eventPayload.recipients);
@@ -42,6 +83,7 @@ async function persistNotification(
   if (!eventType) {
     return;
   }
+  const destinations = uniqueList(extractDestinations(eventPayload.mail));
 
   const messageId = sql<number>`(
     select ${messages.id}
@@ -51,16 +93,6 @@ async function persistNotification(
     limit 1
   )`;
 
-  const insertWebhook = db
-    .insert(webhooks)
-    .values({
-      sns_message_id: snsMessage.MessageId,
-      sns_type: snsMessage.Type,
-      sns_timestamp: snsMessage.Timestamp ? new Date(snsMessage.Timestamp) : new Date(),
-      raw_payload: snsPayload,
-    })
-    .onConflictDoNothing();
-
   const insertMessage = db
     .insert(messages)
     .values({
@@ -69,57 +101,77 @@ async function persistNotification(
       source_email: eventPayload.sourceEmail,
       subject: eventPayload.subject,
       sent_at: eventPayload.sentAt,
+    })
+    .onConflictDoNothing();
+
+  const insertMessagePayload = db
+    .insert(messagePayloads)
+    .values({
+      message_id: messageId,
       mail_metadata: eventPayload.mail,
     })
     .onConflictDoNothing();
 
-  const normalizedTags = normalizeMailTags(eventPayload.mail);
-  const insertTags =
-    normalizedTags.length > 0
-      ? db
-          .insert(messageTags)
-          .values(
-            normalizedTags.map((tag) => ({
-              source_id: source.id,
-              message_id: messageId,
-              key: tag.key,
-              value: tag.value,
-            })),
-          )
-          .onConflictDoNothing()
-      : null;
+  const insertWebhook = db
+    .insert(webhooks)
+    .values({
+      source_id: source.id,
+      message_id: messageId,
+      sns_message_id: snsMessage.MessageId,
+      sns_type: snsMessage.Type,
+      sns_timestamp: snsMessage.Timestamp ? new Date(snsMessage.Timestamp) : new Date(),
+      raw_payload: {},
+    })
+    .onConflictDoNothing();
 
-  if (recipients.length > 0) {
-    const insertEventRows = db
-      .insert(events)
+  await db.batch([insertMessage, insertMessagePayload, insertWebhook]);
+
+  await forEachChunk(destinations, MAX_MULTI_ROW_INSERT_SIZE, async (chunk) => {
+    await db
+      .insert(messageRecipients)
       .values(
-        recipients.map((recipient) => ({
-          message_id: messageId,
+        chunk.map((recipient) => ({
           source_id: source.id,
-          event_type: eventType,
-          recipient_email: recipient,
-          event_at: eventPayload.timestamp,
-          event_data: eventPayload.eventData,
-          bounce_type: eventPayload.bounceType,
+          message_id: messageId,
+          email: recipient,
         })),
       )
       .onConflictDoNothing();
+  });
 
-    if (insertTags) {
-      await db.batch([insertWebhook, insertMessage, insertTags, insertEventRows]);
-      return;
-    }
+  const normalizedTags = normalizeMailTags(eventPayload.mail);
+  await forEachChunk(normalizedTags, MAX_MULTI_ROW_INSERT_SIZE, async (chunk) => {
+    await db
+      .insert(messageTags)
+      .values(
+        chunk.map((tag) => ({
+          source_id: source.id,
+          message_id: messageId,
+          key: tag.key,
+          value: tag.value,
+        })),
+      )
+      .onConflictDoNothing();
+  });
 
-    await db.batch([insertWebhook, insertMessage, insertEventRows]);
-    return;
+  if (recipients.length > 0) {
+    await forEachChunk(recipients, MAX_MULTI_ROW_INSERT_SIZE, async (chunk) => {
+      await db
+        .insert(events)
+        .values(
+          chunk.map((recipient) => ({
+            message_id: messageId,
+            source_id: source.id,
+            event_type: eventType,
+            recipient_email: recipient,
+            event_at: eventPayload.timestamp,
+            event_data: eventPayload.eventData,
+            bounce_type: eventPayload.bounceType,
+          })),
+        )
+        .onConflictDoNothing();
+    });
   }
-
-  if (insertTags) {
-    await db.batch([insertWebhook, insertMessage, insertTags]);
-    return;
-  }
-
-  await db.batch([insertWebhook, insertMessage]);
 }
 
 export async function ingestNotification(

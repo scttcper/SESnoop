@@ -17,7 +17,7 @@ beforeEach(async () => {
     ses_message_id: 'ses-1',
     subject: 'Hello world',
     source_email: 'sender@example.com',
-    mail_metadata: {
+    mail: {
       destination: ['a@example.com', 'b@example.com'],
       tags: {
         campaign: ['spring'],

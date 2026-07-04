@@ -174,14 +174,13 @@ describe('webhooks ingestion', () => {
     expect(events.results[0]?.source_id).toBe(events.results[0]?.message_source_id);
 
     const webhooks = await env.DB.prepare(
-      `SELECT webhooks.sns_message_id, webhooks.source_id, webhooks.message_id, webhooks.raw_payload
+      `SELECT webhooks.sns_message_id, webhooks.source_id, webhooks.message_id
        FROM webhooks
        INNER JOIN messages ON messages.id = webhooks.message_id`,
     ).all();
     expect(webhooks.results).toHaveLength(1);
     expect(webhooks.results[0]?.sns_message_id).toBe('sns-1');
     expect(webhooks.results[0]?.source_id).toBe(1);
-    expect(webhooks.results[0]?.raw_payload).toBe('{}');
 
     const payloads = await env.DB.prepare(
       `SELECT message_payloads.mail_metadata

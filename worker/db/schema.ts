@@ -38,9 +38,6 @@ export const messages = sqliteTable(
     source_email: text(),
     subject: text(),
     sent_at: timestampMsNullable('sent_at'),
-    mail_metadata: text({ mode: 'json' })
-      .notNull()
-      .default(sql`'{}'`),
   },
   (table) => ({
     // Webhook ingestion + message detail lookup by source-scoped SES message id.
@@ -122,14 +119,15 @@ export const webhooks = sqliteTable(
   'webhooks',
   {
     id: integer({ mode: 'number' }).primaryKey({ autoIncrement: true }),
-    source_id: integer({ mode: 'number' }).references(() => sources.id, { onDelete: 'cascade' }),
-    message_id: integer({ mode: 'number' }).references(() => messages.id, { onDelete: 'cascade' }),
+    source_id: integer({ mode: 'number' })
+      .notNull()
+      .references(() => sources.id, { onDelete: 'cascade' }),
+    message_id: integer({ mode: 'number' })
+      .notNull()
+      .references(() => messages.id, { onDelete: 'cascade' }),
     sns_message_id: text().notNull(),
     sns_type: text().notNull(),
     sns_timestamp: timestampMsNullable('sns_timestamp').notNull(),
-    raw_payload: text({ mode: 'json' })
-      .notNull()
-      .default(sql`'{}'`),
   },
   (table) => ({
     // Webhook dedupe/lookup by SNS message id.

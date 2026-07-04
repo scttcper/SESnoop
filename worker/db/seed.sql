@@ -10,16 +10,14 @@ INSERT OR IGNORE INTO messages (
   ses_message_id,
   source_email,
   subject,
-  sent_at,
-  mail_metadata
+  sent_at
 )
 SELECT
   id,
   '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1',
   'hello@example.com',
   'Welcome to BetaList',
-  unixepoch('now', '-5 minutes') * 1000,
-  '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  unixepoch('now', '-5 minutes') * 1000
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -28,16 +26,14 @@ INSERT OR IGNORE INTO messages (
   ses_message_id,
   source_email,
   subject,
-  sent_at,
-  mail_metadata
+  sent_at
 )
 SELECT
   id,
   '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2',
   'hello@example.com',
   'Your weekly product updates',
-  unixepoch('now', '-1 hour') * 1000,
-  '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  unixepoch('now', '-1 hour') * 1000
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -46,16 +42,14 @@ INSERT OR IGNORE INTO messages (
   ses_message_id,
   source_email,
   subject,
-  sent_at,
-  mail_metadata
+  sent_at
 )
 SELECT
   id,
   '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3',
   'hello@example.com',
   'Confirm your email to stay on BetaList',
-  unixepoch('now', '-3 hours') * 1000,
-  '{"destination":["sam@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  unixepoch('now', '-3 hours') * 1000
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -64,16 +58,14 @@ INSERT OR IGNORE INTO messages (
   ses_message_id,
   source_email,
   subject,
-  sent_at,
-  mail_metadata
+  sent_at
 )
 SELECT
   id,
   '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4',
   'hello@example.com',
   'You are invited: early access',
-  unixepoch('now', '-1 day') * 1000,
-  '{"destination":["taylor@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  unixepoch('now', '-1 day') * 1000
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -82,16 +74,14 @@ INSERT OR IGNORE INTO messages (
   ses_message_id,
   source_email,
   subject,
-  sent_at,
-  mail_metadata
+  sent_at
 )
 SELECT
   id,
   '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5',
   'hello@example.com',
   'We shipped new features',
-  unixepoch('now', '-2 days') * 1000,
-  '{"destination":["jordan@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  unixepoch('now', '-2 days') * 1000
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -100,16 +90,14 @@ INSERT OR IGNORE INTO messages (
   ses_message_id,
   source_email,
   subject,
-  sent_at,
-  mail_metadata
+  sent_at
 )
 SELECT
   id,
   '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6',
   'hello@example.com',
   'Thanks for the feedback',
-  unixepoch('now', '-7 days') * 1000,
-  '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  unixepoch('now', '-7 days') * 1000
 FROM sources
 WHERE token = 'seed-betalist';
 
@@ -118,18 +106,45 @@ INSERT OR IGNORE INTO messages (
   ses_message_id,
   source_email,
   subject,
-  sent_at,
-  mail_metadata
+  sent_at
 )
 SELECT
   id,
   '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7',
   'hello@example.com',
   'Last chance to claim your invite',
-  unixepoch('now', '-14 days') * 1000,
-  '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  unixepoch('now', '-14 days') * 1000
 FROM sources
 WHERE token = 'seed-betalist';
+
+INSERT OR IGNORE INTO message_payloads (message_id, mail_metadata)
+SELECT id,
+  CASE ses_message_id
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1' THEN '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2' THEN '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3' THEN '{"destination":["sam@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4' THEN '{"destination":["taylor@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5' THEN '{"destination":["jordan@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6' THEN '{"destination":["alex@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7' THEN '{"destination":["priya@example.com"],"tags":{"environment":"demo","campaign":"seed-data"}}'
+  END
+FROM messages
+WHERE ses_message_id LIKE '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a%';
+
+INSERT OR IGNORE INTO message_recipients (source_id, message_id, email)
+SELECT source_id,
+  id,
+  CASE ses_message_id
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a1' THEN 'alex@example.com'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a2' THEN 'priya@example.com'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a3' THEN 'sam@example.com'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a4' THEN 'taylor@example.com'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a5' THEN 'jordan@example.com'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a6' THEN 'alex@example.com'
+    WHEN '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a7' THEN 'priya@example.com'
+  END
+FROM messages
+WHERE ses_message_id LIKE '9b10b4cc-0f03-4d4d-9d8b-8f24a0b0a0a%';
 
 INSERT OR IGNORE INTO message_tags (source_id, message_id, key, value)
 SELECT source_id, id, tag_key, tag_value

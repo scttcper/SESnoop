@@ -120,7 +120,6 @@ async function persistNotification(
       sns_message_id: snsMessage.MessageId,
       sns_type: snsMessage.Type,
       sns_timestamp: snsMessage.Timestamp ? new Date(snsMessage.Timestamp) : new Date(),
-      raw_payload: {},
     })
     .onConflictDoNothing();
 

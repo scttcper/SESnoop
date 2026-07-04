@@ -4,7 +4,7 @@ import * as HttpStatusPhrases from 'stoker/http-status-phrases';
 
 import { createDb } from '../../db';
 import { events, messageRecipients, messageTags } from '../../db/schema';
-import { extractDestinations, extractEventDetail, toRecord } from '../../lib/event-payload';
+import { extractEventDetail, toRecord } from '../../lib/event-payload';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetOneRoute } from './messages.routes';
@@ -66,11 +66,8 @@ export const getOne: AppRouteHandler<GetOneRoute> = async (c) => {
     }),
   ]);
 
-  const mailMetadata = toRecord(payload?.mail_metadata ?? message.mail_metadata);
-  const destinationEmails =
-    recipients.length > 0
-      ? recipients.map((recipient) => recipient.email)
-      : extractDestinations(mailMetadata);
+  const mailMetadata = toRecord(payload?.mail_metadata);
+  const destinationEmails = recipients.map((recipient) => recipient.email);
 
   return c.json(
     {

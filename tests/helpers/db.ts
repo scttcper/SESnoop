@@ -34,29 +34,16 @@ export const insertWebhook = async (overrides: {
   message_id?: number;
   sns_type?: string;
   sns_timestamp?: number;
-  raw_payload?: Record<string, unknown>;
 }) => {
   const snsType = overrides.sns_type ?? 'Notification';
   const snsTimestamp = overrides.sns_timestamp ?? Date.now();
-  const rawPayload =
-    overrides.raw_payload ??
-    ({
-      Type: snsType,
-      MessageId: overrides.sns_message_id,
-      Message: JSON.stringify({
-        mail: {
-          messageId: overrides.ses_message_id,
-        },
-      }),
-    } satisfies Record<string, unknown>);
 
   await env.DB.prepare(
     `INSERT INTO webhooks
-     (source_id, message_id, sns_message_id, sns_type, sns_timestamp, raw_payload)
+     (source_id, message_id, sns_message_id, sns_type, sns_timestamp)
      VALUES (
        COALESCE(?, (SELECT source_id FROM messages WHERE ses_message_id = ? LIMIT 1)),
        COALESCE(?, (SELECT id FROM messages WHERE ses_message_id = ? LIMIT 1)),
-       ?,
        ?,
        ?,
        ?
@@ -70,7 +57,6 @@ export const insertWebhook = async (overrides: {
       overrides.sns_message_id,
       snsType,
       snsTimestamp,
-      JSON.stringify(rawPayload),
     )
     .run();
 };
@@ -105,28 +91,20 @@ export const insertMessage = async (overrides: {
   subject?: string | null;
   source_email?: string | null;
   sent_at?: number | null;
-  mail_metadata?: Record<string, unknown>;
+  mail?: Record<string, unknown>;
 }) => {
   const id = overrides.id ?? 1;
   const subject = overrides.subject ?? null;
   const sourceEmail = overrides.source_email ?? null;
   const sentAt = overrides.sent_at ?? null;
-  const mailMetadata = JSON.stringify(overrides.mail_metadata ?? {});
+  const mailMetadata = JSON.stringify(overrides.mail ?? {});
 
   await env.DB.prepare(
     `INSERT INTO messages
-     (id, source_id, ses_message_id, source_email, subject, sent_at, mail_metadata)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+     (id, source_id, ses_message_id, source_email, subject, sent_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
   )
-    .bind(
-      id,
-      overrides.source_id,
-      overrides.ses_message_id,
-      sourceEmail,
-      subject,
-      sentAt,
-      mailMetadata,
-    )
+    .bind(id, overrides.source_id, overrides.ses_message_id, sourceEmail, subject, sentAt)
     .run();
 
   await env.DB.prepare(
@@ -136,10 +114,8 @@ export const insertMessage = async (overrides: {
     .bind(id, mailMetadata)
     .run();
 
-  const destinations = Array.isArray(overrides.mail_metadata?.destination)
-    ? overrides.mail_metadata.destination.filter(
-        (entry): entry is string => typeof entry === 'string',
-      )
+  const destinations = Array.isArray(overrides.mail?.destination)
+    ? overrides.mail.destination.filter((entry): entry is string => typeof entry === 'string')
     : [];
 
   for (const destination of destinations) {

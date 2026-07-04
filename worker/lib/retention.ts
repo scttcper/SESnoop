@@ -25,55 +25,27 @@ type CountResult = {
   count: number;
 };
 
-const webhookSesMessageIdExpression = (tableAlias: string) => `
-  CASE
-    WHEN json_valid(json_extract(${tableAlias}.raw_payload, '$.Message'))
-    THEN json_extract(json_extract(${tableAlias}.raw_payload, '$.Message'), '$.mail.messageId')
-  END
-`;
-
 export async function deleteWebhooksForSourceMessages(
   env: AppBindings['Bindings'],
   sourceId: number,
   options: WebhookCleanupOptions = {},
 ): Promise<number> {
   const sentBefore = options.sentBefore;
-  const ownershipQuery =
+  const query =
     sentBefore == null
-      ? `SELECT webhooks.id
-         FROM webhooks
-         WHERE webhooks.source_id = ?`
-      : `SELECT webhooks.id
-         FROM webhooks
-         INNER JOIN messages ON messages.id = webhooks.message_id
-         WHERE webhooks.source_id = ?
-           AND messages.sent_at IS NOT NULL
-           AND messages.sent_at < ?`;
-  const legacyQuery =
-    sentBefore == null
-      ? `SELECT webhooks.id
-         FROM webhooks
-         INNER JOIN messages
-           ON messages.source_id = ?
-          AND messages.ses_message_id = ${webhookSesMessageIdExpression('webhooks')}`
-      : `SELECT webhooks.id
-         FROM webhooks
-         INNER JOIN messages
-           ON messages.source_id = ?
-          AND messages.ses_message_id = ${webhookSesMessageIdExpression('webhooks')}
-          AND messages.sent_at IS NOT NULL
-          AND messages.sent_at < ?`;
-  const bindings =
-    sentBefore == null ? [sourceId, sourceId] : [sourceId, sentBefore, sourceId, sentBefore];
+      ? `DELETE FROM webhooks WHERE source_id = ?`
+      : `DELETE FROM webhooks
+         WHERE id IN (
+           SELECT webhooks.id
+           FROM webhooks
+           INNER JOIN messages ON messages.id = webhooks.message_id
+           WHERE webhooks.source_id = ?
+             AND messages.sent_at IS NOT NULL
+             AND messages.sent_at < ?
+         )`;
+  const bindings = sentBefore == null ? [sourceId] : [sourceId, sentBefore];
 
-  const result = await env.DB.prepare(
-    `DELETE FROM webhooks
-     WHERE id IN (
-       ${ownershipQuery}
-       UNION
-       ${legacyQuery}
-     )`,
-  )
+  const result = await env.DB.prepare(query)
     .bind(...bindings)
     .run();
 

@@ -10,7 +10,7 @@ import {
   ZOD_ERROR_CODES,
   ZOD_ERROR_MESSAGES,
 } from '../../lib/constants';
-import { runRetentionCleanupForSource } from '../../lib/retention';
+import { deleteWebhooksForSourceMessages, runRetentionCleanupForSource } from '../../lib/retention';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type {
@@ -170,9 +170,13 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
 export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
   const db = createDb(c.env);
   const { id } = c.req.valid('param');
-  const deleted = await db.delete(sources).where(eq(sources.id, id)).returning({ id: sources.id });
+  const source = await db.query.sources.findFirst({
+    where(fields, operators) {
+      return operators.eq(fields.id, id);
+    },
+  });
 
-  if (deleted.length === 0) {
+  if (!source) {
     return c.json(
       {
         message: HttpStatusPhrases.NOT_FOUND,
@@ -180,6 +184,9 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
       HttpStatusCodes.NOT_FOUND,
     );
   }
+
+  await deleteWebhooksForSourceMessages(c.env, source.id);
+  await db.delete(sources).where(eq(sources.id, source.id));
 
   return c.body(null, HttpStatusCodes.NO_CONTENT);
 };

@@ -25,6 +25,35 @@ export const insertMessageTags = async (
   }
 };
 
+export const insertWebhook = async (overrides: {
+  sns_message_id: string;
+  ses_message_id?: string;
+  sns_type?: string;
+  sns_timestamp?: number;
+  raw_payload?: Record<string, unknown>;
+}) => {
+  const snsType = overrides.sns_type ?? 'Notification';
+  const snsTimestamp = overrides.sns_timestamp ?? Date.now();
+  const rawPayload =
+    overrides.raw_payload ??
+    ({
+      Type: snsType,
+      MessageId: overrides.sns_message_id,
+      Message: JSON.stringify({
+        mail: {
+          messageId: overrides.ses_message_id,
+        },
+      }),
+    } satisfies Record<string, unknown>);
+
+  await env.DB.prepare(
+    `INSERT INTO webhooks (sns_message_id, sns_type, sns_timestamp, raw_payload)
+     VALUES (?, ?, ?, ?)`,
+  )
+    .bind(overrides.sns_message_id, snsType, snsTimestamp, JSON.stringify(rawPayload))
+    .run();
+};
+
 export const insertSource = async (overrides?: {
   id?: number;
   name?: string;

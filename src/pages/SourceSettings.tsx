@@ -80,13 +80,16 @@ export default function SourceSettingsPage() {
   const cleanupMutation = useMutation({
     mutationFn: runSourceCleanupFn,
     onSuccess: (result) => {
-      if (result.messages_deleted === 0 && result.events_deleted === 0) {
+      const deletedCount =
+        result.messages_deleted + result.events_deleted + result.webhooks_deleted;
+
+      if (deletedCount === 0) {
         toast.success('Cleanup complete. Nothing to delete.');
         return;
       }
 
       toast.success(
-        `Cleanup complete. Deleted ${result.messages_deleted} messages and ${result.events_deleted} events.`,
+        `Cleanup complete. Deleted ${result.messages_deleted} messages, ${result.events_deleted} events, and ${result.webhooks_deleted} webhooks.`,
       );
     },
     onError: (err) => {

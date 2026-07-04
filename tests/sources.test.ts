@@ -5,7 +5,14 @@ import type { Source } from '@/db/schema';
 import type { ValidationErrorResponse } from '@/lib/types';
 import type { SetupInfo } from '@/routes/sources/sources.routes';
 
-import { insertEvent, insertMessage, insertSource, resetDb } from './helpers/db';
+import {
+  insertEvent,
+  insertMessage,
+  insertMessageTags,
+  insertSource,
+  insertWebhook,
+  resetDb,
+} from './helpers/db';
 
 beforeEach(async () => {
   await resetDb();
@@ -89,10 +96,50 @@ describe('sources routes', () => {
 
   it('deletes a source', async () => {
     await insertSource({ id: 1, name: 'Echo', token: 'echo-token' });
+    await insertSource({ id: 2, name: 'Foxtrot', token: 'foxtrot-token' });
+    await insertMessage({
+      id: 1,
+      source_id: 1,
+      ses_message_id: 'echo-message',
+    });
+    await insertMessage({
+      id: 2,
+      source_id: 2,
+      ses_message_id: 'foxtrot-message',
+    });
+    await insertMessageTags(1, [{ key: 'campaign', value: 'delete-me' }]);
+    await insertEvent({
+      message_id: 1,
+      event_type: 'Delivery',
+      recipient_email: 'delete-me@example.com',
+      event_at: Date.now(),
+    });
+    await insertWebhook({
+      sns_message_id: 'sns-echo',
+      ses_message_id: 'echo-message',
+    });
+    await insertWebhook({
+      sns_message_id: 'sns-foxtrot',
+      ses_message_id: 'foxtrot-message',
+    });
+
     const response = await SELF.fetch('http://example.com/api/sources/1', {
       method: 'DELETE',
     });
     expect(response.status).toBe(204);
+
+    const sources = await env.DB.prepare('SELECT id FROM sources ORDER BY id').all();
+    expect(sources.results).toEqual([{ id: 2 }]);
+    const messages = await env.DB.prepare('SELECT id FROM messages ORDER BY id').all();
+    expect(messages.results).toEqual([{ id: 2 }]);
+    const events = await env.DB.prepare('SELECT id FROM events').all();
+    expect(events.results).toHaveLength(0);
+    const tags = await env.DB.prepare('SELECT id FROM message_tags').all();
+    expect(tags.results).toHaveLength(0);
+    const webhooks = await env.DB.prepare(
+      'SELECT sns_message_id FROM webhooks ORDER BY sns_message_id',
+    ).all();
+    expect(webhooks.results).toEqual([{ sns_message_id: 'sns-foxtrot' }]);
   });
 
   it('returns setup guidance variables', async () => {
@@ -139,6 +186,16 @@ describe('sources routes', () => {
       recipient_email: 'new@example.com',
       event_at: now - dayMs,
     });
+    await insertWebhook({
+      sns_message_id: 'sns-old',
+      ses_message_id: 'old-message',
+      sns_timestamp: now - 31 * dayMs,
+    });
+    await insertWebhook({
+      sns_message_id: 'sns-new',
+      ses_message_id: 'new-message',
+      sns_timestamp: now - dayMs,
+    });
 
     const response = await SELF.fetch('http://example.com/api/sources/1/cleanup', {
       method: 'POST',
@@ -149,15 +206,19 @@ describe('sources routes', () => {
       retention_days: number | null;
       messages_deleted: number;
       events_deleted: number;
+      webhooks_deleted: number;
     };
     expect(json.source_id).toBe(1);
     expect(json.retention_days).toBe(30);
     expect(json.messages_deleted).toBe(1);
     expect(json.events_deleted).toBe(1);
+    expect(json.webhooks_deleted).toBe(1);
 
     const messages = await env.DB.prepare('SELECT id FROM messages').all();
     expect(messages.results).toHaveLength(1);
     const events = await env.DB.prepare('SELECT id FROM events').all();
     expect(events.results).toHaveLength(1);
+    const webhooks = await env.DB.prepare('SELECT sns_message_id FROM webhooks').all();
+    expect(webhooks.results).toEqual([{ sns_message_id: 'sns-new' }]);
   });
 });

@@ -10,11 +10,49 @@ export type RetentionCleanupResult = {
   retention_days: number | null;
   messages_deleted: number;
   events_deleted: number;
+  webhooks_deleted: number;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toCutoff = (days: number) => Date.now() - days * DAY_MS;
+
+type WebhookCleanupOptions = {
+  sentBefore?: number;
+};
+
+const webhookSesMessageIdExpression = (tableAlias: string) => `
+  CASE
+    WHEN json_valid(json_extract(${tableAlias}.raw_payload, '$.Message'))
+    THEN json_extract(json_extract(${tableAlias}.raw_payload, '$.Message'), '$.mail.messageId')
+  END
+`;
+
+export async function deleteWebhooksForSourceMessages(
+  env: AppBindings['Bindings'],
+  sourceId: number,
+  options: WebhookCleanupOptions = {},
+): Promise<number> {
+  const sentBeforeFilter =
+    options.sentBefore == null ? '' : 'AND messages.sent_at IS NOT NULL AND messages.sent_at < ?';
+  const bindings = options.sentBefore == null ? [sourceId] : [sourceId, options.sentBefore];
+
+  const result = await env.DB.prepare(
+    `DELETE FROM webhooks
+     WHERE id IN (
+       SELECT webhooks.id
+       FROM webhooks
+       INNER JOIN messages
+         ON messages.source_id = ?
+        AND messages.ses_message_id = ${webhookSesMessageIdExpression('webhooks')}
+        ${sentBeforeFilter}
+     )`,
+  )
+    .bind(...bindings)
+    .run();
+
+  return result.meta?.changes ?? 0;
+}
 
 export async function runRetentionCleanupForSource(
   env: AppBindings['Bindings'],
@@ -27,10 +65,15 @@ export async function runRetentionCleanupForSource(
       retention_days: retentionDays ?? null,
       messages_deleted: 0,
       events_deleted: 0,
+      webhooks_deleted: 0,
     };
   }
 
   const cutoff = toCutoff(retentionDays);
+
+  const webhooksDeleted = await deleteWebhooksForSourceMessages(env, source.id, {
+    sentBefore: cutoff,
+  });
 
   const eventsResult = await env.DB.prepare(
     `DELETE FROM events
@@ -54,6 +97,7 @@ export async function runRetentionCleanupForSource(
     retention_days: retentionDays,
     messages_deleted: messagesResult.meta?.changes ?? 0,
     events_deleted: eventsResult.meta?.changes ?? 0,
+    webhooks_deleted: webhooksDeleted,
   };
 }
 

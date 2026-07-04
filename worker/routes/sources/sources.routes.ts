@@ -126,6 +126,7 @@ const cleanupResultSchema = z.object({
   retention_days: z.number().int().positive().nullable(),
   messages_deleted: z.number().int().nonnegative(),
   events_deleted: z.number().int().nonnegative(),
+  webhooks_deleted: z.number().int().nonnegative(),
 });
 
 export type CleanupResult = z.infer<typeof cleanupResultSchema>;

@@ -62,7 +62,7 @@
     "drizzle-kit": "^0.31.10",
     "oxfmt": "^0.57.0",
     "oxlint": "^1.72.0",
-    "postcss": "^8.5.16",
+    "postcss": "^8.5.18",
     "tailwindcss": "^4.3.2",
     "typescript": "7.0.1-rc",
     "vite": "^8.1.3",

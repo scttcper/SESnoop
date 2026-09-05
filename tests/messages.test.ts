@@ -1,9 +1,9 @@
-import { SELF } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { MessageDetail } from '@/routes/messages/messages.routes';
 
 import { insertEvent, insertMessage, insertMessageTags, insertSource, resetDb } from './helpers/db';
+import { server } from './helpers/harness';
 
 const firstEventAt = Date.UTC(2025, 0, 1, 8, 0, 0);
 const secondEventAt = Date.UTC(2025, 0, 1, 9, 0, 0);
@@ -42,7 +42,7 @@ beforeEach(async () => {
 
 describe('messages routes', () => {
   it('returns a message with events', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/1/messages/ses-1');
+    const response = await server.fetch('http://example.com/api/sources/1/messages/ses-1');
     expect(response.status).toBe(200);
     const json = (await response.json()) as MessageDetail;
     expect(json.ses_message_id).toBe('ses-1');
@@ -53,12 +53,12 @@ describe('messages routes', () => {
   });
 
   it('returns 404 for missing messages', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/1/messages/unknown');
+    const response = await server.fetch('http://example.com/api/sources/1/messages/unknown');
     expect(response.status).toBe(404);
   });
 
   it('returns 422 for invalid params', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/nope/messages/ses-1');
+    const response = await server.fetch('http://example.com/api/sources/nope/messages/ses-1');
     expect(response.status).toBe(422);
   });
 });

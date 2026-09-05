@@ -4,7 +4,7 @@ import type { AppBindings } from './lib/types';
 
 export default {
   fetch: app.fetch,
-  scheduled: (_event: ScheduledEvent, env: AppBindings['Bindings'], ctx: ExecutionContext) => {
+  scheduled: (_event: ScheduledController, env: AppBindings['Bindings'], ctx: ExecutionContext) => {
     ctx.waitUntil(runRetentionCleanup(env));
   },
-};
+} satisfies ExportedHandler<AppBindings['Bindings']>;

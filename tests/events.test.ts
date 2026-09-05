@@ -1,9 +1,9 @@
-import { SELF } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { EventResponse } from '@/routes/events/events.routes';
 
 import { insertEvent, insertMessage, insertMessageTags, insertSource, resetDb } from './helpers/db';
+import { env, server } from './helpers/harness';
 
 const day = Date.UTC(2025, 0, 1, 12, 0, 0);
 
@@ -44,7 +44,7 @@ beforeEach(async () => {
 
 describe('events routes', () => {
   it('lists events with counts', async () => {
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/events?date_range=all_time',
     );
     expect(response.status).toBe(200);
@@ -67,17 +67,24 @@ describe('events routes', () => {
   it('returns tags for a full page of 200 distinct messages', async () => {
     await resetDb();
     await insertSource({ id: 1 });
-    for (let id = 1; id <= 200; id++) {
-      await insertMessage({ id, source_id: 1, ses_message_id: `message-${id}` });
-      await insertMessageTags(id, [{ key: 'message', value: String(id) }]);
-      await insertEvent({
-        message_id: id,
-        event_type: 'Send',
-        recipient_email: 'a@example.com',
-        event_at: day + id,
-      });
-    }
-    const response = await SELF.fetch(
+    await env.DB.batch([
+      env.DB.prepare(`
+        WITH RECURSIVE ids(id) AS (
+          SELECT 1 UNION ALL SELECT id + 1 FROM ids WHERE id < 200
+        )
+        INSERT INTO messages (id, source_id, ses_message_id)
+        SELECT id, 1, 'message-' || id FROM ids
+      `),
+      env.DB.prepare(`
+        INSERT INTO message_tags (source_id, message_id, key, value)
+        SELECT 1, id, 'message', CAST(id AS TEXT) FROM messages
+      `),
+      env.DB.prepare(`
+        INSERT INTO events (source_id, message_id, event_type, recipient_email, event_at, event_data)
+        SELECT 1, id, 'Send', 'a@example.com', ? + id, '{}' FROM messages
+      `).bind(day),
+    ]);
+    const response = await server.fetch(
       'http://example.com/api/sources/1/events?date_range=all_time&per_page=200',
     );
     expect(response.status).toBe(200);
@@ -95,7 +102,7 @@ describe('events routes', () => {
   });
 
   it('filters events by type', async () => {
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/events?event_types=Bounce&date_range=all_time',
     );
     expect(response.status).toBe(200);
@@ -119,7 +126,7 @@ describe('events routes', () => {
       event_at: day + 3000,
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/events?tags=campaign:spring&date_range=all_time',
     );
     expect(response.status).toBe(200);
@@ -149,7 +156,7 @@ describe('events routes', () => {
       event_at: day + 3000,
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/events?tags=campaign:spring,environment:prod&date_range=all_time',
     );
     expect(response.status).toBe(200);
@@ -160,22 +167,22 @@ describe('events routes', () => {
   });
 
   it('returns 404 for missing sources', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/999/events');
+    const response = await server.fetch('http://example.com/api/sources/999/events');
     expect(response.status).toBe(404);
   });
 
   it('returns 422 for invalid source ids', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/nope/events');
+    const response = await server.fetch('http://example.com/api/sources/nope/events');
     expect(response.status).toBe(422);
   });
 
   it('returns 422 for invalid date filters', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/1/events?from=not-a-date');
+    const response = await server.fetch('http://example.com/api/sources/1/events?from=not-a-date');
     expect(response.status).toBe(422);
   });
 
   it('returns 422 for invalid pagination filters', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/1/events?page=0');
+    const response = await server.fetch('http://example.com/api/sources/1/events?page=0');
     expect(response.status).toBe(422);
   });
 });

@@ -1,14 +1,10 @@
-import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { insertSource, resetDb } from './helpers/db';
-
-const testEnv = env as typeof env & {
-  IGNORED_SES_EVENT_TYPES?: string;
-};
+import { env, server, setWorkerVars } from './helpers/harness';
 
 beforeEach(async () => {
-  testEnv.IGNORED_SES_EVENT_TYPES = undefined;
+  await setWorkerVars({ IGNORED_SES_EVENT_TYPES: '' });
   await resetDb();
   await insertSource({ name: 'Test', token: 'token-123', color: 'blue' });
 });
@@ -37,7 +33,7 @@ const buildOpenNotification = (messageId: string, timestamp: string) => ({
 
 describe('webhooks ingestion', () => {
   it('returns 400 for invalid JSON', async () => {
-    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const response = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: 'not-json',
     });
@@ -63,7 +59,7 @@ describe('webhooks ingestion', () => {
       SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
     };
 
-    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const response = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage),
       headers: { 'content-type': 'application/json' },
@@ -98,7 +94,7 @@ describe('webhooks ingestion', () => {
       SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
     };
 
-    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const response = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage),
       headers: { 'content-type': 'application/json' },
@@ -144,14 +140,14 @@ describe('webhooks ingestion', () => {
       SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
     };
 
-    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const response = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage),
       headers: { 'content-type': 'application/json' },
     });
     expect(response.status).toBe(200);
 
-    const secondResponse = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const secondResponse = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage),
       headers: { 'content-type': 'application/json' },
@@ -237,7 +233,7 @@ describe('webhooks ingestion', () => {
       SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
     };
 
-    const response1 = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const response1 = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage1),
       headers: { 'content-type': 'application/json' },
@@ -278,7 +274,7 @@ describe('webhooks ingestion', () => {
       SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
     };
 
-    const response2 = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const response2 = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage2),
       headers: { 'content-type': 'application/json' },
@@ -305,7 +301,7 @@ describe('webhooks ingestion', () => {
       buildOpenNotification('sns-open-1', '2025-01-01T00:00:05.000Z'),
       buildOpenNotification('sns-open-2', '2025-01-01T00:00:10.000Z'),
     ]) {
-      const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+      const response = await server.fetch('http://example.com/api/webhooks/token-123', {
         method: 'POST',
         body: JSON.stringify(snsMessage),
         headers: { 'content-type': 'application/json' },
@@ -328,7 +324,7 @@ describe('webhooks ingestion', () => {
   });
 
   it('acknowledges ignored event types without storing them', async () => {
-    testEnv.IGNORED_SES_EVENT_TYPES = 'Open, click';
+    await setWorkerVars({ IGNORED_SES_EVENT_TYPES: 'Open, click' });
 
     const eventPayload = {
       eventType: 'Open',
@@ -356,7 +352,7 @@ describe('webhooks ingestion', () => {
       SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService.pem',
     };
 
-    const response = await SELF.fetch('http://example.com/api/webhooks/token-123', {
+    const response = await server.fetch('http://example.com/api/webhooks/token-123', {
       method: 'POST',
       body: JSON.stringify(snsMessage),
       headers: { 'content-type': 'application/json' },
@@ -377,7 +373,7 @@ describe('webhooks ingestion', () => {
 });
 
 const postNotification = (notification: unknown) =>
-  SELF.fetch('http://example.com/api/webhooks/token-123', {
+  server.fetch('http://example.com/api/webhooks/token-123', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(notification),

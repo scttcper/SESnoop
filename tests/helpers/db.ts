@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:test';
+import { env } from './harness';
 
 export const resetDb = async () => {
   // Clear data in correct order to respect foreign key constraints

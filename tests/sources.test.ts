@@ -1,4 +1,3 @@
-import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Source } from '@/db/schema';
@@ -13,9 +12,10 @@ import {
   insertWebhook,
   resetDb,
 } from './helpers/db';
+import { env, server } from './helpers/harness';
 
 const updateSource = (body: unknown) =>
-  SELF.fetch('http://example.com/api/sources/1', {
+  server.fetch('http://example.com/api/sources/1', {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
@@ -29,7 +29,7 @@ describe('sources routes', () => {
   it('lists sources', async () => {
     await insertSource({ id: 1, name: 'Alpha', token: 'alpha-token' });
 
-    const response = await SELF.fetch('http://example.com/api/sources');
+    const response = await server.fetch('http://example.com/api/sources');
     expect(response.status).toBe(200);
     const json = (await response.json()) as Source[];
     expect(json).toHaveLength(1);
@@ -37,7 +37,7 @@ describe('sources routes', () => {
   });
 
   it('creates a source with defaults', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources', {
+    const response = await server.fetch('http://example.com/api/sources', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'New Source' }),
@@ -50,7 +50,7 @@ describe('sources routes', () => {
   });
 
   it('validates source creation payloads', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources', {
+    const response = await server.fetch('http://example.com/api/sources', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({}),
@@ -60,25 +60,25 @@ describe('sources routes', () => {
 
   it('gets a source by id', async () => {
     await insertSource({ id: 1, name: 'Bravo', token: 'bravo-token' });
-    const response = await SELF.fetch('http://example.com/api/sources/1');
+    const response = await server.fetch('http://example.com/api/sources/1');
     expect(response.status).toBe(200);
     const json = (await response.json()) as Source;
     expect(json.name).toBe('Bravo');
   });
 
   it('returns 404 for missing sources', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/999');
+    const response = await server.fetch('http://example.com/api/sources/999');
     expect(response.status).toBe(404);
   });
 
   it('returns 422 for invalid source ids', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/nope');
+    const response = await server.fetch('http://example.com/api/sources/nope');
     expect(response.status).toBe(422);
   });
 
   it('rejects empty source updates', async () => {
     await insertSource({ id: 1, name: 'Charlie', token: 'charlie-token' });
-    const response = await SELF.fetch('http://example.com/api/sources/1', {
+    const response = await server.fetch('http://example.com/api/sources/1', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({}),
@@ -90,7 +90,7 @@ describe('sources routes', () => {
 
   it('updates a source', async () => {
     await insertSource({ id: 1, name: 'Delta', token: 'delta-token' });
-    const response = await SELF.fetch('http://example.com/api/sources/1', {
+    const response = await server.fetch('http://example.com/api/sources/1', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Delta Updated', retention_days: 30 }),
@@ -114,7 +114,7 @@ describe('sources routes', () => {
     const cleared = await updateSource({ retention_days: null });
     expect(cleared.status).toBe(200);
     expect(((await cleared.json()) as Source).retention_days).toBeNull();
-    const cleanup = await SELF.fetch('http://example.com/api/sources/1/cleanup', {
+    const cleanup = await server.fetch('http://example.com/api/sources/1/cleanup', {
       method: 'POST',
     });
     expect(await cleanup.json()).toMatchObject({ messages_deleted: 0, events_deleted: 0 });
@@ -150,7 +150,7 @@ describe('sources routes', () => {
       ses_message_id: 'foxtrot-message',
     });
 
-    const response = await SELF.fetch('http://example.com/api/sources/1', {
+    const response = await server.fetch('http://example.com/api/sources/1', {
       method: 'DELETE',
     });
     expect(response.status).toBe(204);
@@ -171,7 +171,7 @@ describe('sources routes', () => {
 
   it('returns setup guidance variables', async () => {
     await insertSource({ id: 1, name: 'My Source', token: 'tok-1' });
-    const response = await SELF.fetch('http://example.com/api/sources/1/setup');
+    const response = await server.fetch('http://example.com/api/sources/1/setup');
     expect(response.status).toBe(200);
     const json = (await response.json()) as SetupInfo;
     expect(json.configuration_set_name).toBe('sesnoop-my-source-config');
@@ -224,7 +224,7 @@ describe('sources routes', () => {
       sns_timestamp: now - dayMs,
     });
 
-    const response = await SELF.fetch('http://example.com/api/sources/1/cleanup', {
+    const response = await server.fetch('http://example.com/api/sources/1/cleanup', {
       method: 'POST',
     });
     expect(response.status).toBe(200);

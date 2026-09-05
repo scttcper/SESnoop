@@ -1,9 +1,9 @@
-import { SELF } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { OverviewResponse } from '@/routes/overview/overview.routes';
 
 import { insertEvent, insertMessage, insertSource, resetDb } from './helpers/db';
+import { server } from './helpers/harness';
 
 const rangeDate = Date.UTC(2025, 0, 1, 12, 0, 0);
 
@@ -63,7 +63,7 @@ beforeEach(async () => {
 
 describe('overview routes', () => {
   it('returns overview metrics', async () => {
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
     );
     expect(response.status).toBe(200);
@@ -103,17 +103,19 @@ describe('overview routes', () => {
   });
 
   it('returns 404 for missing sources', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/999/overview');
+    const response = await server.fetch('http://example.com/api/sources/999/overview');
     expect(response.status).toBe(404);
   });
 
   it('returns 422 for invalid params', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/nope/overview');
+    const response = await server.fetch('http://example.com/api/sources/nope/overview');
     expect(response.status).toBe(422);
   });
 
   it('returns 422 for invalid date filters', async () => {
-    const response = await SELF.fetch('http://example.com/api/sources/1/overview?from=not-a-date');
+    const response = await server.fetch(
+      'http://example.com/api/sources/1/overview?from=not-a-date',
+    );
     expect(response.status).toBe(422);
   });
 
@@ -146,7 +148,7 @@ describe('overview routes', () => {
       event_data: { bouncedRecipients: [{ diagnosticCode: 'mailbox full' }] },
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
     );
     const json = (await response.json()) as OverviewResponse;
@@ -201,7 +203,7 @@ describe('daily recipient reach', () => {
       event_at: Date.UTC(2025, 0, 3, 8, 0, 0),
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-03',
     );
     const json = (await response.json()) as OverviewResponse;
@@ -257,7 +259,7 @@ describe('open rate and click rate calculations', () => {
       bounce_type: 'Permanent',
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
     );
     const json = (await response.json()) as OverviewResponse;
@@ -306,7 +308,7 @@ describe('open rate and click rate calculations', () => {
       event_at: rangeDate + 4000,
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
     );
     const json = (await response.json()) as OverviewResponse;
@@ -361,7 +363,7 @@ describe('open rate and click rate calculations', () => {
       event_at: rangeDate + 2000,
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
     );
     const json = (await response.json()) as OverviewResponse;
@@ -413,7 +415,7 @@ describe('open rate and click rate calculations', () => {
       bounce_type: 'Permanent',
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
     );
     const json = (await response.json()) as OverviewResponse;
@@ -438,7 +440,7 @@ describe('open rate and click rate calculations', () => {
       event_at: rangeDate,
     });
 
-    const response = await SELF.fetch(
+    const response = await server.fetch(
       'http://example.com/api/sources/1/overview?from=2025-01-01&to=2025-01-01',
     );
     const json = (await response.json()) as OverviewResponse;
@@ -458,7 +460,7 @@ const addRateEvent = (
 ) => insertEvent({ message_id, event_type, event_at: Date.parse(date), recipient_email });
 
 const getRateOverview = async (from: string, to = from) => {
-  const response = await SELF.fetch(
+  const response = await server.fetch(
     `http://example.com/api/sources/1/overview?from=${from}&to=${to}`,
   );
   expect(response.status).toBe(200);

@@ -14,6 +14,7 @@ import { createDb } from '../../db';
 import { events, sources } from '../../db/schema';
 import { EVENT_TYPES, EVENT_TYPE_VALUES, type EventType } from '../../lib/constants';
 import { formatReasonLabel } from '../../lib/event-payload';
+import { overviewRatesQuery, type OverviewRateRow } from '../../lib/overview-rates';
 import type { AppRouteHandler } from '../../lib/types';
 
 import type { GetRoute } from './overview.routes';
@@ -115,42 +116,14 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       .groupBy(recipientDomainExpr),
   );
 
-  // Anchor each rate to one send/delivery per message and normalized recipient.
-  // Outcomes may arrive after the selected range, and are counted through now.
-  const rateRowsQuery = db.all<{
-    day_bucket: number;
-    event_type: string;
-    total: number;
-    opened: number;
-    clicked: number;
-    bounced: number;
-    complained: number;
-  }>(sql`
-    with cohorts as (
-      select message_id, lower(trim(recipient_email)) as recipient_email,
-        event_type, min(event_at) as event_at
-      from events
-      where source_id = ${id} and event_type in ('Send', 'Delivery')
-      group by message_id, lower(trim(recipient_email)), event_type
-      having min(event_at) >= ${start.getTime()} and min(event_at) <= ${end.getTime()}
-    )
-    select cast(cohorts.event_at / ${sql.raw(String(MS_PER_UTC_DAY))} as integer) as day_bucket,
-      cohorts.event_type, count(*) as total,
-      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
-        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
-        and outcome.event_type = 'Open' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as opened,
-      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
-        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
-        and outcome.event_type = 'Click' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as clicked,
-      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
-        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
-        and outcome.event_type = 'Bounce' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as bounced,
-      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
-        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
-        and outcome.event_type = 'Complaint' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as complained
-    from cohorts
-    group by day_bucket, cohorts.event_type
-  `);
+  const rateRowsQuery = db.all<OverviewRateRow>(
+    overviewRatesQuery({
+      sourceId: id,
+      start: start.getTime(),
+      end: end.getTime(),
+      now: now.getTime(),
+    }),
+  );
 
   const [
     sourceRows,

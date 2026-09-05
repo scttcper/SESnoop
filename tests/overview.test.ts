@@ -449,3 +449,74 @@ describe('open rate and click rate calculations', () => {
     expect(json.metrics.click_rate).toBe(0);
   });
 });
+
+const addRateEvent = (
+  message_id: number,
+  event_type: string,
+  date: string,
+  recipient_email = 'a@example.com',
+) => insertEvent({ message_id, event_type, event_at: Date.parse(date), recipient_email });
+
+const getRateOverview = async (from: string, to = from) => {
+  const response = await SELF.fetch(
+    `http://example.com/api/sources/1/overview?from=${from}&to=${to}`,
+  );
+  expect(response.status).toBe(200);
+  return (await response.json()) as OverviewResponse;
+};
+
+describe('rates attributed to sends and deliveries', () => {
+  it('attributes late outcomes to the original recipient and day without inflating rates', async () => {
+    await resetDb();
+    await insertSource({ id: 1 });
+    await insertSource({ id: 2, token: 'other' });
+    for (const id of [1, 2, 3]) {
+      await insertMessage({ id, source_id: id === 3 ? 2 : 1, ses_message_id: `m-${id}` });
+    }
+
+    for (const type of ['Send', 'Delivery']) {
+      await addRateEvent(1, type, '2025-01-01T10:00:00Z', 'A@example.com');
+      await addRateEvent(2, type, '2025-01-02T10:00:00Z');
+      // Duplicate delivery records must not inflate the denominator.
+      await addRateEvent(1, type, '2025-01-01T11:00:00Z', 'A@example.com');
+    }
+    for (const type of ['Open', 'Click', 'Bounce', 'Complaint']) {
+      await addRateEvent(1, type, '2025-01-03T10:00:00Z');
+      await addRateEvent(1, type, '2025-01-03T11:00:00Z');
+      await addRateEvent(2, type, '2025-01-03T10:00:00Z', 'different@example.com');
+      await addRateEvent(3, type, '2025-01-03T10:00:00Z');
+    }
+
+    const original = await getRateOverview('2025-01-01');
+    expect(original.metrics).toMatchObject({
+      opens: 0,
+      opened_deliveries: 1,
+      clicked_deliveries: 1,
+      open_rate: 1,
+      click_rate: 1,
+      bounce_rate: 1,
+      complaint_rate: 1,
+    });
+    expect(original.chart.open_rate).toEqual([1]);
+    expect(original.chart.bounce_rate).toEqual([1]);
+    const nextDay = await getRateOverview('2025-01-02');
+    expect(nextDay.metrics).toMatchObject({
+      open_rate: 0,
+      click_rate: 0,
+      bounce_rate: 0,
+      complaint_rate: 0,
+    });
+    const combined = await getRateOverview('2025-01-01', '2025-01-04');
+    expect(combined.metrics).toMatchObject({
+      open_rate: 0.5,
+      click_rate: 0.5,
+      bounce_rate: 0.5,
+      complaint_rate: 0.5,
+    });
+    expect(combined.chart.open_rate).toEqual([1, 0, 0, 0]);
+    expect(combined.chart.bounce_rate).toEqual([1, 0, 0, 0]);
+    const activityDay = await getRateOverview('2025-01-03');
+    expect(activityDay.metrics.opens).toBe(3);
+    expect(activityDay.metrics.open_rate).toBe(0);
+  });
+});

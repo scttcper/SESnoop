@@ -126,7 +126,7 @@ const toString = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const parseDate = (value: unknown): Date => {
+export const parseEventDate = (value: unknown): Date | null => {
   const asString = toString(value);
   if (asString) {
     const parsed = new Date(asString);
@@ -134,7 +134,7 @@ const parseDate = (value: unknown): Date => {
       return parsed;
     }
   }
-  return new Date();
+  return null;
 };
 
 const stringArray = (value: unknown): string[] =>
@@ -458,7 +458,10 @@ export class EventPayload {
 
   private readonly payload: SesEventPayload;
 
-  constructor(value: unknown) {
+  private readonly fallbackTimestamp?: string;
+
+  constructor(value: unknown, fallbackTimestamp?: string) {
+    this.fallbackTimestamp = fallbackTimestamp;
     this.raw = toRecord(value);
     this.payload = toSesEventPayload(this.raw);
   }
@@ -486,36 +489,40 @@ export class EventPayload {
   get sentAt(): Date | null {
     const timestamp = this.mail.timestamp;
     if (timestamp) {
-      return parseDate(timestamp);
+      return parseEventDate(timestamp);
     }
     return null;
   }
 
-  get timestamp(): Date {
+  get timestamp(): Date | null {
+    return this.eventTimestamp ?? parseEventDate(this.fallbackTimestamp) ?? this.sentAt;
+  }
+
+  private get eventTimestamp(): Date | null {
     switch (this.eventType) {
       case 'Bounce': {
-        return parseDate(this.bounce.timestamp);
+        return parseEventDate(this.bounce.timestamp);
       }
       case 'Complaint': {
-        return parseDate(this.complaint.timestamp);
+        return parseEventDate(this.complaint.timestamp);
       }
       case 'Delivery': {
-        return parseDate(this.delivery.timestamp);
+        return parseEventDate(this.delivery.timestamp);
       }
       case 'DeliveryDelay': {
-        return parseDate(this.deliveryDelay.timestamp);
+        return parseEventDate(this.deliveryDelay.timestamp);
       }
       case 'Subscription': {
-        return parseDate(this.subscription.timestamp);
+        return parseEventDate(this.subscription.timestamp);
       }
       case 'Open': {
-        return parseDate(this.open.timestamp);
+        return parseEventDate(this.open.timestamp);
       }
       case 'Click': {
-        return parseDate(this.click.timestamp);
+        return parseEventDate(this.click.timestamp);
       }
       default: {
-        return parseDate(this.mail.timestamp);
+        return parseEventDate(this.mail.timestamp);
       }
     }
   }
@@ -540,39 +547,20 @@ export class EventPayload {
     }
   }
 
+  get mailMetadata(): Record<string, unknown> {
+    return toRecord(this.raw.mail);
+  }
+
   get eventData(): Record<string, unknown> {
-    switch (this.eventType) {
-      case 'Bounce': {
-        return this.bounce;
-      }
-      case 'Complaint': {
-        return this.complaint;
-      }
-      case 'Delivery': {
-        return this.delivery;
-      }
-      case 'DeliveryDelay': {
-        return this.deliveryDelay;
-      }
-      case 'RenderingFailure': {
-        return this.renderingFailure;
-      }
-      case 'Reject': {
-        return this.reject;
-      }
-      case 'Subscription': {
-        return this.subscription;
-      }
-      case 'Open': {
-        return this.open;
-      }
-      case 'Click': {
-        return this.click;
-      }
-      default: {
-        return {};
-      }
-    }
+    const key =
+      this.eventType === 'RenderingFailure'
+        ? isRecord(this.raw.renderingFailure)
+          ? 'renderingFailure'
+          : 'failure'
+        : this.eventType
+          ? this.eventType[0].toLowerCase() + this.eventType.slice(1)
+          : '';
+    return toRecord(this.raw[key]);
   }
 
   get bounceType(): string | undefined {

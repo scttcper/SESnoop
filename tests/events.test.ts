@@ -64,6 +64,36 @@ describe('events routes', () => {
     ]);
   });
 
+  it('returns tags for a full page of 200 distinct messages', async () => {
+    await resetDb();
+    await insertSource({ id: 1 });
+    for (let id = 1; id <= 200; id++) {
+      await insertMessage({ id, source_id: 1, ses_message_id: `message-${id}` });
+      await insertMessageTags(id, [{ key: 'message', value: String(id) }]);
+      await insertEvent({
+        message_id: id,
+        event_type: 'Send',
+        recipient_email: 'a@example.com',
+        event_at: day + id,
+      });
+    }
+    const response = await SELF.fetch(
+      'http://example.com/api/sources/1/events?date_range=all_time&per_page=200',
+    );
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as EventResponse;
+    expect(json.data).toHaveLength(200);
+    for (const event of json.data) {
+      expect(event.tags).toEqual([
+        {
+          key: 'message',
+          value: event.ses_message_id.slice(8),
+          label: `message:${event.ses_message_id.slice(8)}`,
+        },
+      ]);
+    }
+  });
+
   it('filters events by type', async () => {
     const response = await SELF.fetch(
       'http://example.com/api/sources/1/events?event_types=Bounce&date_range=all_time',

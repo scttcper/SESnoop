@@ -180,10 +180,7 @@ export const events = sqliteTable(
   }),
 );
 
-const retentionDaysSchema = z.preprocess(
-  (value: unknown) => (value === null ? undefined : value),
-  z.number().int().positive().optional(),
-);
+const retentionDaysSchema = z.number().int().positive().nullable().optional();
 
 export const selectSourcesSchema = z.object({
   id: z.number(),

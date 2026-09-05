@@ -31,6 +31,8 @@ const responseSchema = z.object({
     unique_emails: z.number(),
     unique_opens: z.number(),
     unique_clicks: z.number(),
+    opened_deliveries: z.number(),
+    clicked_deliveries: z.number(),
     bounce_rate: z.number(),
     complaint_rate: z.number(),
     open_rate: z.number(),
@@ -47,6 +49,8 @@ const responseSchema = z.object({
     bounced: z.array(z.number()),
     unique_opens: z.array(z.number()),
     unique_recipients: z.array(z.number()),
+    open_rate: z.array(z.number()),
+    bounce_rate: z.array(z.number()),
   }),
   bounce_breakdown: z.array(
     z.object({

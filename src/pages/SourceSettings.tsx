@@ -103,8 +103,7 @@ export default function SourceSettingsPage() {
       return;
     }
     setError(null);
-    const retentionValue = form.retention_days.trim() ? Number(form.retention_days) : undefined; // send undefined if empty to potentially clear? Or assume API handles it.
-    // Based on previous code, update payload allows undefined.
+    const retentionValue = form.retention_days.trim() ? Number(form.retention_days) : null;
 
     updateMutation.mutate({
       id: source.id,

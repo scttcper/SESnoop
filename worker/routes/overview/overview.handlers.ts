@@ -115,57 +115,102 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       .groupBy(recipientDomainExpr),
   );
 
-  const [sourceRows, rangeTotalRows, lastEventRows, sentTodayRows, dailyRows, bounceInsightRows] =
-    await Promise.all([
-      db.select({ id: sources.id }).from(sources).where(eq(sources.id, id)).limit(1),
-      db
-        .select({
-          sent: eventCount(EVENT_TYPES.send),
-          delivered: eventCount(EVENT_TYPES.delivery),
-          bounced: eventCount(EVENT_TYPES.bounce),
-          complaints: eventCount(EVENT_TYPES.complaint),
-          opens: eventCount(EVENT_TYPES.open),
-          clicks: eventCount(EVENT_TYPES.click),
-          unique_emails: countDistinct(sql`lower(${events.recipient_email})`),
-          unique_opens: uniqueEventCount(EVENT_TYPES.open),
-          unique_clicks: uniqueEventCount(EVENT_TYPES.click),
-        })
-        .from(events)
-        .where(rangeFilter),
-      db
-        .select({
-          event_at: events.event_at,
-        })
-        .from(events)
-        .where(eq(events.source_id, id))
-        .orderBy(desc(events.event_at))
-        .limit(1),
-      db
-        .select({
-          sent_today: eventCount(EVENT_TYPES.send),
-        })
-        .from(events)
-        .where(
-          and(
-            eq(events.source_id, id),
-            gte(events.event_at, todayRange.start),
-            lte(events.event_at, todayRange.end),
-          ),
+  // Anchor each rate to one send/delivery per message and normalized recipient.
+  // Outcomes may arrive after the selected range, and are counted through now.
+  const rateRowsQuery = db.all<{
+    day_bucket: number;
+    event_type: string;
+    total: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+    complained: number;
+  }>(sql`
+    with cohorts as (
+      select message_id, lower(trim(recipient_email)) as recipient_email,
+        event_type, min(event_at) as event_at
+      from events
+      where source_id = ${id} and event_type in ('Send', 'Delivery')
+      group by message_id, lower(trim(recipient_email)), event_type
+      having min(event_at) >= ${start.getTime()} and min(event_at) <= ${end.getTime()}
+    )
+    select cast(cohorts.event_at / ${sql.raw(String(MS_PER_UTC_DAY))} as integer) as day_bucket,
+      cohorts.event_type, count(*) as total,
+      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
+        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
+        and outcome.event_type = 'Open' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as opened,
+      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
+        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
+        and outcome.event_type = 'Click' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as clicked,
+      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
+        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
+        and outcome.event_type = 'Bounce' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as bounced,
+      sum(exists(select 1 from events outcome where outcome.message_id = cohorts.message_id
+        and outcome.source_id = ${id} and lower(trim(outcome.recipient_email)) = cohorts.recipient_email
+        and outcome.event_type = 'Complaint' and outcome.event_at >= cohorts.event_at and outcome.event_at <= ${now.getTime()})) as complained
+    from cohorts
+    group by day_bucket, cohorts.event_type
+  `);
+
+  const [
+    sourceRows,
+    rangeTotalRows,
+    lastEventRows,
+    sentTodayRows,
+    dailyRows,
+    bounceInsightRows,
+    rateRows,
+  ] = await Promise.all([
+    db.select({ id: sources.id }).from(sources).where(eq(sources.id, id)).limit(1),
+    db
+      .select({
+        sent: eventCount(EVENT_TYPES.send),
+        delivered: eventCount(EVENT_TYPES.delivery),
+        bounced: eventCount(EVENT_TYPES.bounce),
+        complaints: eventCount(EVENT_TYPES.complaint),
+        opens: eventCount(EVENT_TYPES.open),
+        clicks: eventCount(EVENT_TYPES.click),
+        unique_emails: countDistinct(sql`lower(${events.recipient_email})`),
+        unique_opens: uniqueEventCount(EVENT_TYPES.open),
+        unique_clicks: uniqueEventCount(EVENT_TYPES.click),
+      })
+      .from(events)
+      .where(rangeFilter),
+    db
+      .select({
+        event_at: events.event_at,
+      })
+      .from(events)
+      .where(eq(events.source_id, id))
+      .orderBy(desc(events.event_at))
+      .limit(1),
+    db
+      .select({
+        sent_today: eventCount(EVENT_TYPES.send),
+      })
+      .from(events)
+      .where(
+        and(
+          eq(events.source_id, id),
+          gte(events.event_at, todayRange.start),
+          lte(events.event_at, todayRange.end),
         ),
-      db
-        .select({
-          day_bucket: dayBucketExpr,
-          sent: eventCount(EVENT_TYPES.send),
-          delivered: eventCount(EVENT_TYPES.delivery),
-          bounced: eventCount(EVENT_TYPES.bounce),
-          unique_opens: uniqueEventCount(EVENT_TYPES.open),
-          unique_recipients: countDistinct(sql`lower(${events.recipient_email})`),
-        })
-        .from(events)
-        .where(rangeFilter)
-        .groupBy(dayBucketExpr),
-      bounceInsightRowsQuery,
-    ]);
+      ),
+    db
+      .select({
+        day_bucket: dayBucketExpr,
+        sent: eventCount(EVENT_TYPES.send),
+        delivered: eventCount(EVENT_TYPES.delivery),
+        bounced: eventCount(EVENT_TYPES.bounce),
+        unique_opens: uniqueEventCount(EVENT_TYPES.open),
+        unique_recipients: countDistinct(sql`lower(${events.recipient_email})`),
+      })
+      .from(events)
+      .where(rangeFilter)
+      .groupBy(dayBucketExpr),
+    bounceInsightRowsQuery,
+    rateRowsQuery,
+  ]);
 
   const [source] = sourceRows;
 
@@ -203,6 +248,25 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   type DailyMetric = 'sent' | 'delivered' | 'bounced' | 'unique_opens' | 'unique_recipients';
   const series = (metric: DailyMetric) => dayKeys.map((day) => dailyMap.get(day)?.[metric] ?? 0);
 
+  const deliveryRates = new Map<number, number>();
+  const bounceRates = new Map<number, number>();
+  const rateTotals = { sent: 0, delivered: 0, opened: 0, clicked: 0, bounced: 0, complained: 0 };
+  for (const row of rateRows) {
+    if (row.event_type === EVENT_TYPES.delivery) {
+      rateTotals.delivered += row.total;
+      rateTotals.opened += row.opened;
+      rateTotals.clicked += row.clicked;
+      deliveryRates.set(row.day_bucket, rate(row.opened, row.total));
+    } else {
+      rateTotals.sent += row.total;
+      rateTotals.bounced += row.bounced;
+      rateTotals.complained += row.complained;
+      bounceRates.set(row.day_bucket, rate(row.bounced, row.total));
+    }
+  }
+  const dailyRate = (values: Map<number, number>) =>
+    dayKeys.map((day) => values.get(Date.parse(day) / MS_PER_UTC_DAY) ?? 0);
+
   const chart = {
     days: dayKeys,
     sent: series('sent'),
@@ -210,13 +274,15 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     bounced: series('bounced'),
     unique_opens: series('unique_opens'),
     unique_recipients: series('unique_recipients'),
+    open_rate: dailyRate(deliveryRates),
+    bounce_rate: dailyRate(bounceRates),
   };
 
   const { unique_emails, unique_opens, unique_clicks } = rangeTotals;
-  const bounceRate = rate(bounced, sent);
-  const complaintRate = rate(complaints, sent);
-  const openRate = rate(unique_opens, delivered);
-  const clickRate = rate(unique_clicks, delivered);
+  const bounceRate = rate(rateTotals.bounced, rateTotals.sent);
+  const complaintRate = rate(rateTotals.complained, rateTotals.sent);
+  const openRate = rate(rateTotals.opened, rateTotals.delivered);
+  const clickRate = rate(rateTotals.clicked, rateTotals.delivered);
   const metrics = {
     sent,
     delivered,
@@ -227,6 +293,8 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     unique_emails,
     unique_opens,
     unique_clicks,
+    opened_deliveries: rateTotals.opened,
+    clicked_deliveries: rateTotals.clicked,
     bounce_rate: bounceRate,
     complaint_rate: complaintRate,
     open_rate: openRate,

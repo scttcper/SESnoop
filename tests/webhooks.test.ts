@@ -375,3 +375,69 @@ describe('webhooks ingestion', () => {
     expect(webhooks.results).toHaveLength(0);
   });
 });
+
+const postNotification = (notification: unknown) =>
+  SELF.fetch('http://example.com/api/webhooks/token-123', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(notification),
+  });
+
+describe('notification fidelity and retries', () => {
+  it('rejects invalid SNS envelopes and notifications without any stable timestamp', async () => {
+    expect((await postNotification({})).status).toBe(400);
+    const notification = buildOpenNotification('sns-invalid-date', 'invalid');
+    expect((await postNotification(notification)).status).toBe(400);
+    expect((await env.DB.prepare('SELECT id FROM events').all()).results).toHaveLength(0);
+  });
+
+  it.each([undefined, 'invalid'])(
+    'uses the SNS timestamp for a missing or invalid event timestamp: %s',
+    async (timestamp) => {
+      const notification = buildOpenNotification('sns-fallback', '2025-01-02T00:00:00Z');
+      const payload = JSON.parse(notification.Message);
+      payload.open.timestamp = timestamp;
+      notification.Message = JSON.stringify(payload);
+      expect((await postNotification(notification)).status).toBe(200);
+      expect((await postNotification(notification)).status).toBe(200);
+      expect((await env.DB.prepare('SELECT event_at FROM events').all()).results).toEqual([
+        { event_at: Date.parse(notification.Timestamp) },
+      ]);
+      expect((await env.DB.prepare('SELECT id FROM webhooks').all()).results).toHaveLength(1);
+    },
+  );
+
+  it('recovers missing event rows when retrying a partially persisted notification', async () => {
+    const notification = buildOpenNotification('sns-partial', '2025-01-02T00:00:00Z');
+    expect((await postNotification(notification)).status).toBe(200);
+    await env.DB.prepare('DELETE FROM events').run();
+    expect((await postNotification(notification)).status).toBe(200);
+    expect((await env.DB.prepare('SELECT id FROM events').all()).results).toHaveLength(1);
+    expect((await env.DB.prepare('SELECT id FROM webhooks').all()).results).toHaveLength(1);
+  });
+
+  it('preserves the original click and mail metadata', async () => {
+    const notification = buildOpenNotification('sns-click', '2025-01-02T00:00:00Z');
+    const payload = JSON.parse(notification.Message);
+    payload.eventType = 'Click';
+    payload.click = {
+      timestamp: notification.Timestamp,
+      link: 'https://example.com/path',
+      ipAddress: '192.0.2.1',
+      userAgent: 'test',
+      linkTags: { campaign: ['spring'] },
+    };
+    payload.mail.headers = [{ name: 'X-Custom', value: 'preserve me' }];
+    payload.mail.commonHeaders.to = ['reader@example.com'];
+    notification.Message = JSON.stringify(payload);
+    expect((await postNotification(notification)).status).toBe(200);
+    const event = await env.DB.prepare('SELECT event_data FROM events').first<{
+      event_data: string;
+    }>();
+    const mail = await env.DB.prepare('SELECT mail_metadata FROM message_payloads').first<{
+      mail_metadata: string;
+    }>();
+    expect(JSON.parse(event!.event_data)).toEqual(payload.click);
+    expect(JSON.parse(mail!.mail_metadata)).toEqual(payload.mail);
+  });
+});

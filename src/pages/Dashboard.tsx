@@ -35,6 +35,8 @@ type OverviewChart = {
   bounced: number[];
   unique_opens: number[];
   unique_recipients: number[];
+  open_rate: number[];
+  bounce_rate: number[];
 };
 
 type OverviewMetrics = {
@@ -50,6 +52,8 @@ type OverviewMetrics = {
   unique_opens: number;
   open_rate: number;
   unique_clicks: number;
+  opened_deliveries: number;
+  clicked_deliveries: number;
   click_rate: number;
 };
 
@@ -188,6 +192,12 @@ function SummarySection({
 }) {
   return (
     <section className="space-y-6">
+      {overview ? (
+        <p className="text-xs text-white/45">
+          {overview.range.from} – {overview.range.to} (UTC). Engagement rates track deliveries in
+          this range, including later activity.
+        </p>
+      ) : null}
       {error ? (
         <p className="rounded-lg border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-400">
           {error}
@@ -214,7 +224,7 @@ function SummarySection({
             {
               label: 'Open rate',
               value: overview.metrics.open_rate,
-              detail: `${format.integer(overview.metrics.unique_opens)} opens`,
+              detail: `${format.integer(overview.metrics.opened_deliveries)} opened`,
               color: 'text-blue-300',
               accent: 'bg-blue-400',
               track: 'bg-blue-400/10',
@@ -222,7 +232,7 @@ function SummarySection({
             {
               label: 'Click rate',
               value: overview.metrics.click_rate,
-              detail: `${format.integer(overview.metrics.unique_clicks)} clicks`,
+              detail: `${format.integer(overview.metrics.clicked_deliveries)} clicked`,
               color: 'text-emerald-300',
               accent: 'bg-emerald-400',
               track: 'bg-emerald-400/10',

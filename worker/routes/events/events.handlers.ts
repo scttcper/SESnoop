@@ -160,20 +160,29 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
   const rowMessageIds = [...new Set(rows.map((row) => row.message_id))];
   const rowTags =
     rowMessageIds.length > 0
-      ? await db
-          .select({
-            message_id: messageTags.message_id,
-            key: messageTags.key,
-            value: messageTags.value,
-          })
-          .from(messageTags)
-          .where(
-            and(
-              eq(messageTags.source_id, source.id),
-              inArray(messageTags.message_id, rowMessageIds),
+      ? (
+          await Promise.all(
+            Array.from({ length: Math.ceil(rowMessageIds.length / 99) }, (_, index) =>
+              db
+                .select({
+                  message_id: messageTags.message_id,
+                  key: messageTags.key,
+                  value: messageTags.value,
+                })
+                .from(messageTags)
+                .where(
+                  and(
+                    eq(messageTags.source_id, source.id),
+                    inArray(
+                      messageTags.message_id,
+                      rowMessageIds.slice(index * 99, (index + 1) * 99),
+                    ),
+                  ),
+                )
+                .orderBy(asc(messageTags.key), asc(messageTags.value)),
             ),
           )
-          .orderBy(asc(messageTags.key), asc(messageTags.value))
+        ).flat()
       : [];
 
   const totalPages = Math.max(Math.ceil(total / perPage), 1);

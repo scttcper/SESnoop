@@ -47,7 +47,7 @@ export function shouldVerifySnsSignature(disableFlag?: string): boolean {
 }
 
 export async function verifySnsSignature(snsMessage: SnsMessage): Promise<boolean> {
-  if (!snsMessage.SignatureVersion || snsMessage.SignatureVersion !== '1') {
+  if (snsMessage.SignatureVersion !== '1' && snsMessage.SignatureVersion !== '2') {
     return false;
   }
 
@@ -70,20 +70,25 @@ export async function verifySnsSignature(snsMessage: SnsMessage): Promise<boolea
     return false;
   }
 
-  const publicKey = await getPublicKeyFromCert(certPem);
+  const hash = snsMessage.SignatureVersion === '2' ? 'SHA-256' : 'SHA-1';
+  const publicKey = await getPublicKeyFromCert(certPem, hash);
   if (!publicKey) {
     return false;
   }
 
-  const signatureBytes = Uint8Array.from(atob(snsMessage.Signature), (char) => char.charCodeAt(0));
-  const dataBytes = new TextEncoder().encode(toSign);
-
-  return crypto.subtle.verify(
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-1' },
-    publicKey,
-    signatureBytes,
-    dataBytes,
-  );
+  try {
+    const signatureBytes = Uint8Array.from(atob(snsMessage.Signature), (char) =>
+      char.charCodeAt(0),
+    );
+    return await crypto.subtle.verify(
+      'RSASSA-PKCS1-v1_5',
+      publicKey,
+      signatureBytes,
+      new TextEncoder().encode(toSign),
+    );
+  } catch {
+    return false;
+  }
 }
 
 function buildStringToSign(snsMessage: SnsMessage): string | null {
@@ -96,6 +101,9 @@ function buildStringToSign(snsMessage: SnsMessage): string | null {
   for (const field of fields) {
     const value = snsMessage[field as keyof SnsMessage];
     if (value === undefined) {
+      if (field !== 'Subject') {
+        return null;
+      }
       continue;
     }
     output += `${field}\n${value}\n`;
@@ -108,8 +116,13 @@ function isValidCertUrl(url: string): boolean {
     const parsed = new URL(url);
     return (
       parsed.protocol === 'https:' &&
-      parsed.hostname.endsWith('.amazonaws.com') &&
-      parsed.pathname.endsWith('.pem')
+      !parsed.username &&
+      !parsed.password &&
+      !parsed.port &&
+      !parsed.search &&
+      !parsed.hash &&
+      /^sns\.[a-z]{2}(?:-gov)?-[a-z]+-\d\.amazonaws\.com(?:\.cn)?$/.test(parsed.hostname) &&
+      /^\/SimpleNotificationService[A-Za-z0-9_-]*\.pem$/.test(parsed.pathname)
     );
   } catch {
     return false;
@@ -118,7 +131,7 @@ function isValidCertUrl(url: string): boolean {
 
 async function fetchCert(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { redirect: 'error' });
     if (!response.ok) {
       return null;
     }
@@ -132,7 +145,7 @@ async function fetchCert(url: string): Promise<string | null> {
  * Extract the public key from an X.509 PEM certificate.
  * Cloudflare Workers don't support X509Certificate, so we parse manually.
  */
-async function getPublicKeyFromCert(certPem: string): Promise<CryptoKey | null> {
+async function getPublicKeyFromCert(certPem: string, hash: string): Promise<CryptoKey | null> {
   try {
     // Remove PEM headers and decode base64
     const pemContents = certPem
@@ -152,7 +165,7 @@ async function getPublicKeyFromCert(certPem: string): Promise<CryptoKey | null> 
     return await crypto.subtle.importKey(
       'spki',
       spki.buffer as ArrayBuffer,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-1' },
+      { name: 'RSASSA-PKCS1-v1_5', hash },
       false,
       ['verify'],
     );

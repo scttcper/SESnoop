@@ -133,8 +133,8 @@ export default function SourceSetupPage() {
       content: (
         <>
           <span className="block">
-            <span className="font-medium text-white">Start with:</span> delivery, bounce, complaint,
-            reject, delivery delay, and rendering failure events.
+            <span className="font-medium text-white">Start with:</span> send, delivery, bounce,
+            complaint, reject, delivery delay, and rendering failure events.
           </span>
           <span className="mt-2 block">
             <span className="font-medium text-white">Optional:</span> enable open, click, and

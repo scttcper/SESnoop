@@ -119,7 +119,7 @@ export const updateSourceFn = async ({
   payload,
 }: {
   id: number;
-  payload: { name: string; color: string; retention_days?: number };
+  payload: { name: string; color: string; retention_days?: number | null };
 }) => {
   const response = await fetch(`/api/sources/${id}`, {
     method: 'PATCH',

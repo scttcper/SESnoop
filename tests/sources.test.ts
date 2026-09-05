@@ -14,6 +14,13 @@ import {
   resetDb,
 } from './helpers/db';
 
+const updateSource = (body: unknown) =>
+  SELF.fetch('http://example.com/api/sources/1', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
 beforeEach(async () => {
   await resetDb();
 });
@@ -92,6 +99,26 @@ describe('sources routes', () => {
     const json = (await response.json()) as Source;
     expect(json.name).toBe('Delta Updated');
     expect(json.retention_days).toBe(30);
+  });
+
+  it('clears retention and leaves old messages intact during cleanup', async () => {
+    await insertSource({ retention_days: 1 });
+    await insertMessage({
+      source_id: 1,
+      ses_message_id: 'old',
+      sent_at: Date.now() - 10 * 86_400_000,
+    });
+
+    const unchanged = await updateSource({ name: 'Renamed' });
+    expect(((await unchanged.json()) as Source).retention_days).toBe(1);
+    const cleared = await updateSource({ retention_days: null });
+    expect(cleared.status).toBe(200);
+    expect(((await cleared.json()) as Source).retention_days).toBeNull();
+    const cleanup = await SELF.fetch('http://example.com/api/sources/1/cleanup', {
+      method: 'POST',
+    });
+    expect(await cleanup.json()).toMatchObject({ messages_deleted: 0, events_deleted: 0 });
+    expect((await env.DB.prepare('SELECT id FROM messages').all()).results).toHaveLength(1);
   });
 
   it('deletes a source', async () => {

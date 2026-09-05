@@ -52,6 +52,8 @@ type OverviewChart = {
   bounced: number[];
   unique_opens: number[];
   unique_recipients: number[];
+  open_rate: number[];
+  bounce_rate: number[];
 };
 
 export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) {
@@ -61,14 +63,8 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
     sent: chart.sent[index] ?? 0,
     delivered: chart.delivered[index] ?? 0,
     bounced: chart.bounced[index] ?? 0,
-    bounce_rate:
-      (chart.sent[index] ?? 0) > 0
-        ? Math.min(1, (chart.bounced[index] ?? 0) / (chart.sent[index] ?? 0))
-        : 0,
-    open_rate:
-      (chart.delivered[index] ?? 0) > 0
-        ? Math.min(1, (chart.unique_opens[index] ?? 0) / (chart.delivered[index] ?? 0))
-        : 0,
+    bounce_rate: chart.bounce_rate[index] ?? 0,
+    open_rate: chart.open_rate[index] ?? 0,
   }));
 
   const chartSeries = [
@@ -145,7 +141,7 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
           .filter((row): row is string => row !== null);
         if (rowData) {
           values.unshift(`Sent: ${format.integer(rowData.sent)}`);
-          values.splice(3, 0, `Bounce rate: ${format.percent(rowData.bounce_rate)}`);
+          values.splice(3, 0, `Bounce rate of sends: ${format.percent(rowData.bounce_rate)}`);
         }
 
         return [title, ...values].join('<br />');

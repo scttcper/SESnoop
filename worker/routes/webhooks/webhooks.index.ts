@@ -58,7 +58,12 @@ router.post('/api/webhooks/:source_token', async (c) => {
     return c.json({ message: 'Invalid JSON' }, HttpStatusCodes.BAD_REQUEST);
   }
 
-  const snsMessage = parseSnsMessage(snsPayload);
+  let snsMessage;
+  try {
+    snsMessage = parseSnsMessage(snsPayload);
+  } catch {
+    return c.json({ message: 'Invalid SNS message' }, HttpStatusCodes.BAD_REQUEST);
+  }
 
   // Verify SNS signature (disabled for local/dev)
   if (shouldVerifySnsSignature(c.env.SNS_DISABLE_SIGNATURE_VERIFY)) {

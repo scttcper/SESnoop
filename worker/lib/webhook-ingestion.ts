@@ -17,6 +17,7 @@ import {
   extractDestinations,
   normalizeMailTags,
   normalizeRecipients,
+  parseEventDate,
 } from './event-payload';
 import type { SnsMessage } from './sns';
 
@@ -63,8 +64,13 @@ export function parseNotificationPayload(snsMessage: SnsMessage): EventPayload |
     return null;
   }
 
-  const eventPayload = new EventPayload(notificationPayload);
-  if (!eventPayload.messageId || !eventPayload.eventType) {
+  const eventPayload = new EventPayload(notificationPayload, snsMessage.Timestamp);
+  if (
+    !eventPayload.messageId ||
+    !eventPayload.eventType ||
+    !eventPayload.timestamp ||
+    !parseEventDate(snsMessage.Timestamp)
+  ) {
     return null;
   }
 
@@ -82,6 +88,11 @@ async function persistNotification(
   const eventType = eventPayload.eventType;
   if (!eventType) {
     return;
+  }
+  const timestamp = eventPayload.timestamp;
+  const snsTimestamp = parseEventDate(snsMessage.Timestamp);
+  if (!timestamp || !snsTimestamp) {
+    throw new Error('Missing valid notification timestamp');
   }
   const destinations = uniqueList(extractDestinations(eventPayload.mail));
 
@@ -108,7 +119,7 @@ async function persistNotification(
     .insert(messagePayloads)
     .values({
       message_id: messageId,
-      mail_metadata: eventPayload.mail,
+      mail_metadata: eventPayload.mailMetadata,
     })
     .onConflictDoNothing();
 
@@ -119,7 +130,7 @@ async function persistNotification(
       message_id: messageId,
       sns_message_id: snsMessage.MessageId,
       sns_type: snsMessage.Type,
-      sns_timestamp: snsMessage.Timestamp ? new Date(snsMessage.Timestamp) : new Date(),
+      sns_timestamp: snsTimestamp,
     })
     .onConflictDoNothing();
 
@@ -163,7 +174,7 @@ async function persistNotification(
             source_id: source.id,
             event_type: eventType,
             recipient_email: recipient,
-            event_at: eventPayload.timestamp,
+            event_at: timestamp,
             event_data: eventPayload.eventData,
             bounce_type: eventPayload.bounceType,
           })),

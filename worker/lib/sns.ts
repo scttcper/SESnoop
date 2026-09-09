@@ -131,7 +131,8 @@ function isValidCertUrl(url: string): boolean {
 
 async function fetchCert(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url, { redirect: 'error' });
+    // Workers only supports follow/manual; reject redirects via response.ok below.
+    const response = await fetch(url, { redirect: 'manual' });
     if (!response.ok) {
       return null;
     }

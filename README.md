@@ -6,16 +6,16 @@ SESnoop is a Cloudflare Workers dashboard for Amazon SES event monitoring. It re
 
 Based on [marckohlbrugge/sessy](https://github.com/marckohlbrugge/sessy), a Rails app for the same purpose.
 
-|                                                 |                                            |
-| ----------------------------------------------- | ------------------------------------------ |
-| ![SESnoop Dashboard](screenshots/dashboard.png) | ![Events Explorer](screenshots/events.png) |
+|                                                                |                                            |
+| -------------------------------------------------------------- | ------------------------------------------ |
+| ![SESnoop Dashboard with demo data](screenshots/dashboard.png) | ![Events Explorer](screenshots/events.png) |
 
 ## Features
 
 - SNS webhook ingestion with signature verification and SNS message deduplication.
 - Searchable SES event history for sends, deliveries, bounces, complaints, rejects, delivery delays, rendering failures, subscriptions, opens, and clicks.
 - Message timelines with SES metadata, recipients, tags, and event details.
-- Dashboard metrics for volume, delivery health, open/click rates, bounces, and complaints.
+- Dashboard metrics for volume, delivery health, open/click rates, bounces, complaints, and email categories.
 - Multiple sources with separate webhook URLs, colors, and retention policies.
 - Optional cookie-based auth for the UI and API.
 

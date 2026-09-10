@@ -50,7 +50,7 @@ export function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B0C0E]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#0B0C0E]/60">
-      <div className="mx-auto w-full max-w-7xl px-4">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link to="/" className="font-display text-lg font-bold tracking-tight text-white">
@@ -58,13 +58,13 @@ export function Navbar() {
             </Link>
             <div className="hidden h-6 w-px bg-white/10 sm:block" />
             <SourceSwitcher />
-            <div className="hidden items-center space-x-6 text-sm font-medium sm:flex sm:pl-1">
+            <div className="hidden items-center gap-1 text-xs font-medium sm:flex sm:pl-1">
               {links.map((link) => (
                 <Link
                   key={link.label}
                   to={link.to}
                   params={link.params}
-                  className="text-white/60 transition-colors hover:text-white [&.active]:text-white"
+                  className="rounded-md px-3 py-2 text-white/45 transition-colors hover:bg-white/[0.03] hover:text-white focus-visible:outline-2 focus-visible:outline-blue-400 [&.active]:bg-white/[0.06] [&.active]:text-white"
                 >
                   {link.label}
                 </Link>

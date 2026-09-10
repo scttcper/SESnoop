@@ -52,6 +52,15 @@ const responseSchema = z.object({
     open_rate: z.array(z.number()),
     bounce_rate: z.array(z.number()),
   }),
+  category_breakdown: z.array(
+    z.object({
+      category: z.string().nullable(),
+      sent: z.number(),
+      delivered: z.number(),
+      bounced: z.number(),
+      recipients: z.number(),
+    }),
+  ),
   bounce_breakdown: z.array(
     z.object({
       bounce_type: z.string(),

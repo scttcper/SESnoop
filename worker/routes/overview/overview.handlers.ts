@@ -1,4 +1,17 @@
-import { and, count, countDistinct, desc, eq, gt, gte, isNotNull, lte, ne, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  gt,
+  gte,
+  isNotNull,
+  lte,
+  ne,
+  sql,
+} from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/sqlite-core';
 import * as HttpStatusCodes from 'stoker/http-status-codes';
 import * as HttpStatusPhrases from 'stoker/http-status-phrases';
@@ -11,7 +24,7 @@ import {
   startOfDayUtc,
 } from '../../../shared/event-filters';
 import { createDb } from '../../db';
-import { events, sources } from '../../db/schema';
+import { events, messageTags, sources } from '../../db/schema';
 import { EVENT_TYPES, EVENT_TYPE_VALUES, type EventType } from '../../lib/constants';
 import { formatReasonLabel } from '../../lib/event-payload';
 import { overviewRatesQuery, type OverviewRateRow } from '../../lib/overview-rates';
@@ -133,6 +146,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     dailyRows,
     bounceInsightRows,
     rateRows,
+    categoryRows,
   ] = await Promise.all([
     db.select({ id: sources.id }).from(sources).where(eq(sources.id, id)).limit(1),
     db
@@ -183,6 +197,25 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       .groupBy(dayBucketExpr),
     bounceInsightRowsQuery,
     rateRowsQuery,
+    db
+      .select({
+        category: messageTags.value,
+        sent: eventCount(EVENT_TYPES.send),
+        delivered: eventCount(EVENT_TYPES.delivery),
+        bounced: eventCount(EVENT_TYPES.bounce),
+        recipients: countDistinct(sql`lower(${events.recipient_email})`),
+      })
+      .from(events)
+      // The unique message/key/value index prevents duplicate tags from inflating
+      // counts. Messages with multiple categories contribute to each category.
+      // Global message IDs also avoid a source-wide tag scan for every event.
+      .leftJoin(
+        messageTags,
+        and(eq(messageTags.message_id, events.message_id), eq(messageTags.key, 'category')),
+      )
+      .where(rangeFilter)
+      .groupBy(messageTags.value)
+      .orderBy(desc(eventCount(EVENT_TYPES.send)), asc(messageTags.value)),
   ]);
 
   const [source] = sourceRows;
@@ -329,6 +362,7 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
       activity,
       event_mix: eventMix,
       chart,
+      category_breakdown: categoryRows,
       bounce_breakdown: bounceBreakdownRows,
       failure_insights: {
         top_reasons: topReasons,

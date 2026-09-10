@@ -30,7 +30,7 @@ export function SourceSwitcher() {
 
   return (
     <Select value={currentSourceId?.toString() || ''} onValueChange={handleSelect}>
-      <SelectTrigger className="w-[170px] border-white/10 bg-white/5 text-white hover:bg-white/10 focus:ring-0 min-[380px]:w-[200px]">
+      <SelectTrigger className="h-8 w-[150px] border-white/10 bg-white/5 text-white hover:bg-white/10 focus:ring-0 min-[380px]:w-[200px]">
         <div className="flex items-center gap-2 truncate">
           {selectedSource ? (
             <>
@@ -55,7 +55,7 @@ export function SourceSwitcher() {
             >
               <div className="flex items-center gap-2">
                 <div className={cn('h-3 w-3 rounded-full', COLOR_STYLES[source.color])} />
-                <span className="text-base text-gray-200">{source.name}</span>
+                <span className="text-xs font-medium text-white/80">{source.name}</span>
               </div>
             </SelectItem>
           ))}

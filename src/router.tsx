@@ -88,9 +88,18 @@ const loginRoute = createRoute({
   }),
 });
 
+const dashboardSearchSchema = z.object({
+  period: z.coerce
+    .string()
+    .pipe(z.enum(['7', '30', '90']))
+    .catch('30')
+    .default('30'),
+});
+
 const indexRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/',
+  validateSearch: zodValidator(dashboardSearchSchema),
   component: DashboardPage,
   head: () => ({
     meta: [{ title: 'Dashboard | SESnoop' }],
@@ -100,6 +109,7 @@ const indexRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/dashboard',
+  validateSearch: zodValidator(dashboardSearchSchema),
   component: DashboardPage,
   head: () => ({
     meta: [{ title: 'Dashboard | SESnoop' }],
@@ -165,6 +175,7 @@ const sourceSetupRoute = createRoute({
 const sourceDashboardRoute = createRoute({
   getParentRoute: () => sourceMonitorRoute,
   path: 'dashboard',
+  validateSearch: zodValidator(dashboardSearchSchema),
   component: DashboardPage,
   head: () => ({
     meta: [{ title: `Dashboard | SESnoop` }],

@@ -1,150 +1,91 @@
-import type { EChartsOption, EChartsType, TooltipComponentFormatterCallbackParams } from 'echarts';
+import type { EChartsOption, TooltipComponentFormatterCallbackParams } from 'echarts';
 import ReactEChartsCore from 'echarts-for-react/esm/core';
 import { BarChart, LineChart } from 'echarts/charts';
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+import { GridComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { useEffect, useState } from 'react';
+import { useId } from 'react';
 
-echarts.use([
-  BarChart,
-  LineChart,
-  GridComponent,
-  LegendComponent,
-  TooltipComponent,
-  CanvasRenderer,
-]);
+import type { OverviewResponse } from '../lib/queries';
 
-const format = {
-  integer: (value: number) => value.toLocaleString(),
-  percent: (value: number) => `${(value * 100).toFixed(1)}%`,
-};
+echarts.use([BarChart, LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
-const OVERVIEW_CHART_GROUP = 'dashboard-overview';
+const series = [
+  { label: 'Sent', color: '#7da8fa', key: 'sent' },
+  { label: 'Delivered', color: '#5cc9ae', key: 'delivered' },
+  { label: 'Bounced', color: '#e68b99', key: 'bounced' },
+] as const;
+
+const shortDate = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+const fullDate = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeZone: 'UTC',
+});
+const compactNumber = new Intl.NumberFormat(undefined, { notation: 'compact' });
+const utcDate = (day: string) => new Date(`${day}T00:00:00Z`);
 const ROUNDED_BAR_CAP: [number, number, number, number] = [3, 3, 0, 0];
-const SQUARE_BAR_CAP: [number, number, number, number] = [0, 0, 0, 0];
 
-const connectOverviewChart = (instance: EChartsType) => {
-  instance.group = OVERVIEW_CHART_GROUP;
-  echarts.connect(OVERVIEW_CHART_GROUP);
-};
-
-const useIsNarrowViewport = () => {
-  const [isNarrow, setIsNarrow] = useState(() =>
-    typeof window === 'undefined' ? false : window.matchMedia('(max-width: 640px)').matches,
-  );
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 640px)');
-    const update = () => setIsNarrow(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener('change', update);
-    return () => mediaQuery.removeEventListener('change', update);
-  }, []);
-
-  return isNarrow;
-};
-
-type OverviewChart = {
-  days: string[];
-  sent: number[];
-  delivered: number[];
-  bounced: number[];
-  unique_opens: number[];
-  unique_recipients: number[];
-  open_rate: number[];
-  bounce_rate: number[];
-};
-
-export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) {
-  const isNarrow = useIsNarrowViewport();
+export default function DailyVolumeSection({ chart }: { chart: OverviewResponse['chart'] }) {
+  const headingId = useId();
   const chartData = chart.days.map((day, index) => ({
     day,
     sent: chart.sent[index] ?? 0,
     delivered: chart.delivered[index] ?? 0,
     bounced: chart.bounced[index] ?? 0,
-    bounce_rate: chart.bounce_rate[index] ?? 0,
-    open_rate: chart.open_rate[index] ?? 0,
   }));
-
-  const chartSeries = [
-    { label: 'Delivered', color: '#2dd4bf', isRate: false },
-    { label: 'Bounced', color: '#fb7185', isRate: false },
-    { label: 'Open rate', color: '#fbbf24', isRate: true },
-  ] as const;
-  const labelInterval = Math.max(0, Math.ceil(chartData.length / (isNarrow ? 5 : 8)) - 1);
+  const totals = series.map((item) => ({
+    ...item,
+    total: chartData.reduce((sum, day) => sum + day[item.key], 0),
+  }));
+  const hasActivity = totals.some((item) => item.total > 0);
+  const firstDay = chartData.at(0)?.day;
+  const lastDay = chartData.at(-1)?.day;
+  const summary = [
+    firstDay && lastDay
+      ? `Daily email volume from ${fullDate.format(utcDate(firstDay))} to ${fullDate.format(utcDate(lastDay))}, UTC.`
+      : 'Daily email volume.',
+    totals.map((item) => `${item.total.toLocaleString()} ${item.label.toLowerCase()}`).join(', '),
+  ].join(' ');
 
   const chartOption = {
     backgroundColor: 'transparent',
-    color: chartSeries.map((series) => series.color),
-    animationDuration: 250,
-    grid: {
-      top: 8,
-      right: isNarrow ? 34 : 44,
-      bottom: isNarrow ? 34 : 48,
-      left: isNarrow ? 28 : 40,
-      containLabel: false,
-    },
-    legend: {
-      bottom: 0,
-      show: !isNarrow,
-      icon: 'roundRect',
-      itemWidth: 8,
-      itemHeight: 8,
-      itemGap: 16,
-      textStyle: {
-        color: 'rgba(255, 255, 255, 0.6)',
-        fontSize: 12,
-      },
-      data: chartSeries.map((series) => series.label),
-    },
+    animation: false,
+    textStyle: { fontFamily: 'Inter Variable, Inter, sans-serif' },
+    grid: { top: 16, right: 4, bottom: 6, left: 0, containLabel: true },
     tooltip: {
       trigger: 'axis',
       confine: true,
-      backgroundColor: '#0B0C0E',
-      borderColor: 'rgba(255, 255, 255, 0.12)',
+      backgroundColor: '#14191f',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
       borderWidth: 1,
-      padding: [8, 10],
+      padding: [10, 12],
       textStyle: {
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#e2e8f0',
         fontSize: 12,
-        lineHeight: 18,
+        lineHeight: 22,
         fontFamily: 'Inter Variable, Inter, sans-serif',
       },
       axisPointer: {
         type: 'line',
-        lineStyle: {
-          color: 'rgba(255, 255, 255, 0.22)',
-          width: 1,
-        },
+        lineStyle: { color: 'rgba(255, 255, 255, 0.18)' },
       },
       formatter: (params: TooltipComponentFormatterCallbackParams) => {
         const rows = Array.isArray(params) ? params : [params];
-        const title = rows[0]?.name ?? '';
-        const rowData = chartData.find((item) => item.day === title);
-        const values = rows
-          .map((row) => {
-            const series = chartSeries.find((item) => item.label === row.seriesName);
-            if (!series) {
-              return null;
-            }
-
-            const value = Number(row.value);
-            if (!Number.isFinite(value)) {
-              return null;
-            }
-
-            return `${row.marker ?? ''} ${series.label}: ${
-              series.isRate ? format.percent(value) : format.integer(value)
-            }`;
-          })
-          .filter((row): row is string => row !== null);
-        if (rowData) {
-          values.unshift(`Sent: ${format.integer(rowData.sent)}`);
-          values.splice(3, 0, `Bounce rate of sends: ${format.percent(rowData.bounce_rate)}`);
+        const day = chartData[rows[0]?.dataIndex ?? -1];
+        if (!day) {
+          return '';
         }
-
-        return [title, ...values].join('<br />');
+        return [
+          `${fullDate.format(utcDate(day.day))} · UTC`,
+          ...series.map(
+            (item) =>
+              `<span style="color:${item.color}">●</span> ${item.label}: ${day[item.key].toLocaleString()}`,
+          ),
+        ].join('<br />');
       },
     },
     xAxis: {
@@ -153,122 +94,108 @@ export default function DailyVolumeSection({ chart }: { chart: OverviewChart }) 
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
-        color: 'rgba(255, 255, 255, 0.45)',
-        interval: labelInterval,
-        margin: isNarrow ? 6 : 10,
-        formatter: (value: string) => value.slice(5),
+        color: '#87929e',
+        fontSize: 11,
+        interval: Math.max(0, Math.ceil(chartData.length / 6) - 1),
+        hideOverlap: true,
+        margin: 12,
+        formatter: (day: string) => shortDate.format(utcDate(day)),
       },
     },
-    yAxis: [
-      {
-        type: 'value',
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: {
-          color: 'rgba(255, 255, 255, 0.28)',
-          margin: isNarrow ? 4 : 8,
-          fontSize: isNarrow ? 10 : 12,
-        },
-        splitLine: {
-          lineStyle: {
-            color: 'rgba(255, 255, 255, 0.1)',
-            type: 'dashed',
-          },
-        },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      minInterval: 1,
+      splitNumber: 3,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: '#87929e',
+        fontSize: 11,
+        margin: 12,
+        formatter: (value: number) => compactNumber.format(value),
       },
-      {
-        type: 'value',
-        min: 0,
-        max: 1,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: {
-          color: 'rgba(255, 255, 255, 0.55)',
-          margin: isNarrow ? 4 : 8,
-          fontSize: isNarrow ? 10 : 12,
-          formatter: (value: number) => `${(value * 100).toFixed(0)}%`,
-        },
-        splitLine: { show: false },
+      splitLine: {
+        lineStyle: { color: 'rgba(255, 255, 255, 0.055)', type: 'dashed' },
       },
-    ],
+    },
     series: [
+      {
+        name: 'Sent',
+        type: 'line',
+        z: 3,
+        lineStyle: { width: 2, color: series[0].color },
+        itemStyle: { color: series[0].color },
+        showSymbol: chartData.length === 1,
+        symbol: 'circle',
+        symbolSize: 6,
+        smooth: false,
+        data: chartData.map((item) => item.sent),
+      },
       {
         name: 'Delivered',
         type: 'bar',
-        stack: 'outcome',
-        yAxisIndex: 0,
-        barMaxWidth: isNarrow ? 12 : 18,
-        barCategoryGap: isNarrow ? '55%' : '45%',
-        itemStyle: {
-          color: 'rgba(45, 212, 191, 0.72)',
-        },
-        emphasis: {
-          focus: 'series',
-        },
+        stack: 'delivery-events',
+        barMaxWidth: 16,
+        itemStyle: { color: 'rgba(92, 201, 174, 0.7)' },
         data: chartData.map((item) => ({
           value: item.delivered,
-          itemStyle: {
-            borderRadius: item.bounced > 0 ? SQUARE_BAR_CAP : ROUNDED_BAR_CAP,
-          },
+          itemStyle: { borderRadius: item.bounced > 0 ? 0 : ROUNDED_BAR_CAP },
         })),
       },
       {
         name: 'Bounced',
         type: 'bar',
-        stack: 'outcome',
-        yAxisIndex: 0,
-        barMaxWidth: isNarrow ? 12 : 18,
-        barCategoryGap: isNarrow ? '55%' : '45%',
-        itemStyle: {
-          color: '#fb7185',
-        },
-        emphasis: {
-          focus: 'series',
-        },
-        data: chartData.map((item) => ({
-          value: item.bounced,
-          itemStyle: {
-            borderRadius: item.bounced > 0 ? ROUNDED_BAR_CAP : SQUARE_BAR_CAP,
-          },
-        })),
-      },
-      {
-        name: 'Open rate',
-        type: 'line',
-        yAxisIndex: 1,
-        lineStyle: {
-          width: 2.5,
-          color: '#fbbf24',
-        },
-        smooth: true,
-        showSymbol: false,
-        symbol: 'circle',
-        itemStyle: {
-          color: '#fbbf24',
-        },
-        emphasis: {
-          focus: 'series',
-        },
-        data: chartData.map((item) => item.open_rate),
+        stack: 'delivery-events',
+        barMaxWidth: 16,
+        itemStyle: { color: series[2].color, borderRadius: ROUNDED_BAR_CAP },
+        data: chartData.map((item) => item.bounced),
       },
     ],
   } satisfies EChartsOption;
 
   return (
-    <section className="space-y-3 md:space-y-6">
-      <div className="flex items-center justify-between border-b border-white/10 pb-3 md:pb-4">
-        <h2 className="text-lg font-semibold text-white">Daily delivery trend</h2>
+    <section aria-labelledby={headingId}>
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div>
+          <h2 id={headingId} className="text-sm font-semibold text-white/90">
+            Email volume
+          </h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 text-xs text-white/55">
+          {series.map((item) => (
+            <span key={item.key} className="inline-flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={item.key === 'sent' ? 'h-0.5 w-3 rounded-full' : 'size-2 rounded-sm'}
+                style={{ backgroundColor: item.color }}
+              />
+              {item.label}
+            </span>
+          ))}
+        </div>
       </div>
-      <ReactEChartsCore
-        echarts={echarts}
-        option={chartOption}
-        notMerge
-        lazyUpdate
-        onChartReady={connectOverviewChart}
-        className="h-[190px] w-full md:h-[260px]"
-        style={{ height: isNarrow ? 190 : 260 }}
-        opts={{ renderer: 'canvas' }}
-      />
+      {hasActivity ? (
+        <div role="img" aria-label={summary} className="mt-5 h-[224px] sm:h-[248px]">
+          <div aria-hidden="true" className="h-full">
+            <ReactEChartsCore
+              echarts={echarts}
+              option={chartOption}
+              notMerge
+              lazyUpdate
+              style={{ height: '100%', width: '100%' }}
+              opts={{ renderer: 'canvas' }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5 flex h-[224px] items-center justify-center text-center sm:h-[248px]">
+          <p className="max-w-64 text-sm text-white/40">
+            No sends or delivery events in this period.
+          </p>
+        </div>
+      )}
+      <p className="mt-3 text-[11px] text-white/35">Event counts · Dates in UTC</p>
     </section>
   );
 }

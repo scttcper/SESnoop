@@ -55,12 +55,22 @@ export const sourceSetupQueryOptions = (sourceId: number | null | undefined) =>
       : skipToken,
   });
 
-export const overviewQueryOptions = (sourceId: number | null | undefined) =>
+export const overviewQueryOptions = (
+  sourceId: number | null | undefined,
+  range: { from?: string; to?: string } = {},
+) =>
   queryOptions({
-    queryKey: ['sources', sourceId, 'overview'],
+    queryKey: ['sources', sourceId, 'overview', range],
     queryFn: sourceId
       ? async () => {
-          const response = await fetch(`/api/sources/${sourceId}/overview`);
+          const query = new URLSearchParams();
+          if (range.from) {
+            query.set('from', range.from);
+          }
+          if (range.to) {
+            query.set('to', range.to);
+          }
+          const response = await fetch(`/api/sources/${sourceId}/overview?${query}`);
           await ensureOk(response, 'Failed to load overview');
           return (await response.json()) as OverviewResponse;
         }

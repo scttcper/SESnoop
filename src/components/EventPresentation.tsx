@@ -5,18 +5,35 @@ import { cn } from '../lib/utils';
 const GRAVATAR_HASH_CACHE = new Map<string, Promise<string> | string>();
 
 const eventBadgeClassNames: Record<string, string> = {
-  Bounce: 'border-red-500/20 bg-red-500/10 text-red-300',
-  Complaint: 'border-orange-500/20 bg-orange-500/10 text-orange-300',
-  Delivery: 'border-green-500/20 bg-green-500/10 text-green-300',
-  Send: 'border-blue-500/20 bg-blue-500/10 text-blue-300',
+  Bounce: 'border-rose-400/20 bg-rose-400/10 text-rose-300',
+  Complaint: 'border-rose-400/20 bg-rose-400/10 text-rose-300',
+  Reject: 'border-rose-400/20 bg-rose-400/10 text-rose-300',
+  RenderingFailure: 'border-rose-400/20 bg-rose-400/10 text-rose-300',
+  Delivery: 'border-teal-400/20 bg-teal-400/10 text-teal-300',
+  DeliveryDelay: 'border-amber-400/20 bg-amber-400/10 text-amber-300',
+  Send: 'border-blue-400/20 bg-blue-400/10 text-blue-300',
+  Open: 'border-violet-400/20 bg-violet-400/10 text-violet-300',
+  Click: 'border-indigo-400/20 bg-indigo-400/10 text-indigo-300',
 };
 
 const eventDotClassNames: Record<string, string> = {
-  Bounce: 'bg-red-500',
-  Complaint: 'bg-orange-500',
-  Delivery: 'bg-green-500',
-  Send: 'bg-blue-500',
+  Bounce: 'bg-rose-400',
+  Complaint: 'bg-rose-400',
+  Reject: 'bg-rose-400',
+  RenderingFailure: 'bg-rose-400',
+  Delivery: 'bg-teal-400',
+  DeliveryDelay: 'bg-amber-400',
+  Send: 'bg-blue-400',
+  Open: 'bg-violet-400',
+  Click: 'bg-indigo-400',
 };
+
+const eventTypeLabels: Record<string, string> = {
+  DeliveryDelay: 'Delivery delay',
+  RenderingFailure: 'Rendering failure',
+};
+
+export const formatEventType = (eventType: string) => eventTypeLabels[eventType] ?? eventType;
 
 const RECIPIENT_AVATAR_CLASSES = [
   'bg-blue-500/15 text-blue-200 ring-blue-400/20',
@@ -28,20 +45,24 @@ const RECIPIENT_AVATAR_CLASSES = [
 ];
 
 export const countBadgeClassName =
-  'shrink-0 rounded bg-white/5 px-2 py-0.5 font-mono text-sm whitespace-nowrap text-white/45';
+  'inline-flex shrink-0 items-center rounded-md bg-white/5 px-2 py-1 text-xs font-medium whitespace-nowrap text-white/45 tabular-nums';
+
+const fullDateTime = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'long',
+});
+const compactDateTime = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
 
 export const formatDateTime = (value?: number | null) =>
-  value ? new Date(value).toLocaleString() : '—';
+  value == null ? '—' : fullDateTime.format(value);
 
 export const formatCompactEventTime = (value?: number | null) =>
-  value
-    ? new Intl.DateTimeFormat(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      }).format(new Date(value))
-    : '—';
+  value == null ? '—' : compactDateTime.format(value);
 
 export const eventBadgeClassName = (eventType: string) =>
   eventBadgeClassNames[eventType] ?? 'border-white/10 bg-white/5 text-white/70';
@@ -53,12 +74,12 @@ export function EventBadge({ eventType, className }: { eventType: string; classN
   return (
     <span
       className={cn(
-        'inline-flex max-w-full items-center rounded-sm border px-1.5 py-0.5 text-xs font-semibold',
+        'inline-flex max-w-full items-center rounded-md border px-2 py-1 text-xs leading-4 font-medium',
         eventBadgeClassName(eventType),
         className,
       )}
     >
-      <span className="truncate">{eventType}</span>
+      <span className="truncate">{formatEventType(eventType)}</span>
     </span>
   );
 }

@@ -1,25 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import {
+  controlClassName,
+  dangerControlClassName,
+  errorClassName,
+  focusClassName,
+  inputClassName,
+  labelClassName,
+  PageHeader,
+  PageLayout,
+  panelClassName,
+  primaryControlClassName,
+  secondaryControlClassName,
+  sectionHeadingClassName,
+} from '../components/layout/PageLayout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from '../components/ui/input-group';
 import {
   deleteSourceFn,
   runSourceCleanupFn,
   sourcesQueryOptions,
   updateSourceFn,
 } from '../lib/queries';
-import { COLORS } from '../lib/utils';
+import { cn, COLORS } from '../lib/utils';
 
-const COLOR_SKELETON_ITEMS = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5', 'color-6'];
+type SourceForm = { name: string; color: string; retention_days: string };
 
 export default function SourceSettingsPage() {
   const navigate = useNavigate();
@@ -27,32 +36,47 @@ export default function SourceSettingsPage() {
   const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
   const queryClient = useQueryClient();
 
-  const { data: sources = [], isLoading: loadingSources } = useQuery(sourcesQueryOptions);
+  const {
+    data: sources = [],
+    isLoading: loadingSources,
+    error: sourcesError,
+    refetch,
+  } = useQuery(sourcesQueryOptions);
   const source = sources.find((s) => s.id === sourceId);
 
-  const [form, setForm] = useState({
-    name: '',
-    color: 'blue',
-    retention_days: '',
-  });
+  const [draft, setDraft] = useState<{ sourceId: number; values: SourceForm } | null>(null);
+  const form =
+    draft && draft.sourceId === sourceId
+      ? draft.values
+      : {
+          name: source?.name ?? '',
+          color: source?.color ?? 'blue',
+          retention_days: source?.retention_days?.toString() ?? '',
+        };
   const [error, setError] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const tokenCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  const updateForm = (values: Partial<SourceForm>) => {
     if (source) {
-      setForm({
-        name: source.name,
-        color: source.color,
-        retention_days: source.retention_days?.toString() ?? '',
-      });
+      setDraft({ sourceId: source.id, values: { ...form, ...values } });
     }
-  }, [source]);
+  };
+
+  useEffect(
+    () => () => {
+      if (tokenCopyTimeoutRef.current) {
+        clearTimeout(tokenCopyTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const updateMutation = useMutation({
     mutationFn: updateSourceFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sources'] });
+    onSuccess: async (_result, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['sources'] });
+      setDraft((current) => (current?.sourceId === variables.id ? null : current));
       setError(null);
       toast.success('Settings saved.');
     },
@@ -141,236 +165,245 @@ export default function SourceSettingsPage() {
     }
   };
 
+  const handleCopyToken = async () => {
+    if (!source) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(source.token);
+      if (tokenCopyTimeoutRef.current) {
+        clearTimeout(tokenCopyTimeoutRef.current);
+      }
+      setTokenCopied(true);
+      toast.success('Token copied to clipboard.');
+      tokenCopyTimeoutRef.current = setTimeout(() => {
+        setTokenCopied(false);
+        tokenCopyTimeoutRef.current = null;
+      }, 2000);
+    } catch {
+      toast.error('Could not copy the token. Select it and copy manually.');
+    }
+  };
+
   if (loadingSources) {
     return (
-      <div className="mx-auto max-w-2xl px-6 py-12">
-        <div className="animate-pulse space-y-10">
-          <div className="min-h-[92px] space-y-3 border-b border-white/10 pb-6">
-            <div className="h-6 w-28 rounded bg-white/10" />
-            <div className="h-4 w-64 rounded bg-white/10" />
-          </div>
-
-          <section className="min-h-[170px] space-y-4">
-            <div className="h-4 w-32 rounded bg-white/10" />
-            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
-              <div className="h-3 w-24 rounded bg-white/10" />
-              <div className="mt-3 h-10 w-full rounded bg-white/10" />
-              <div className="mt-3 h-3 w-64 rounded bg-white/10" />
-            </div>
-          </section>
-
-          <section className="min-h-[320px] space-y-6">
-            <div className="h-4 w-20 rounded bg-white/10" />
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="h-3 w-24 rounded bg-white/10" />
-                <div className="h-10 w-full rounded bg-white/10" />
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-24 rounded bg-white/10" />
-                <div className="flex gap-2">
-                  {COLOR_SKELETON_ITEMS.map((itemId) => (
-                    <div key={itemId} className="h-8 w-8 rounded-full bg-white/10" />
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-40 rounded bg-white/10" />
-                <div className="flex gap-4">
-                  <div className="h-10 w-32 rounded bg-white/10" />
-                  <div className="h-4 w-64 rounded bg-white/10" />
-                </div>
-              </div>
-              <div className="h-10 w-40 rounded bg-white/10" />
-            </div>
-          </section>
-
-          <section className="min-h-[132px] space-y-4 border-t border-white/10 pt-10">
-            <div className="h-4 w-28 rounded bg-white/10" />
-            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-4">
-              <div className="space-y-2">
-                <div className="h-4 w-28 rounded bg-white/10" />
-                <div className="h-3 w-56 rounded bg-white/10" />
-              </div>
-              <div className="h-9 w-28 rounded bg-white/10" />
-            </div>
-          </section>
+      <PageLayout className="max-w-4xl">
+        <PageHeader title="Settings" />
+        <div role="status" className="space-y-5">
+          <span className="sr-only">Loading source settings…</span>
+          <div className={cn(panelClassName, 'h-80 animate-pulse')} />
+          <div className={cn(panelClassName, 'h-40 animate-pulse')} />
+          <div className={cn(panelClassName, 'h-52 animate-pulse')} />
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   if (!source) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center text-white/60">
-        <p>Source not found.</p>
-      </div>
+      <PageLayout className="max-w-4xl">
+        <PageHeader title="Settings" />
+        {sourcesError ? (
+          <div role="alert" className={errorClassName}>
+            <p>Could not load this source. {sourcesError.message}</p>
+            <Button
+              variant="ghost"
+              className={cn(controlClassName, secondaryControlClassName, 'mt-3')}
+              onClick={() => refetch()}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <div className={cn(panelClassName, 'p-6')}>
+            <p className="text-sm text-white/60">This source could not be found.</p>
+            <Link to="/sources" className={cn(controlClassName, secondaryControlClassName, 'mt-4')}>
+              View sources
+            </Link>
+          </div>
+        )}
+      </PageLayout>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
-      <header className="mb-10 border-b border-white/10 pb-6">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-white">Settings</h1>
-        <p className="mt-2 text-white/60">
-          Manage configuration for <span className="font-medium text-white">{source.name}</span>
-        </p>
-      </header>
+    <PageLayout className="max-w-4xl">
+      <PageHeader
+        title="Settings"
+        actions={
+          <Link
+            to="/s/$sourceId/setup"
+            params={{ sourceId: source.id.toString() }}
+            className={cn(controlClassName, secondaryControlClassName)}
+          >
+            Webhook setup
+          </Link>
+        }
+      >
+        <p className="mt-2 truncate text-sm text-white/45">{source.name}</p>
+      </PageHeader>
 
       {error && (
-        <div className="mb-6 rounded-md border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+        <div role="alert" className={cn(errorClassName, 'mb-5')}>
           {error}
         </div>
       )}
 
-      <div className="space-y-10">
-        {/* Token Section */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold text-white">API Credentials</h2>
-          <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
-            <label className="mb-2 block text-xs font-semibold tracking-wider text-white/40 uppercase">
-              Ingestion Token
+      <div className="space-y-5">
+        <form
+          className={cn(panelClassName, 'overflow-hidden')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleUpdate();
+          }}
+        >
+          <div className="space-y-5 p-5 sm:p-6">
+            <h2 className={sectionHeadingClassName}>General</h2>
+            <div className="max-w-xl space-y-2">
+              <label htmlFor="source-name" className={labelClassName}>
+                Source name
+              </label>
+              <Input
+                id="source-name"
+                required
+                maxLength={200}
+                className={inputClassName}
+                value={form.name}
+                onChange={(event) => updateForm({ name: event.target.value })}
+              />
+            </div>
+
+            <fieldset className="space-y-2">
+              <legend className={labelClassName}>Color</legend>
+              <div className="flex flex-wrap gap-2">
+                {COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={cn(
+                      focusClassName,
+                      'flex size-9 items-center justify-center rounded-lg border text-white transition-colors',
+                      form.color === color
+                        ? 'border-white/80'
+                        : 'border-white/10 hover:border-white/40',
+                    )}
+                    style={{ backgroundColor: `var(--color-${color}-500, ${color})` }}
+                    aria-label={color}
+                    aria-pressed={form.color === color}
+                    onClick={() => updateForm({ color })}
+                  >
+                    {form.color === color && <Check className="size-4" aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="space-y-2 border-t border-white/[0.08] pt-5">
+              <label htmlFor="source-retention" className={labelClassName}>
+                Retention in days
+              </label>
+              <Input
+                id="source-retention"
+                className={cn(inputClassName, 'max-w-36')}
+                type="number"
+                min={1}
+                step={1}
+                value={form.retention_days}
+                onChange={(event) => updateForm({ retention_days: event.target.value })}
+                placeholder="No limit"
+                aria-describedby="source-retention-help"
+              />
+              <p id="source-retention-help" className="max-w-lg text-xs leading-5 text-white/45">
+                Messages and events older than this period are deleted. Leave blank for no limit.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end border-t border-white/[0.08] px-5 py-4 sm:px-6">
+            <Button
+              type="submit"
+              className={cn(controlClassName, primaryControlClassName)}
+              disabled={!form.name.trim() || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+            </Button>
+          </div>
+        </form>
+
+        <section className={cn(panelClassName, 'p-5 sm:p-6')}>
+          <h2 className={sectionHeadingClassName}>Webhook access</h2>
+          <div className="mt-5 space-y-2">
+            <label htmlFor="ingestion-token" className={labelClassName}>
+              Ingestion token
             </label>
-            <InputGroup className="h-10 border-white/10 bg-black/30 text-white">
-              <InputGroupInput
-                className="h-10 py-0 font-mono text-sm leading-10 text-white"
+            <div className="flex items-center gap-2">
+              <Input
+                id="ingestion-token"
+                className={cn(inputClassName, 'font-mono text-xs')}
                 readOnly
                 value={source.token}
                 onFocus={(event) => event.currentTarget.select()}
+                aria-describedby="ingestion-token-help"
               />
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  size="sm"
-                  className="text-white/60 hover:text-white"
-                  onClick={() => {
-                    navigator.clipboard.writeText(source.token);
-                    if (tokenCopyTimeoutRef.current) {
-                      clearTimeout(tokenCopyTimeoutRef.current);
-                    }
-                    setTokenCopied(true);
-                    toast.success('Token copied to clipboard.');
-                    tokenCopyTimeoutRef.current = setTimeout(() => {
-                      setTokenCopied(false);
-                      tokenCopyTimeoutRef.current = null;
-                    }, 2000);
-                  }}
-                >
-                  {tokenCopied ? '✓ Copied' : 'Copy'}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-            <p className="mt-3 text-xs text-white/40">
-              This token is used to authenticate webhooks from SNS. Keep it secret.
+              <Button
+                type="button"
+                variant="ghost"
+                className={cn(controlClassName, secondaryControlClassName)}
+                onClick={handleCopyToken}
+                aria-label={tokenCopied ? 'Token copied' : 'Copy ingestion token'}
+              >
+                {tokenCopied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                {tokenCopied ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+            <p id="ingestion-token-help" className="text-xs leading-5 text-white/45">
+              Included in your webhook URL to identify this source. Keep it private.
             </p>
           </div>
         </section>
 
-        {/* General Settings */}
-        <section className="space-y-6">
-          <h2 className="text-lg font-semibold text-white">General</h2>
-
-          <div className="space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-white/60">Source Name</span>
-              <Input
-                className="w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white transition-colors placeholder:text-white/20 focus:border-white/30 focus:ring-1 focus:ring-white/30 focus:outline-none"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </label>
-
-            <div>
-              <span className="mb-2 block text-sm font-medium text-white/60">Color Label</span>
-              <div className="flex flex-wrap gap-2">
-                {COLORS.map((color) => (
-                  <Button
-                    variant="ghost"
-                    key={color}
-                    type="button"
-                    className={`h-8 w-8 rounded-full border border-white/10 transition-transform ${
-                      form.color === color
-                        ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[#0B0C0E]'
-                        : 'hover:scale-110'
-                    }`}
-                    style={{ backgroundColor: `var(--color-${color}-500, ${color})` }}
-                    aria-label={color}
-                    onClick={() => setForm((prev) => ({ ...prev, color }))}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-white/60">
-                Retention Period (Days)
-              </span>
-              <div className="flex gap-4">
-                <Input
-                  className="w-32 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white transition-colors placeholder:text-white/20 focus:border-white/30 focus:ring-1 focus:ring-white/30 focus:outline-none"
-                  type="number"
-                  min="1"
-                  value={form.retention_days}
-                  onChange={(e) => setForm({ ...form, retention_days: e.target.value })}
-                  placeholder="Forever"
-                />
-                <div className="flex flex-1 items-center text-sm text-white/40">
-                  {form.retention_days
-                    ? `Events older than ${form.retention_days} days will be deleted.`
-                    : 'Events will be retained indefinitely.'}
-                </div>
-              </div>
-            </label>
-          </div>
-
-          <div className="pt-2">
-            <Button
-              size="lg"
-              className="h-10 rounded-md bg-white px-6 text-base font-medium text-black transition-colors hover:bg-white/90 disabled:opacity-50"
-              disabled={!form.name.trim() || updateMutation.isPending}
-              onClick={handleUpdate}
-            >
-              {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </section>
-
-        {/* Danger Zone */}
-        <section className="space-y-4 border-t border-white/10 pt-10">
-          <h2 className="text-lg font-semibold text-white">Danger Zone</h2>
-          <div className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/10 p-4">
-            <div>
-              <h3 className="font-medium text-white">Delete Expired Data</h3>
-              <p className="mt-1 text-sm text-white/60">
-                Permanently remove messages and events older than this source's retention period.
+        <section className={cn(panelClassName, 'overflow-hidden')}>
+          <h2 className={cn(sectionHeadingClassName, 'px-5 pt-5 sm:px-6 sm:pt-6')}>
+            Data management
+          </h2>
+          <div className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <div className="min-w-0">
+              <h3 className="text-sm font-medium text-white/80">Delete expired data</h3>
+              <p id="cleanup-help" className="mt-1.5 max-w-lg text-xs leading-5 text-white/45">
+                {source.retention_days
+                  ? `Permanently remove messages and events older than the saved ${source.retention_days}-day retention period.`
+                  : 'Set and save a retention period above to remove expired data.'}
               </p>
             </div>
             <Button
+              type="button"
               variant="ghost"
-              className="rounded-md border border-sky-500/30 bg-sky-500/20 px-4 py-2 text-sm font-medium text-sky-200 transition-colors hover:bg-sky-500/30"
-              disabled={cleanupMutation.isPending}
+              className={cn(controlClassName, secondaryControlClassName)}
+              disabled={cleanupMutation.isPending || !source.retention_days}
               onClick={handleCleanup}
+              aria-describedby="cleanup-help"
             >
-              {cleanupMutation.isPending ? 'Deleting...' : 'Delete Expired Data'}
+              {cleanupMutation.isPending ? 'Deleting…' : 'Delete expired data'}
             </Button>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/5 p-4">
-            <div>
-              <h3 className="font-medium text-white">Delete Source</h3>
-              <p className="mt-1 text-sm text-white/60">
-                Permanently delete this source and all its data.
+          <div className="flex flex-col items-start justify-between gap-4 border-t border-white/[0.08] p-5 sm:flex-row sm:items-center sm:p-6">
+            <div className="min-w-0">
+              <h3 className="text-sm font-medium text-white/80">Delete source</h3>
+              <p className="mt-1.5 text-xs leading-5 text-white/45">
+                Permanently remove this source and all its messages and events.
               </p>
             </div>
             <Button
+              type="button"
               variant="ghost"
-              className="rounded-md border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20"
+              className={cn(controlClassName, dangerControlClassName)}
               disabled={deleteMutation.isPending}
               onClick={handleDelete}
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete Source'}
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete source'}
             </Button>
           </div>
         </section>
       </div>
-    </div>
+    </PageLayout>
   );
 }

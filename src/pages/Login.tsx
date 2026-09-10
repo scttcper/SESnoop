@@ -1,10 +1,19 @@
 import { getRouteApi } from '@tanstack/react-router';
 import { useEffect, useState, type FormEvent } from 'react';
 
+import {
+  controlClassName,
+  errorClassName,
+  inputClassName,
+  labelClassName,
+  panelClassName,
+  primaryControlClassName,
+} from '../components/layout/PageLayout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { AuthError, safeRedirectPath, sessionQueryOptions } from '../lib/auth';
 import { queryClient } from '../lib/query-client';
+import { cn } from '../lib/utils';
 
 const routeApi = getRouteApi('/login');
 
@@ -81,54 +90,65 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050507] text-white">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0B0C0E] p-8 shadow-[0_20px_80px_rgba(0,0,0,0.4)]">
-          <div className="mb-8 space-y-2">
-            <p className="text-xs tracking-[0.3em] text-white/40">SESnoop</p>
-            <h1 className="font-display text-3xl font-semibold tracking-tight">Sign in</h1>
-            <p className="text-sm text-white/60">Enter your credentials to access the dashboard.</p>
-          </div>
+    <main className="flex min-h-screen items-center justify-center px-4 py-12 text-white sm:px-6">
+      <div className="w-full max-w-sm">
+        <p className="mb-6 text-center text-lg font-semibold tracking-tight text-white/85">
+          SESnoop
+        </p>
+        <div className={cn(panelClassName, 'p-6 sm:p-7')}>
+          <h1 className="mb-6 text-2xl font-semibold tracking-tight">Sign in</h1>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-xs font-medium tracking-widest text-white/50 uppercase">
+              <label htmlFor="username" className={labelClassName}>
                 Username
               </label>
               <Input
+                id="username"
+                name="username"
+                className={inputClassName}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder="Username"
                 autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-describedby={error ? 'login-error' : undefined}
                 required
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium tracking-widest text-white/50 uppercase">
+              <label htmlFor="password" className={labelClassName}>
                 Password
               </label>
               <Input
+                id="password"
+                name="password"
                 type="password"
+                className={inputClassName}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Password"
                 autoComplete="current-password"
+                aria-describedby={error ? 'login-error' : undefined}
                 required
               />
             </div>
 
-            {error ? <p className="text-sm text-red-300">{error}</p> : null}
+            {error ? (
+              <p id="login-error" role="alert" className={errorClassName}>
+                {error}
+              </p>
+            ) : null}
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-white text-black hover:bg-white/90"
+              className={cn(controlClassName, primaryControlClassName, 'mt-2 w-full')}
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

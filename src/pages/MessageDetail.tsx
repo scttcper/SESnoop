@@ -1,7 +1,7 @@
-import { Separator } from '@base-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, getRouteApi } from '@tanstack/react-router';
-import { useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, ChevronRight, Copy } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -12,103 +12,134 @@ import {
   formatCompactEventTime,
   formatDateTime,
 } from '../components/EventPresentation';
-import { messageQueryOptions, type MessageDetail } from '../lib/queries';
-import { formatShortMessageId } from '../lib/utils';
+import {
+  PageHeader,
+  PageLayout,
+  controlClassName,
+  errorClassName,
+  focusClassName,
+  labelClassName,
+  panelClassName,
+  secondaryControlClassName,
+  sectionHeadingClassName,
+  tableHeaderClassName,
+} from '../components/layout/PageLayout';
+import { messageQueryOptions } from '../lib/queries';
+import { cn, formatShortMessageId } from '../lib/utils';
 
 const routeApi = getRouteApi('/app/s/$sourceId/messages/$sesMessageId');
+const SKELETON_ROWS = [0, 1, 2];
+type CopyField = 'from' | 'to' | 'subject' | 'id';
 
-const RECIPIENT_SKELETON_ROWS = ['recipient-1', 'recipient-2', 'recipient-3', 'recipient-4'];
-const TIMELINE_SKELETON_ITEMS = ['timeline-1', 'timeline-2', 'timeline-3'];
-const COPY_BUTTON_CLASS_NAME =
-  'rounded px-1.5 py-0.5 text-xs font-medium text-white/35 transition-colors hover:bg-white/5 hover:text-white/70';
+function CopyButton({
+  label,
+  copied,
+  onClick,
+  showLabel = false,
+}: {
+  label: string;
+  copied: boolean;
+  onClick: () => void;
+  showLabel?: boolean;
+}) {
+  const Icon = copied ? Check : Copy;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={copied ? `${label} copied` : `Copy ${label}`}
+      title={copied ? 'Copied' : `Copy ${label}`}
+      className={cn(controlClassName, secondaryControlClassName, !showLabel && 'w-9 px-0')}
+    >
+      <Icon className="size-3.5" aria-hidden="true" />
+      {showLabel ? (copied ? 'Copied' : `Copy ${label}`) : null}
+    </button>
+  );
+}
 
-const formatJson = (value: Record<string, unknown>) => JSON.stringify(value, null, 2);
-type CopyField = 'from' | 'to' | 'subject';
+function MessageLoadingState() {
+  return (
+    <div role="status" className="space-y-5">
+      <span className="sr-only">Loading message details</span>
+      {SKELETON_ROWS.map((row) => (
+        <div
+          key={row}
+          className={cn(panelClassName, 'animate-pulse p-5 motion-reduce:animate-none')}
+        >
+          <div className="h-4 w-24 rounded bg-white/5" />
+          <div className="mt-5 h-4 w-3/4 max-w-lg rounded bg-white/5" />
+          <div className="mt-3 h-4 w-1/2 max-w-xs rounded bg-white/5" />
+          <div className="mt-3 h-4 w-2/3 max-w-md rounded bg-white/5" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function MessageDetailPage() {
   const { sourceId: sourceIdStr, sesMessageId } = routeApi.useParams();
   const searchParams = routeApi.useSearch();
   const sourceId = Number(sourceIdStr);
-
   const [copiedField, setCopiedField] = useState<CopyField | null>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const {
     data: message,
     isLoading: loading,
-    error: queryError,
+    error,
+    refetch,
   } = useQuery(messageQueryOptions(sourceId, sesMessageId));
 
-  const error = queryError instanceof Error ? queryError.message : null;
-
-  const shortMessageId = useMemo(() => formatShortMessageId(sesMessageId), [sesMessageId]);
-  const destinationEmails = message?.destination_emails.join(', ') ?? '';
-  const messageSubject = message?.subject?.trim() || null;
-  const messageTitle = messageSubject || `Message ${shortMessageId}`;
-  const sentAtLabel = formatDateTime(message?.sent_at);
-  const sentAtIso = message?.sent_at ? new Date(message.sent_at).toISOString() : undefined;
-  const headerContext = useMemo(() => {
-    if (!message) {
-      return null;
-    }
-
-    const sourceEmail = message.source_email ?? 'Unknown sender';
-    const sentAtContext = message.sent_at ? `Sent ${sentAtLabel}` : 'Sent time unknown';
-    return `Message ${shortMessageId} - ${sentAtContext} from ${sourceEmail} to ${
-      destinationEmails || 'Unknown recipient'
-    }`;
-  }, [destinationEmails, message, sentAtLabel, shortMessageId]);
-  const backToEventsSearch = useMemo(
-    () => ({
-      search: searchParams.search,
-      event_types: searchParams.event_types,
-      bounce_types: searchParams.bounce_types,
-      tags: searchParams.tags,
-      date_range: searchParams.date_range,
-      from: searchParams.from,
-      to: searchParams.to,
-      page: searchParams.page,
-    }),
-    [
-      searchParams.bounce_types,
-      searchParams.date_range,
-      searchParams.event_types,
-      searchParams.from,
-      searchParams.page,
-      searchParams.search,
-      searchParams.tags,
-      searchParams.to,
-    ],
+  useEffect(
+    () => () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    },
+    [],
   );
 
-  const buildTagSearch = (tag: string) => {
-    const existingTags = searchParams.tags;
-    return {
-      ...backToEventsSearch,
-      tags: existingTags.includes(tag) ? existingTags : [...existingTags, tag],
-      page: 1,
-    };
+  const destinationEmails = message?.destination_emails.join(', ') ?? '';
+  const messageSubject = message?.subject?.trim() || null;
+  const shortMessageId = formatShortMessageId(sesMessageId);
+  const sentAtIso = message?.sent_at != null ? new Date(message.sent_at).toISOString() : undefined;
+  const backToEventsSearch = {
+    search: searchParams.search,
+    event_types: searchParams.event_types,
+    bounce_types: searchParams.bounce_types,
+    tags: searchParams.tags,
+    date_range: searchParams.date_range,
+    from: searchParams.from,
+    to: searchParams.to,
+    page: searchParams.page,
   };
+  const buildTagSearch = (tag: string) => ({
+    ...backToEventsSearch,
+    tags: searchParams.tags.includes(tag) ? searchParams.tags : [...searchParams.tags, tag],
+    page: 1,
+  });
 
-  const handleCopy = (field: CopyField, text: string) => {
+  const handleCopy = async (field: CopyField, text: string) => {
     if (!text) {
       return;
     }
-
-    void navigator.clipboard.writeText(text);
-    if (copyTimeoutRef.current) {
-      clearTimeout(copyTimeoutRef.current);
+    try {
+      await navigator.clipboard.writeText(text);
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      setCopiedField(field);
+      toast.success('Copied to clipboard');
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedField(null);
+        copyTimeoutRef.current = null;
+      }, 2000);
+    } catch {
+      toast.error('Could not copy to clipboard');
     }
-    setCopiedField(field);
-    toast.success('Copied to clipboard');
-    copyTimeoutRef.current = setTimeout(() => {
-      setCopiedField(null);
-      copyTimeoutRef.current = null;
-    }, 2000);
   };
 
   const recipientRows = useMemo(() => {
-    if (!message || message.events.length === 0) {
+    if (!message) {
       return [];
     }
     const latestByRecipient = new Map<string, (typeof message.events)[number]>();
@@ -124,262 +155,210 @@ export default function MessageDetailPage() {
   }, [message]);
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col border-x border-white/10 bg-[#0B0C0E]">
-      <header className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-4">
-        <div className="flex min-w-0 flex-col">
-          <h1
-            className="font-display max-w-4xl truncate text-2xl font-semibold tracking-tight text-white"
-            title={messageTitle}
-          >
-            {loading ? 'Loading message' : messageTitle}
-          </h1>
-          {headerContext ? (
-            <p className="mt-1 max-w-4xl truncate text-sm text-white/50" title={headerContext}>
-              {headerContext}
-            </p>
-          ) : null}
-        </div>
-        <div className="topbar-actions shrink-0">
-          <Link
-            to="/s/$sourceId/events"
-            params={{ sourceId: sourceId.toString() }}
-            search={backToEventsSearch}
-            className="rounded-md border border-white/10 px-3 py-2 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"
-          >
-            Back to events
-          </Link>
-        </div>
-      </header>
-
-      <div className="flex-1 space-y-8 overflow-y-auto p-6">
-        <section className="space-y-6">
-          {error ? (
-            <p className="rounded-lg border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-400">
-              {error}
-            </p>
-          ) : null}
-
-          {loading ? (
-            <div className="min-h-[320px] animate-pulse rounded-lg bg-white/[0.02] p-6 outline-1 -outline-offset-1 outline-white/10">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="h-3 w-12 rounded bg-white/10" />
-                  <div className="h-4 w-64 rounded bg-white/10" />
-                </div>
-                <div className="h-px w-full bg-white/5" />
-                <div className="space-y-2">
-                  <div className="h-3 w-10 rounded bg-white/10" />
-                  <div className="h-4 w-80 rounded bg-white/10" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-14 rounded bg-white/10" />
-                  <div className="h-4 w-72 rounded bg-white/10" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-16 rounded bg-white/10" />
-                  <div className="h-4 w-40 rounded bg-white/10" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-20 rounded bg-white/10" />
-                  <div className="h-4 w-96 rounded bg-white/10" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-10 rounded bg-white/10" />
-                  <div className="flex gap-2">
-                    <div className="h-5 w-16 rounded-full bg-white/10" />
-                    <div className="h-5 w-20 rounded-full bg-white/10" />
-                    <div className="h-5 w-12 rounded-full bg-white/10" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : message ? (
-            <div className="rounded-lg bg-white/[0.02] outline-1 -outline-offset-1 outline-white/10">
-              <dl className="flex flex-wrap">
-                <div className="flex w-full items-baseline gap-2 px-6 pt-6">
-                  <dt className="text-sm/6 font-semibold text-white/70">From</dt>
-                  <dd className="flex flex-wrap items-center gap-2 text-sm font-semibold text-white">
-                    <span className="break-all">{message.source_email ?? '—'}</span>
-                    {message.source_email ? (
-                      <button
-                        type="button"
-                        className={COPY_BUTTON_CLASS_NAME}
-                        onClick={() => handleCopy('from', message.source_email ?? '')}
-                      >
-                        {copiedField === 'from' ? '✓ Copied' : 'Copy'}
-                      </button>
-                    ) : null}
-                  </dd>
-                </div>
-                <Separator className="my-4 h-px w-full bg-white/5" />
-                <div className="mt-1 flex w-full items-baseline gap-2 px-6">
-                  <dt className="text-sm/6 font-semibold text-white/70">To</dt>
-                  <dd className="flex flex-wrap items-center gap-2 text-sm/6 font-medium text-white">
-                    <span className="break-all">{destinationEmails || '—'}</span>
-                    {destinationEmails ? (
-                      <button
-                        type="button"
-                        className={COPY_BUTTON_CLASS_NAME}
-                        onClick={() => handleCopy('to', destinationEmails)}
-                      >
-                        {copiedField === 'to' ? '✓ Copied' : 'Copy'}
-                      </button>
-                    ) : null}
-                  </dd>
-                </div>
-                <div className="mt-4 w-full px-6">
-                  <dt className="text-sm/6 font-semibold text-white/70">Subject</dt>
-                  <dd className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/80">
-                    <span className="break-words">{message.subject ?? '—'}</span>
-                    {message.subject ? (
-                      <button
-                        type="button"
-                        className={COPY_BUTTON_CLASS_NAME}
-                        onClick={() => handleCopy('subject', message.subject ?? '')}
-                      >
-                        {copiedField === 'subject' ? '✓ Copied' : 'Copy'}
-                      </button>
-                    ) : null}
-                  </dd>
-                </div>
-                <div className="mt-6 w-full border-t border-white/5 px-6 pt-6">
-                  <dt className="text-sm/6 font-semibold text-white/70">Sent at</dt>
-                  <dd className="mt-1 space-y-1 text-sm/6 text-white/70">
-                    <time dateTime={sentAtIso}>{sentAtLabel}</time>
-                    {sentAtIso ? (
-                      <time
-                        className="block font-mono text-xs break-all text-white/45 select-all"
-                        dateTime={sentAtIso}
-                      >
-                        {sentAtIso}
-                      </time>
-                    ) : null}
-                  </dd>
-                </div>
-                <div className="mt-4 w-full px-6">
-                  <dt className="text-sm/6 font-semibold text-white/70">SES Message ID</dt>
-                  <dd className="mt-1 font-mono text-xs/5 break-all text-white/45 tabular-nums select-all">
-                    {message.ses_message_id}
-                  </dd>
-                </div>
-                <div className="mt-4 w-full px-6 pb-6">
-                  <dt className="text-sm/6 font-semibold text-white/70">Tags</dt>
-                  <dd className="mt-1 flex flex-wrap gap-2 text-sm/6 text-white/70">
-                    {message.tags.length > 0 ? (
-                      message.tags.map((tag) => (
-                        <Link
-                          key={tag.label}
-                          to="/s/$sourceId/events"
-                          params={{ sourceId: sourceId.toString() }}
-                          search={buildTagSearch(tag.label)}
-                          className="rounded-full bg-emerald-500/10 px-2 py-1 font-mono text-xs text-emerald-100/80 transition-colors hover:bg-emerald-500/20 hover:text-emerald-50"
-                        >
-                          {tag.label}
-                        </Link>
-                      ))
-                    ) : (
-                      <span className="text-sm text-white/40">—</span>
-                    )}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          ) : null}
-        </section>
-
-        <section className="space-y-6">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
-            <h2 className="text-lg font-semibold text-white">Recipients</h2>
-            {message ? (
-              <span className={countBadgeClassName}>{recipientRows.length} recipients</span>
+    <PageLayout>
+      <PageHeader
+        title={
+          <span className="block leading-snug [overflow-wrap:anywhere]">
+            {loading ? 'Loading message…' : messageSubject || 'Message details'}
+          </span>
+        }
+        actions={
+          <>
+            {messageSubject ? (
+              <CopyButton
+                label="subject"
+                copied={copiedField === 'subject'}
+                onClick={() => void handleCopy('subject', message?.subject ?? '')}
+                showLabel
+              />
             ) : null}
-          </div>
-          {loading ? (
-            <div className="min-h-[220px] overflow-hidden rounded-lg border border-white/10">
-              <table className="w-full table-fixed text-left text-sm">
-                <colgroup>
-                  <col className="w-[34%]" />
-                  <col className="w-32" />
-                  <col className="w-36" />
-                  <col />
-                </colgroup>
-                <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Recipient</th>
-                    <th className="px-4 py-3 font-semibold">Latest event</th>
-                    <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">
-                      Latest event time
-                    </th>
-                    <th className="px-4 py-3 font-semibold">Reason</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 bg-white/[0.02]">
-                  {RECIPIENT_SKELETON_ROWS.map((rowId) => (
-                    <tr key={rowId} className="animate-pulse">
-                      <td className="px-4 py-3">
-                        <div className="h-4 w-48 rounded bg-white/10" />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="h-4 w-20 rounded bg-white/10" />
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <div className="ml-auto h-4 w-24 rounded bg-white/10" />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="h-4 w-64 rounded bg-white/10" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <Link
+              to="/s/$sourceId/events"
+              params={{ sourceId: sourceIdStr }}
+              search={backToEventsSearch}
+              className={cn(controlClassName, secondaryControlClassName)}
+            >
+              <ArrowLeft className="size-3.5" aria-hidden="true" /> Back to events
+            </Link>
+          </>
+        }
+      >
+        <p className="mt-1.5 text-sm text-white/45">Message {shortMessageId}</p>
+      </PageHeader>
+
+      {error ? (
+        <div role="alert" className={cn(errorClassName, 'mb-5 flex flex-wrap items-center gap-3')}>
+          <p className="flex-1">{error.message}</p>
+          <button
+            type="button"
+            className={cn(controlClassName, secondaryControlClassName)}
+            onClick={() => void refetch()}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+
+      {loading ? <MessageLoadingState /> : null}
+
+      {message ? (
+        <div className="space-y-5">
+          <section aria-labelledby="message-details-heading" className={cn(panelClassName, 'p-5')}>
+            <h2 id="message-details-heading" className={sectionHeadingClassName}>
+              Message details
+            </h2>
+            <dl className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+              <div className="min-w-0">
+                <dt className={labelClassName}>From</dt>
+                <dd className="mt-1 flex min-h-9 items-start justify-between gap-3">
+                  <span className="min-w-0 py-2 text-sm leading-5 [overflow-wrap:anywhere] text-white/80">
+                    {message.source_email || 'Unknown sender'}
+                  </span>
+                  {message.source_email ? (
+                    <CopyButton
+                      label="sender"
+                      copied={copiedField === 'from'}
+                      onClick={() => void handleCopy('from', message.source_email ?? '')}
+                    />
+                  ) : null}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className={labelClassName}>To</dt>
+                <dd className="mt-1 flex min-h-9 items-start justify-between gap-3">
+                  <span className="min-w-0 py-2 text-sm leading-5 [overflow-wrap:anywhere] text-white/80">
+                    {destinationEmails || 'Unknown recipient'}
+                  </span>
+                  {destinationEmails ? (
+                    <CopyButton
+                      label="recipients"
+                      copied={copiedField === 'to'}
+                      onClick={() => void handleCopy('to', destinationEmails)}
+                    />
+                  ) : null}
+                </dd>
+              </div>
+              <div className="min-w-0 border-t border-white/[0.08] pt-4">
+                <dt className={labelClassName}>Sent</dt>
+                <dd className="mt-1 flex min-h-9 items-center text-sm leading-5 text-white/65">
+                  <time dateTime={sentAtIso} title={sentAtIso}>
+                    {formatDateTime(message.sent_at)}
+                  </time>
+                </dd>
+              </div>
+              <div className="min-w-0 border-t border-white/[0.08] pt-4">
+                <dt className={labelClassName}>SES message ID</dt>
+                <dd className="mt-1 flex min-h-9 items-start justify-between gap-3">
+                  <span className="min-w-0 py-2 font-mono text-xs leading-5 [overflow-wrap:anywhere] text-white/55 select-all">
+                    {message.ses_message_id}
+                  </span>
+                  <CopyButton
+                    label="message ID"
+                    copied={copiedField === 'id'}
+                    onClick={() => void handleCopy('id', message.ses_message_id)}
+                  />
+                </dd>
+              </div>
+              <div className="min-w-0 border-t border-white/[0.08] pt-4 sm:col-span-2">
+                <dt className={labelClassName}>Tags</dt>
+                <dd className="mt-2 flex flex-wrap gap-2">
+                  {message.tags.length > 0 ? (
+                    message.tags.map((tag) => (
+                      <Link
+                        key={tag.label}
+                        to="/s/$sourceId/events"
+                        params={{ sourceId: sourceIdStr }}
+                        search={buildTagSearch(tag.label)}
+                        className={cn(
+                          focusClassName,
+                          'max-w-full rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs leading-5 text-white/60 transition-colors hover:border-blue-400/20 hover:bg-blue-400/10 hover:text-blue-200 [overflow-wrap:anywhere]',
+                        )}
+                        title={`Filter events by ${tag.label}`}
+                      >
+                        {tag.label}
+                      </Link>
+                    ))
+                  ) : (
+                    <span className="text-xs leading-5 text-white/40">No tags</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section
+            aria-labelledby="message-recipients-heading"
+            className={cn(panelClassName, 'overflow-hidden')}
+          >
+            <div className="flex items-start justify-between gap-4 p-5">
+              <div>
+                <h2 id="message-recipients-heading" className={sectionHeadingClassName}>
+                  Recipients
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-white/40">
+                  Latest event for each tracked recipient.
+                </p>
+              </div>
+              <span className={countBadgeClassName}>{recipientRows.length}</span>
             </div>
-          ) : message ? (
-            message.events.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border border-white/10">
-                <table className="w-full table-fixed text-left text-sm">
+            {recipientRows.length > 0 ? (
+              <div className="relative overflow-x-auto">
+                <table className="w-full min-w-[720px] table-fixed text-left text-sm">
+                  <caption className="sr-only">Latest event for each tracked recipient</caption>
                   <colgroup>
-                    <col className="w-[34%]" />
-                    <col className="w-32" />
+                    <col className="w-[30%]" />
                     <col className="w-36" />
+                    <col className="w-40" />
                     <col />
                   </colgroup>
-                  <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
+                  <thead
+                    className={cn(
+                      tableHeaderClassName,
+                      'border-y border-white/[0.06] bg-white/[0.015]',
+                    )}
+                  >
                     <tr>
-                      <th className="px-4 py-3 font-semibold">Recipient</th>
-                      <th className="px-4 py-3 font-semibold">Latest event</th>
-                      <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">
-                        Latest event time
+                      <th scope="col" className="px-5 py-3 font-medium">
+                        Recipient
                       </th>
-                      <th className="px-4 py-3 font-semibold">Reason</th>
+                      <th scope="col" className="px-3 py-3 font-medium">
+                        Latest event
+                      </th>
+                      <th scope="col" className="px-3 py-3 font-medium">
+                        Event time
+                      </th>
+                      <th scope="col" className="px-5 py-3 font-medium">
+                        Detail
+                      </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 bg-white/[0.02]">
+                  <tbody className="divide-y divide-white/[0.06]">
                     {recipientRows.map((event) => (
                       <tr
                         key={event.recipient_email}
-                        className="transition-colors hover:bg-white/5"
+                        className="transition-colors hover:bg-white/[0.025]"
                       >
-                        <td className="px-4 py-3 text-white">
-                          <div className="flex min-w-0 items-center gap-2">
+                        <th scope="row" className="px-5 py-4 text-left font-medium text-white/75">
+                          <div className="flex items-center gap-2">
                             <RecipientAvatar email={event.recipient_email} />
-                            <span className="min-w-0 truncate font-medium">
+                            <span className="min-w-0 [overflow-wrap:anywhere]">
                               {event.recipient_email}
                             </span>
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
+                        </th>
+                        <td className="px-3 py-4">
                           <EventBadge eventType={event.event_type} />
                         </td>
-                        <td className="px-3 py-3 text-right">
+                        <td className="px-3 py-4">
                           <time
-                            className="block font-mono text-xs whitespace-nowrap text-white/60 tabular-nums"
+                            className="text-xs whitespace-nowrap text-white/45 tabular-nums"
                             dateTime={new Date(event.event_at).toISOString()}
                             title={formatDateTime(event.event_at)}
                           >
                             {formatCompactEventTime(event.event_at)}
                           </time>
                         </td>
-                        <td className="px-4 py-3 text-sm break-words text-white/70">
+                        <td className="px-5 py-4 text-xs leading-5 [overflow-wrap:anywhere] text-white/55">
                           {event.event_detail ?? '—'}
                         </td>
                       </tr>
@@ -388,110 +367,89 @@ export default function MessageDetailPage() {
                 </table>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-white/10 p-8 text-center">
-                <p className="text-sm text-white/40">There are no recipient updates yet.</p>
-              </div>
-            )
-          ) : null}
-        </section>
+              <p className="px-5 pt-1 pb-6 text-sm text-white/40">
+                No recipient events recorded yet.
+              </p>
+            )}
+          </section>
 
-        <section className="space-y-6">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
-            <h2 className="text-lg font-semibold text-white">Event timeline</h2>
-            {message ? (
+          <section aria-labelledby="message-timeline-heading" className={cn(panelClassName, 'p-5')}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="message-timeline-heading" className={sectionHeadingClassName}>
+                  Event timeline
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-white/40">Newest first.</p>
+              </div>
               <span className={countBadgeClassName}>{message.events.length} events</span>
-            ) : null}
-          </div>
-          {loading ? (
-            <div className="min-h-[240px] space-y-4">
-              {TIMELINE_SKELETON_ITEMS.map((itemId) => (
-                <div
-                  key={itemId}
-                  className="animate-pulse rounded-lg border border-white/5 bg-white/[0.02] p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="h-4 w-24 rounded bg-white/10" />
-                    <div className="h-4 w-24 rounded bg-white/10" />
-                  </div>
-                  <div className="h-3 w-64 rounded bg-white/10" />
-                </div>
-              ))}
             </div>
-          ) : message?.events.length ? (
-            <div className="ml-2 flex flex-col">
-              {message.events.map((event: MessageDetail['events'][number], index: number) => (
-                <div key={event.id} className="group relative pb-8 pl-10 last:pb-0">
-                  {index > 0 && (
-                    <div className="absolute top-0 left-4 h-6 w-px -translate-x-1/2 bg-white/10" />
-                  )}
-                  {index < message.events.length - 1 && (
-                    <div className="absolute top-6 bottom-0 left-4 w-px -translate-x-1/2 bg-white/10" />
-                  )}
-                  <div
-                    className={`absolute top-6 left-4 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0B0C0E] ${eventDotClassName(event.event_type)}`}
-                  />
-                  <div className="flex items-start justify-between gap-6 rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3 pr-5 transition-colors hover:bg-white/[0.04]">
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex min-w-0 items-center gap-2">
+            {message.events.length > 0 ? (
+              <ol className="mt-6 space-y-6">
+                {message.events.map((event, index) => (
+                  <li key={event.id} className="relative pl-7">
+                    {index < message.events.length - 1 ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-5 -bottom-6 left-1.5 w-px bg-white/[0.08]"
+                      />
+                    ) : null}
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'absolute top-1.5 left-0 size-3 rounded-full border-2 border-[#0B0C0E]',
+                        eventDotClassName(event.event_type),
+                      )}
+                    />
+                    <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
                         <EventBadge eventType={event.event_type} />
-                        <span className="min-w-0 truncate text-sm font-medium text-white">
+                        <span className="min-w-0 text-sm [overflow-wrap:anywhere] text-white/75">
                           {event.recipient_email}
                         </span>
                       </div>
-                      {event.event_detail ? (
-                        <span className="text-xs break-words text-white/50">
-                          <span className="text-white/40">Reason:</span> {event.event_detail}
-                        </span>
-                      ) : null}
+                      <time
+                        className="pt-0.5 text-xs leading-5 whitespace-nowrap text-white/40 tabular-nums"
+                        dateTime={new Date(event.event_at).toISOString()}
+                        title={formatDateTime(event.event_at)}
+                      >
+                        {formatCompactEventTime(event.event_at)}
+                      </time>
                     </div>
-                    <time
-                      className="shrink-0 pt-0.5 text-right font-mono text-xs leading-5 whitespace-nowrap text-white/40 tabular-nums"
-                      dateTime={new Date(event.event_at).toISOString()}
-                      title={formatDateTime(event.event_at)}
-                    >
-                      {formatCompactEventTime(event.event_at)}
-                    </time>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-white/10 p-8 text-center">
-              <p className="text-sm text-white/40">No events recorded yet.</p>
-            </div>
-          )}
-        </section>
+                    {event.event_detail ? (
+                      <p className="mt-2 text-xs leading-5 [overflow-wrap:anywhere] text-white/45">
+                        {event.event_detail}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="mt-5 text-sm text-white/40">No events recorded yet.</p>
+            )}
+          </section>
 
-        <section>
-          {loading ? (
-            <div className="min-h-[200px] animate-pulse overflow-hidden rounded-xl border border-white/10 bg-[#0D0E11]">
-              <div className="flex items-center gap-3 border-b border-white/5 p-4">
-                <div className="h-4 w-4 rounded bg-white/10" />
-                <div className="h-4 w-32 rounded bg-white/10" />
-              </div>
-              <div className="space-y-3 p-4">
-                <div className="h-3 w-full rounded bg-white/10" />
-                <div className="h-3 w-5/6 rounded bg-white/10" />
-                <div className="h-3 w-4/6 rounded bg-white/10" />
-              </div>
+          <details className={cn(panelClassName, 'group overflow-hidden')}>
+            <summary
+              className={cn(
+                focusClassName,
+                sectionHeadingClassName,
+                'flex cursor-pointer list-none items-center gap-2 p-5 transition-colors select-none focus-visible:-outline-offset-2 hover:bg-white/[0.025] [&::-webkit-details-marker]:hidden',
+              )}
+            >
+              <ChevronRight
+                className="size-4 text-white/35 transition-transform group-open:rotate-90"
+                aria-hidden="true"
+              />
+              SES mail metadata
+            </summary>
+            <div className="max-h-[32rem] overflow-auto border-t border-white/[0.08] bg-black/20 p-5">
+              <pre className="font-mono text-xs leading-6 text-white/65">
+                {JSON.stringify(message.mail_metadata, null, 2)}
+              </pre>
             </div>
-          ) : message ? (
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0D0E11]">
-              <details className="group">
-                <summary className="flex cursor-pointer list-none items-center p-4 text-sm font-medium text-white/60 transition-colors select-none hover:text-white">
-                  <span className="mr-2 transition-transform group-open:rotate-90">▶</span>
-                  View SES payload
-                </summary>
-                <div className="overflow-x-auto border-t border-white/5 bg-black/30 p-4">
-                  <pre className="font-mono text-xs leading-relaxed text-blue-300/90">
-                    {formatJson(message.mail_metadata)}
-                  </pre>
-                </div>
-              </details>
-            </div>
-          ) : null}
-        </section>
-      </div>
-    </div>
+          </details>
+        </div>
+      ) : null}
+    </PageLayout>
   );
 }

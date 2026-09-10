@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, getRouteApi } from '@tanstack/react-router';
-import { ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronRight, Download, RefreshCw, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -10,7 +10,20 @@ import {
   RecipientAvatar,
   formatCompactEventTime,
   formatDateTime,
+  formatEventType,
 } from '../components/EventPresentation';
+import {
+  controlClassName,
+  errorClassName,
+  focusClassName,
+  inputClassName,
+  labelClassName,
+  PageHeader,
+  PageLayout,
+  panelClassName,
+  secondaryControlClassName,
+  tableHeaderClassName,
+} from '../components/layout/PageLayout';
 import { TagFilterDropdown } from '../components/TagFilterDropdown';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -31,6 +44,7 @@ import {
   type EventResponse,
   type EventRow,
 } from '../lib/queries';
+import { cn } from '../lib/utils';
 import type { EventsSearchParams } from '../router';
 
 const routeApi = getRouteApi('/app/s/$sourceId/events');
@@ -173,8 +187,11 @@ export default function EventsPage() {
   };
 
   const tagCountEntries = useMemo(
-    () => Object.entries(counts.tags).sort(([a], [b]) => a.localeCompare(b)),
-    [counts.tags],
+    () =>
+      [...new Set([...Object.keys(counts.tags), ...selectedTags])]
+        .sort((a, b) => a.localeCompare(b))
+        .map((tag) => [tag, counts.tags[tag] ?? 0] as const),
+    [counts.tags, selectedTags],
   );
 
   const handleExport = async () => {
@@ -240,7 +257,7 @@ export default function EventsPage() {
     }
   };
 
-  const totalLabel = pagination ? `${pagination.total} events` : '—';
+  const totalLabel = pagination ? `${pagination.total.toLocaleString()} events` : '—';
 
   if (!sourceId) {
     return (
@@ -251,138 +268,86 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col border-x border-white/10 bg-[#0B0C0E]">
-      <header className="border-b border-white/10 px-6 py-4">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
-            {currentSource ? `${currentSource.name} Events` : 'Events'}
-          </h1>
-        </div>
-      </header>
-
-      <div className="flex-1 [scrollbar-gutter:stable] space-y-8 overflow-y-auto p-6">
-        <section className="space-y-6">
-          {error ? (
-            <p className="rounded-lg border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-400">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <label className="flex flex-col space-y-2">
-              <span className="text-sm font-medium text-white/60">Search</span>
-              <Input
-                className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors placeholder:text-white/20 focus:border-white/30 focus:outline-none"
-                value={search}
-                onChange={(event) => {
-                  updateFilter({ search: event.target.value });
-                }}
-                placeholder="Recipient or subject"
+    <PageLayout>
+      <PageHeader
+        title="Events"
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              type="button"
+              aria-label="Refresh events"
+              title="Refresh events"
+              className={cn(controlClassName, secondaryControlClassName, 'w-9 px-0')}
+              disabled={fetchingEvents}
+              onClick={() => void refetchEvents()}
+            >
+              <RefreshCw
+                className={cn(fetchingEvents && 'animate-spin motion-reduce:animate-none')}
+                aria-hidden="true"
               />
-            </label>
-            <label className="flex flex-col space-y-2">
-              <span className="text-sm font-medium text-white/60">Date range</span>
-              <Select
-                value={datePreset}
-                onValueChange={(value) => {
+            </Button>
+            <Button
+              variant="ghost"
+              type="button"
+              className={cn(controlClassName, secondaryControlClassName)}
+              disabled={exporting}
+              onClick={handleExport}
+            >
+              <Download aria-hidden="true" />
+              {exporting ? 'Exporting…' : 'Export CSV'}
+            </Button>
+          </>
+        }
+      />
+
+      <div className="space-y-6">
+        {error ? (
+          <p role="alert" className={errorClassName}>
+            {error}
+          </p>
+        ) : null}
+
+        <section aria-label="Event filters" className={cn(panelClassName, 'space-y-5 p-4 sm:p-5')}>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-white/30"
+                aria-hidden="true"
+              />
+              <Input
+                aria-label="Search recipient or subject"
+                className={cn(inputClassName, 'pl-9')}
+                value={search}
+                onChange={(event) => updateFilter({ search: event.target.value })}
+                placeholder="Search recipient or subject"
+              />
+            </div>
+            <Select
+              value={datePreset}
+              onValueChange={(value) => {
+                if (value) {
                   updateFilter({ date_range: value as DateRangeValue });
-                }}
+                }
+              }}
+            >
+              <SelectTrigger
+                aria-label="Date range"
+                className={cn(controlClassName, secondaryControlClassName)}
               >
-                <SelectTrigger className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors focus:border-white/30 focus:outline-none">
-                  <span className="block truncate">
-                    {DATE_PRESETS.find((p) => p.value === datePreset)?.label || datePreset}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {DATE_PRESETS.map((preset) => (
-                    <SelectItem key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            {datePreset === 'custom' && (
-              <div className="flex items-end gap-2">
-                <label className="flex flex-1 flex-col space-y-2">
-                  <span className="text-sm font-medium text-white/60">From</span>
-                  <Input
-                    type="date"
-                    className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors focus:border-white/30 focus:outline-none"
-                    value={from}
-                    onChange={(e) => {
-                      updateFilter({ from: e.target.value });
-                    }}
-                  />
-                </label>
-                <label className="flex flex-1 flex-col space-y-2">
-                  <span className="text-sm font-medium text-white/60">To</span>
-                  <Input
-                    type="date"
-                    className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors focus:border-white/30 focus:outline-none"
-                    value={to}
-                    onChange={(e) => {
-                      updateFilter({ to: e.target.value });
-                    }}
-                  />
-                </label>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <span className="mb-2 block text-sm font-medium text-white/60">Event types</span>
-              <div className="flex flex-wrap gap-2">
-                {EVENT_TYPES.map((type) => {
-                  const count = counts.event_types?.[type] ?? 0;
-                  const isSelected = selectedEventTypes.includes(type);
-                  return (
-                    <Button
-                      variant="ghost"
-                      key={type}
-                      type="button"
-                      onClick={() => toggleEventType(type)}
-                      className={`h-auto rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                        isSelected
-                          ? 'border-blue-500/50 bg-blue-500/20 text-blue-200'
-                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                      } `}
-                    >
-                      {type}
-                      <span className="ml-2 font-mono opacity-60">{count}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <span className="mb-2 block text-sm font-medium text-white/60">Bounce types</span>
-              <div className="flex flex-wrap gap-2">
-                {BOUNCE_TYPES.map((type) => {
-                  const count = counts.bounce_types?.[type] ?? 0;
-                  const isSelected = selectedBounceTypes.includes(type);
-                  return (
-                    <Button
-                      variant="ghost"
-                      key={type}
-                      type="button"
-                      onClick={() => toggleBounceType(type)}
-                      className={`h-auto rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                        isSelected
-                          ? 'border-red-500/50 bg-red-500/20 text-red-200'
-                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                      } `}
-                    >
-                      {type}
-                      <span className="ml-2 font-mono opacity-60">{count}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-
+                <CalendarDays className="text-white/50" aria-hidden="true" />
+                <span>
+                  {DATE_PRESETS.find((preset) => preset.value === datePreset)?.label || datePreset}
+                </span>
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>
+                {DATE_PRESETS.map((preset) => (
+                  <SelectItem key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <TagFilterDropdown
               selectedTags={selectedTags}
               tagCountEntries={tagCountEntries}
@@ -390,217 +355,337 @@ export default function EventsPage() {
               onToggleTag={toggleTag}
             />
           </div>
-        </section>
 
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <span className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/40">
-              {loading ? '… events' : totalLabel}
-            </span>
-            <div className="flex items-center gap-2">
+          {datePreset === 'custom' ? (
+            <div className="grid max-w-lg grid-cols-2 gap-3">
+              <label className="min-w-0 space-y-2">
+                <span className={labelClassName}>From · UTC</span>
+                <Input
+                  type="date"
+                  className={inputClassName}
+                  value={from}
+                  onChange={(event) => updateFilter({ from: event.target.value })}
+                />
+              </label>
+              <label className="min-w-0 space-y-2">
+                <span className={labelClassName}>To · UTC</span>
+                <Input
+                  type="date"
+                  className={inputClassName}
+                  value={to}
+                  onChange={(event) => updateFilter({ to: event.target.value })}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          <div className="space-y-2.5">
+            <h2 className={labelClassName}>Event types</h2>
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="ghost"
                 type="button"
-                className="h-9 rounded-md border border-white/10 bg-white/10 px-3 text-xs text-white transition-colors hover:bg-white/20 disabled:opacity-50"
-                disabled={fetchingEvents}
-                onClick={() => void refetchEvents()}
+                aria-pressed={selectedEventTypes.length === 0}
+                onClick={() => updateFilter({ event_types: [] })}
+                className={cn(
+                  controlClassName,
+                  'h-8 rounded-md px-2.5',
+                  selectedEventTypes.length === 0
+                    ? 'border-blue-400/20 bg-blue-400/10 text-blue-200 hover:bg-blue-400/20'
+                    : secondaryControlClassName,
+                )}
               >
-                Refresh
+                All events
               </Button>
-              <Button
-                variant="ghost"
-                type="button"
-                className="h-9 rounded-md border border-white/10 bg-white/10 px-3 text-xs text-white transition-colors hover:bg-white/20 disabled:opacity-50"
-                disabled={exporting}
-                onClick={handleExport}
-              >
-                {exporting ? 'Exporting…' : 'Export CSV'}
-              </Button>
+              {EVENT_TYPES.map((type) => {
+                const isSelected = selectedEventTypes.includes(type);
+                return (
+                  <Button
+                    variant="ghost"
+                    key={type}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => toggleEventType(type)}
+                    className={cn(
+                      controlClassName,
+                      'h-8 rounded-md px-2.5',
+                      isSelected
+                        ? 'border-blue-400/20 bg-blue-400/10 text-blue-200 hover:bg-blue-400/20'
+                        : secondaryControlClassName,
+                    )}
+                  >
+                    {formatEventType(type)}
+                    <span className="text-[11px] tabular-nums opacity-50">
+                      {(counts.event_types[type] ?? 0).toLocaleString()}
+                    </span>
+                  </Button>
+                );
+              })}
             </div>
           </div>
-          <div className="overflow-hidden rounded-lg border border-white/10">
-            <table className="w-full table-fixed text-left text-sm">
-              <colgroup>
-                <col className="w-28" />
-                <col className="w-56" />
-                <col />
-                <col className="w-40" />
-                <col className="w-8" />
-              </colgroup>
-              <thead className="bg-white/5 text-xs font-medium text-white/60 uppercase">
-                <tr>
-                  <th className="px-4 py-3 font-semibold tracking-wide whitespace-nowrap">Event</th>
-                  <th className="px-4 py-3 font-semibold tracking-wide">Recipient</th>
-                  <th className="px-4 py-3 font-semibold tracking-wide">Subject</th>
-                  <th className="px-4 py-3 text-right font-semibold tracking-wide">Time</th>
-                  <th className="px-2 py-3">
-                    <span className="sr-only">Open event</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 bg-white/[0.02]">
-                {events.length === 0 && !loading ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-white/40">
-                      No events found for this range.
-                    </td>
-                  </tr>
-                ) : null}
-                {loading
-                  ? EVENT_SKELETON_ROWS.map((rowId) => (
-                      <tr key={rowId} className="animate-pulse">
-                        <td className="px-4 py-2.5">
-                          <div className="flex min-w-0 flex-col items-start gap-1">
-                            <div className="h-5 w-16 rounded-full bg-white/10" />
-                            <div className="h-3 w-14 rounded bg-white/10" />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <div className="size-6 rounded-full bg-white/10" />
-                            <div className="h-4 w-40 rounded bg-white/10" />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="space-y-1.5">
-                            <div className="h-4 w-56 rounded bg-white/10" />
-                            <div className="flex gap-1">
-                              <div className="h-5 w-28 rounded-full bg-white/10" />
-                              <div className="h-5 w-24 rounded-full bg-white/10" />
-                              <div className="h-5 w-16 rounded-full bg-white/10" />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <div className="ml-auto h-4 w-20 rounded bg-white/10" />
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <div className="h-4 w-4 rounded bg-white/10" />
-                        </td>
-                      </tr>
-                    ))
-                  : null}
-                {events.map((event: EventRow) => {
-                  const recipientEmail = event.recipient_email || 'Unknown recipient';
-                  const messageSubject = event.message_subject || '[no subject]';
-                  const bounceType = event.bounce_type;
-                  const messageLinkProps = {
-                    to: '/s/$sourceId/messages/$sesMessageId',
-                    params: {
-                      sourceId: sourceId.toString(),
-                      sesMessageId: event.ses_message_id,
-                    },
-                    search: detailSearch,
-                  } as const;
-                  const linkClassName =
-                    'block focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/30';
 
+          {selectedEventTypes.length === 0 ||
+          selectedEventTypes.includes('Bounce') ||
+          selectedBounceTypes.length > 0 ? (
+            <div className="space-y-2.5">
+              <h2 className={labelClassName}>Bounce types</h2>
+              <div className="flex flex-wrap gap-2">
+                {BOUNCE_TYPES.map((type) => {
+                  const isSelected = selectedBounceTypes.includes(type);
                   return (
-                    <tr
-                      key={event.id}
-                      className="group transition-colors focus-within:bg-white/[0.06] hover:bg-white/[0.04]"
+                    <Button
+                      variant="ghost"
+                      key={type}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => toggleBounceType(type)}
+                      className={cn(
+                        controlClassName,
+                        'h-8 rounded-md px-2.5',
+                        isSelected
+                          ? 'border-rose-400/20 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20'
+                          : secondaryControlClassName,
+                      )}
                     >
-                      <td className="align-middle">
-                        <Link
-                          {...messageLinkProps}
-                          aria-label={`Open ${event.event_type} event for ${recipientEmail}`}
-                          className={`${linkClassName} px-4 py-2.5`}
-                        >
-                          <div className="flex min-w-0 flex-col items-start gap-1">
-                            <EventBadge eventType={event.event_type} />
-                            {bounceType ? (
-                              <span className="max-w-full truncate text-xs text-white/35">
-                                {bounceType}
-                              </span>
-                            ) : null}
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="align-middle">
-                        <Link {...messageLinkProps} className={`${linkClassName} px-4 py-2.5`}>
-                          <div className="flex min-w-0 items-center gap-2">
-                            <RecipientAvatar email={recipientEmail} />
-                            <span className="min-w-0 truncate font-medium text-white">
-                              {recipientEmail}
-                            </span>
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="align-middle">
-                        <div className="min-w-0 px-4 py-2.5">
-                          <Link {...messageLinkProps} className={linkClassName}>
-                            <span className="block truncate text-white/75" title={messageSubject}>
-                              {messageSubject}
-                            </span>
-                          </Link>
-                          {event.tags.length > 0 ? (
-                            <div className="mt-1 flex min-w-0 flex-wrap gap-1">
-                              {event.tags.slice(0, 3).map((tag) => (
-                                <button
-                                  key={tag.label}
-                                  type="button"
-                                  className="max-w-[12rem] truncate rounded-full bg-white/5 px-2 py-0.5 font-mono text-[11px] text-white/45 transition-colors hover:bg-white/10 hover:text-white/75"
-                                  title={`Filter by ${tag.label}`}
-                                  onClick={() => toggleTag(tag.label)}
-                                >
-                                  {tag.label}
-                                </button>
-                              ))}
-                              {event.tags.length > 3 ? (
-                                <span
-                                  className="rounded-full bg-white/5 px-2 py-0.5 font-mono text-[11px] text-white/40"
-                                  title={event.tags
-                                    .slice(3)
-                                    .map((tag) => tag.label)
-                                    .join(', ')}
-                                >
-                                  +{event.tags.length - 3}
+                      {type}
+                      <span className="text-[11px] tabular-nums opacity-50">
+                        {(counts.bounce_types[type] ?? 0).toLocaleString()}
+                      </span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {selectedTags.length > 0 ? (
+            <div
+              className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4"
+              aria-label="Selected tags"
+            >
+              {selectedTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  aria-label={`Remove tag ${tag}`}
+                  onClick={() => toggleTag(tag)}
+                  className={cn(
+                    controlClassName,
+                    'h-7 max-w-full rounded-md border-blue-400/20 bg-blue-400/10 px-2 text-blue-200 hover:bg-blue-400/20',
+                  )}
+                >
+                  <span className="truncate">{tag}</span>
+                  <X aria-hidden="true" />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => updateFilter({ tags: [] })}
+                className={cn(
+                  focusClassName,
+                  'h-7 rounded px-1 text-xs text-white/40 hover:text-white/75',
+                )}
+              >
+                Clear tags
+              </button>
+            </div>
+          ) : null}
+        </section>
+
+        <section aria-label="Events">
+          <div className="mb-3 text-xs text-white/45 tabular-nums" aria-live="polite">
+            {loading ? 'Loading events…' : totalLabel}
+          </div>
+          <div className={cn(panelClassName, 'overflow-hidden')}>
+            <div className="relative overflow-x-auto">
+              <table className="w-full min-w-[820px] table-fixed text-left text-sm">
+                <colgroup>
+                  <col className="w-40" />
+                  <col className="w-60" />
+                  <col />
+                  <col className="w-36" />
+                  <col className="w-8" />
+                </colgroup>
+                <thead className={cn(tableHeaderClassName, 'border-b border-white/[0.06]')}>
+                  <tr>
+                    <th className="px-4 py-3 font-medium whitespace-nowrap">Event</th>
+                    <th className="px-4 py-3 font-medium">Recipient</th>
+                    <th className="px-4 py-3 font-medium">Subject</th>
+                    <th className="px-4 py-3 text-right font-medium">Time</th>
+                    <th className="px-2 py-3">
+                      <span className="sr-only">Open event</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.06]">
+                  {loading
+                    ? EVENT_SKELETON_ROWS.map((rowId) => (
+                        <tr key={rowId} className="animate-pulse motion-reduce:animate-none">
+                          <td className="px-4 py-2.5">
+                            <div className="flex min-w-0 flex-col items-start gap-1">
+                              <div className="h-5 w-16 rounded-full bg-white/10" />
+                              <div className="h-3 w-14 rounded bg-white/10" />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <div className="size-6 rounded-full bg-white/10" />
+                              <div className="h-4 w-40 rounded bg-white/10" />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="space-y-1.5">
+                              <div className="h-4 w-56 rounded bg-white/10" />
+                              <div className="flex gap-1">
+                                <div className="h-5 w-28 rounded-full bg-white/10" />
+                                <div className="h-5 w-24 rounded-full bg-white/10" />
+                                <div className="h-5 w-16 rounded-full bg-white/10" />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="ml-auto h-4 w-20 rounded bg-white/10" />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <div className="h-4 w-4 rounded bg-white/10" />
+                          </td>
+                        </tr>
+                      ))
+                    : null}
+                  {events.map((event: EventRow) => {
+                    const recipientEmail = event.recipient_email || 'Unknown recipient';
+                    const messageSubject = event.message_subject || '[no subject]';
+                    const bounceType = event.bounce_type;
+                    const messageLinkProps = {
+                      to: '/s/$sourceId/messages/$sesMessageId',
+                      params: {
+                        sourceId: sourceId.toString(),
+                        sesMessageId: event.ses_message_id,
+                      },
+                      search: detailSearch,
+                    } as const;
+                    const linkClassName =
+                      'block focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-400';
+
+                    return (
+                      <tr
+                        key={event.id}
+                        className="group transition-colors focus-within:bg-white/[0.06] hover:bg-white/[0.04]"
+                      >
+                        <td className="align-middle">
+                          <Link
+                            {...messageLinkProps}
+                            aria-label={`Open ${event.event_type} event for ${recipientEmail}`}
+                            className={`${linkClassName} px-4 py-2.5`}
+                          >
+                            <div className="flex min-w-0 flex-col items-start gap-1">
+                              <EventBadge eventType={event.event_type} />
+                              {bounceType ? (
+                                <span className="max-w-full truncate text-xs text-white/35">
+                                  {bounceType}
                                 </span>
                               ) : null}
                             </div>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="text-right align-middle">
-                        <Link
-                          {...messageLinkProps}
-                          className={`${linkClassName} flex min-h-14 items-center justify-end px-4 py-2.5`}
-                        >
-                          <time
-                            className="block font-mono text-xs whitespace-nowrap text-white/55 tabular-nums"
-                            dateTime={new Date(event.event_at).toISOString()}
-                            title={formatDateTime(event.event_at)}
+                          </Link>
+                        </td>
+                        <td className="align-middle">
+                          <Link {...messageLinkProps} className={`${linkClassName} px-4 py-2.5`}>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <RecipientAvatar email={recipientEmail} />
+                              <span className="min-w-0 truncate text-white/80">
+                                {recipientEmail}
+                              </span>
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="align-middle">
+                          <div className="min-w-0 px-4 py-2.5">
+                            <Link {...messageLinkProps} className={linkClassName}>
+                              <span className="block truncate text-white/75" title={messageSubject}>
+                                {messageSubject}
+                              </span>
+                            </Link>
+                            {event.tags.length > 0 ? (
+                              <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+                                {event.tags.slice(0, 3).map((tag) => (
+                                  <button
+                                    key={tag.label}
+                                    type="button"
+                                    className={cn(
+                                      focusClassName,
+                                      'max-w-[12rem] truncate rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/40 transition-colors hover:bg-white/10 hover:text-white/75',
+                                    )}
+                                    title={`Filter by ${tag.label}`}
+                                    onClick={() => toggleTag(tag.label)}
+                                  >
+                                    {tag.label}
+                                  </button>
+                                ))}
+                                {event.tags.length > 3 ? (
+                                  <span
+                                    className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/40"
+                                    title={event.tags
+                                      .slice(3)
+                                      .map((tag) => tag.label)
+                                      .join(', ')}
+                                  >
+                                    +{event.tags.length - 3}
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="text-right align-middle">
+                          <Link
+                            {...messageLinkProps}
+                            className={`${linkClassName} flex min-h-14 items-center justify-end px-4 py-2.5`}
                           >
-                            {formatCompactEventTime(event.event_at)}
-                          </time>
-                        </Link>
-                      </td>
-                      <td className="align-middle text-white/25">
-                        <Link {...messageLinkProps} className={`${linkClassName} px-2 py-2.5`}>
-                          <ChevronRight
-                            className="size-4 transition-colors group-hover:text-white/55"
-                            aria-hidden="true"
-                          />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            <time
+                              className="block text-xs whitespace-nowrap text-white/55 tabular-nums"
+                              dateTime={new Date(event.event_at).toISOString()}
+                              title={formatDateTime(event.event_at)}
+                            >
+                              {formatCompactEventTime(event.event_at)}
+                            </time>
+                          </Link>
+                        </td>
+                        <td className="align-middle text-white/25">
+                          <Link
+                            {...messageLinkProps}
+                            aria-label={`View message ${messageSubject}`}
+                            className={`${linkClassName} px-2 py-2.5`}
+                          >
+                            <ChevronRight
+                              className="size-4 transition-colors group-hover:text-white/55"
+                              aria-hidden="true"
+                            />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {events.length === 0 && !loading ? (
+              <p className="px-4 py-12 text-center text-sm text-white/40">
+                No events match these filters.
+              </p>
+            ) : null}
           </div>
 
           {/* Pagination */}
           {pagination && pagination.total_pages > 1 ? (
-            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-6">
-              <div className="text-sm text-white/60">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-white/45 tabular-nums">
                 Page {pagination.page} of {pagination.total_pages}
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   type="button"
-                  className="rounded border border-white/10 px-3 py-1 text-sm text-white hover:bg-white/5 disabled:opacity-50"
+                  className={cn(controlClassName, secondaryControlClassName)}
                   disabled={page <= 1}
                   onClick={() => updatePage(page - 1)}
                 >
@@ -609,7 +694,7 @@ export default function EventsPage() {
                 <Button
                   variant="ghost"
                   type="button"
-                  className="rounded border border-white/10 px-3 py-1 text-sm text-white hover:bg-white/5 disabled:opacity-50"
+                  className={cn(controlClassName, secondaryControlClassName)}
                   disabled={page >= pagination.total_pages}
                   onClick={() => updatePage(page + 1)}
                 >
@@ -620,6 +705,6 @@ export default function EventsPage() {
           ) : null}
         </section>
       </div>
-    </div>
+    </PageLayout>
   );
 }

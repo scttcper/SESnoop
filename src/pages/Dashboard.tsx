@@ -16,6 +16,13 @@ import {
 import { lazy, Suspense, type ReactNode } from 'react';
 
 import { formatDay, startOfDayUtc, type EventType } from '../../shared/event-filters';
+import {
+  controlClassName as toolbarControlClass,
+  focusClassName as focusClass,
+  panelClassName as panelClass,
+  secondaryControlClassName as toolbarSecondaryClass,
+  PageLayout,
+} from '../components/layout/PageLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
 import {
@@ -48,13 +55,6 @@ const categoryLabel = (value: string | null) => {
   const label = value.replaceAll(/[_-]+/g, ' ');
   return label.charAt(0).toUpperCase() + label.slice(1);
 };
-const panelClass = 'min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.02]';
-const focusClass =
-  'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-400';
-const toolbarControlClass =
-  'inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-0 text-xs leading-4 font-medium whitespace-nowrap transition-colors focus-visible:border-blue-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-40 [&_svg]:size-3.5 [&_svg]:shrink-0';
-const toolbarSecondaryClass =
-  'border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white';
 const categoryColors = [
   'bg-blue-400',
   'bg-violet-400',
@@ -552,7 +552,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
+    <PageLayout>
       <header className="mb-7 flex flex-wrap items-center justify-between gap-5">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Overview</h1>
@@ -721,6 +721,6 @@ export default function DashboardPage() {
           </p>
         </div>
       ) : null}
-    </div>
+    </PageLayout>
   );
 }

@@ -4,7 +4,7 @@ import { LineChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { formatDay, startOfDayUtc } from '../../shared/event-filters';
 import type { OverviewResponse } from '../lib/queries';
@@ -42,8 +42,8 @@ export default function EngagementSection({
   uniqueRecipients: number;
 }) {
   const headingId = useId();
-  const firstProvisionalDay = formatDay(
-    new Date(startOfDayUtc(new Date()).getTime() - (PROVISIONAL_DAYS - 1) * 86_400_000),
+  const [firstProvisionalDay] = useState(() =>
+    formatDay(new Date(startOfDayUtc(new Date()).getTime() - (PROVISIONAL_DAYS - 1) * 86_400_000)),
   );
   const chartData = chart.days.map((day, index) => ({
     day,

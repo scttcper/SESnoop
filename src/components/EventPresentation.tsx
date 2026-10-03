@@ -132,24 +132,28 @@ const createGravatarHash = async (email: string) => {
 const gravatarUrl = (hash: string) => `https://gravatar.com/avatar/${hash}?s=48&d=404`;
 
 export function RecipientAvatar({ email }: { email: string }) {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [imageFailed, setImageFailed] = useState(false);
+  // State is keyed by email so a changed email falls back to the initial without resetting in the effect.
+  const [avatar, setAvatar] = useState<{ email: string; url: string | null; failed: boolean }>({
+    email,
+    url: null,
+    failed: false,
+  });
+  const avatarUrl = avatar.email === email ? avatar.url : null;
+  const imageFailed = avatar.email === email && avatar.failed;
+  const setImageFailed = () => setAvatar({ email, url: null, failed: true });
 
   useEffect(() => {
     let isCurrent = true;
 
-    setAvatarUrl(null);
-    setImageFailed(false);
-
     createGravatarHash(email)
       .then((hash) => {
         if (isCurrent && hash) {
-          setAvatarUrl(gravatarUrl(hash));
+          setAvatar({ email, url: gravatarUrl(hash), failed: false });
         }
       })
       .catch(() => {
         if (isCurrent) {
-          setImageFailed(true);
+          setAvatar({ email, url: null, failed: true });
         }
       });
 
@@ -177,7 +181,7 @@ export function RecipientAvatar({ email }: { email: string }) {
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={() => setImageFailed(true)}
+          onError={setImageFailed}
         />
       ) : null}
     </span>

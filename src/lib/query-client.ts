@@ -5,7 +5,8 @@ import { AuthError, redirectToLogin } from './auth';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0,
+      // Long enough that data prefetched on link hover is reused when the page mounts.
+      staleTime: 30_000,
       gcTime: 5 * 60_000,
       retry: (failureCount, error: unknown) => {
         if (error instanceof AuthError) {

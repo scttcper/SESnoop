@@ -1,6 +1,11 @@
-import { queryOptions, skipToken } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query';
 
-import { buildEventsQueryString, type EventsQueryParams } from '../../shared/event-filters';
+import {
+  buildEventsQueryString,
+  formatDay,
+  startOfDayUtc,
+  type EventsQueryParams,
+} from '../../shared/event-filters';
 import type { Source } from '../../worker/db/schema';
 import type {
   EventCounts,
@@ -75,7 +80,20 @@ export const overviewQueryOptions = (
           return (await response.json()) as OverviewResponse;
         }
       : skipToken,
+    // Keep the current numbers on screen while another period loads.
+    placeholderData: keepPreviousData,
   });
+
+const MS_PER_DAY = 86_400_000;
+
+/** The last `period` UTC days, including today. */
+export const overviewPeriodQueryOptions = (sourceId: number | null | undefined, period: number) => {
+  const today = startOfDayUtc(new Date());
+  return overviewQueryOptions(sourceId, {
+    from: formatDay(new Date(today.getTime() - (period - 1) * MS_PER_DAY)),
+    to: formatDay(today),
+  });
+};
 
 export const eventsQueryOptions = (
   sourceId: number | null | undefined,
@@ -91,6 +109,8 @@ export const eventsQueryOptions = (
           return (await response.json()) as EventResponse;
         }
       : skipToken,
+    // Keep the current page visible while filters or pagination change.
+    placeholderData: keepPreviousData,
   });
 
 export const messageQueryOptions = (

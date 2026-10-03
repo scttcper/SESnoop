@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -30,10 +30,11 @@ import { cn, COLORS } from '../lib/utils';
 
 type SourceForm = { name: string; color: string; retention_days: string };
 
+const routeApi = getRouteApi('/app/s/$sourceId/settings');
+
 export default function SourceSettingsPage() {
   const navigate = useNavigate();
-  const { sourceId: sourceIdStr } = useParams({ strict: false });
-  const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
+  const { sourceId } = routeApi.useParams();
   const queryClient = useQueryClient();
 
   const {
@@ -53,6 +54,7 @@ export default function SourceSettingsPage() {
           color: source?.color ?? 'blue',
           retention_days: source?.retention_days?.toString() ?? '',
         };
+  const isDirty = draft?.sourceId === sourceId;
   const [error, setError] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const tokenCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,7 +77,7 @@ export default function SourceSettingsPage() {
   const updateMutation = useMutation({
     mutationFn: updateSourceFn,
     onSuccess: async (_result, variables) => {
-      await queryClient.invalidateQueries({ queryKey: ['sources'] });
+      await queryClient.invalidateQueries({ queryKey: sourcesQueryOptions.queryKey });
       setDraft((current) => (current?.sourceId === variables.id ? null : current));
       setError(null);
       toast.success('Settings saved.');
@@ -89,10 +91,11 @@ export default function SourceSettingsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteSourceFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sources'] });
+    onSuccess: async (_result, deletedId) => {
+      queryClient.removeQueries({ queryKey: ['sources', deletedId] });
+      await queryClient.invalidateQueries({ queryKey: sourcesQueryOptions.queryKey });
       toast.success('Source deleted.');
-      navigate({ to: '/sources' });
+      await navigate({ to: '/sources' });
     },
     onError: (err) => {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -233,7 +236,7 @@ export default function SourceSettingsPage() {
         actions={
           <Link
             to="/s/$sourceId/setup"
-            params={{ sourceId: source.id.toString() }}
+            params={{ sourceId }}
             className={cn(controlClassName, secondaryControlClassName)}
           >
             Webhook setup
@@ -322,7 +325,7 @@ export default function SourceSettingsPage() {
             <Button
               type="submit"
               className={cn(controlClassName, primaryControlClassName)}
-              disabled={!form.name.trim() || updateMutation.isPending}
+              disabled={!isDirty || !form.name.trim() || updateMutation.isPending}
             >
               {updateMutation.isPending ? 'Saving…' : 'Save changes'}
             </Button>

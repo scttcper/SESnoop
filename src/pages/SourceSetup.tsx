@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from '@tanstack/react-router';
-import { Check, Copy } from 'lucide-react';
+import { getRouteApi, Link } from '@tanstack/react-router';
+import { ArrowRight, Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -14,8 +14,95 @@ import {
   secondaryControlClassName,
   sectionHeadingClassName,
 } from '../components/layout/PageLayout';
-import { sourceSetupQueryOptions } from '../lib/queries';
+import { overviewPeriodQueryOptions, sourceSetupQueryOptions } from '../lib/queries';
 import { cn } from '../lib/utils';
+
+const routeApi = getRouteApi('/app/s/$sourceId/setup');
+
+const RECENT_EVENT_MS = 7 * 86_400_000;
+
+const formatLastEvent = (timestamp: number) =>
+  new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: new Date(timestamp).getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(timestamp);
+
+function ConnectionStatus({ sourceId }: { sourceId: number }) {
+  // Shares the dashboard's default query, so it is usually already cached.
+  const {
+    data: overview,
+    dataUpdatedAt,
+    isPending,
+  } = useQuery(overviewPeriodQueryOptions(sourceId, 30));
+  const lastEventAt = overview?.activity.last_event_at ?? null;
+  // Measured from when the data was fetched, which keeps rendering pure.
+  const connected = lastEventAt !== null && dataUpdatedAt - lastEventAt < RECENT_EVENT_MS;
+
+  return (
+    <section
+      aria-label="Connection status"
+      className={cn(panelClassName, 'mb-5 flex flex-wrap items-center justify-between gap-3 p-4')}
+    >
+      <div className="flex items-center gap-3">
+        <span className="relative flex size-2.5" aria-hidden="true">
+          {connected ? (
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-teal-400/50 motion-reduce:animate-none" />
+          ) : null}
+          <span
+            className={cn(
+              'relative inline-flex size-2.5 rounded-full',
+              isPending ? 'bg-white/20' : connected ? 'bg-teal-400' : 'bg-amber-400',
+            )}
+          />
+        </span>
+        <p className="text-sm text-white/80">
+          {isPending ? (
+            'Checking for events…'
+          ) : connected ? (
+            <>
+              Receiving events
+              <span className="ml-2 text-white/45">
+                Last event{' '}
+                <time dateTime={new Date(lastEventAt).toISOString()}>
+                  {formatLastEvent(lastEventAt)}
+                </time>
+              </span>
+            </>
+          ) : lastEventAt !== null ? (
+            <>
+              No events in the last 7 days
+              <span className="ml-2 text-white/45">
+                Last event{' '}
+                <time dateTime={new Date(lastEventAt).toISOString()}>
+                  {formatLastEvent(lastEventAt)}
+                </time>
+              </span>
+            </>
+          ) : (
+            <>
+              Waiting for the first event
+              <span className="ml-2 text-white/45">
+                Send an email through the configuration set to test.
+              </span>
+            </>
+          )}
+        </p>
+      </div>
+      {lastEventAt !== null ? (
+        <Link
+          to="/s/$sourceId/events"
+          params={{ sourceId }}
+          className={cn(controlClassName, secondaryControlClassName)}
+        >
+          View events <ArrowRight aria-hidden="true" />
+        </Link>
+      ) : null}
+    </section>
+  );
+}
 
 function ConfigurationValue({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -69,8 +156,7 @@ function ConfigurationValue({ label, value }: { label: string; value: string }) 
 }
 
 export default function SourceSetupPage() {
-  const { sourceId: sourceIdStr } = useParams({ strict: false });
-  const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
+  const { sourceId } = routeApi.useParams();
   const {
     data: setupInfo,
     isLoading: loadingSetup,
@@ -84,6 +170,8 @@ export default function SourceSetupPage() {
           Connect Amazon SES to {setupInfo?.source.name ?? 'this source'} through SNS.
         </p>
       </PageHeader>
+
+      <ConnectionStatus sourceId={sourceId} />
 
       {loadingSetup ? (
         <div className={cn(panelClassName, 'p-6 text-sm text-white/45')} role="status">

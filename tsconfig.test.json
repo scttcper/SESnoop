@@ -5,6 +5,13 @@
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.cache/tsconfig.test.tsbuildinfo"
   },
-  "include": ["tests/**/*.ts", "tests/**/*.d.ts", "worker", "shared", "worker-configuration.d.ts"],
+  "include": [
+    "tests/**/*.ts",
+    "tests/**/*.d.ts",
+    "worker",
+    "shared",
+    "src/lib/search-params.ts",
+    "worker-configuration.d.ts"
+  ],
   "exclude": ["dist"]
 }

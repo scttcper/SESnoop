@@ -77,9 +77,8 @@ function MessageLoadingState() {
 }
 
 export default function MessageDetailPage() {
-  const { sourceId: sourceIdStr, sesMessageId } = routeApi.useParams();
-  const searchParams = routeApi.useSearch();
-  const sourceId = Number(sourceIdStr);
+  const { sourceId, sesMessageId } = routeApi.useParams();
+  const backToEventsSearch = routeApi.useSearch();
   const [copiedField, setCopiedField] = useState<CopyField | null>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
@@ -102,19 +101,11 @@ export default function MessageDetailPage() {
   const messageSubject = message?.subject?.trim() || null;
   const shortMessageId = formatShortMessageId(sesMessageId);
   const sentAtIso = message?.sent_at != null ? new Date(message.sent_at).toISOString() : undefined;
-  const backToEventsSearch = {
-    search: searchParams.search,
-    event_types: searchParams.event_types,
-    bounce_types: searchParams.bounce_types,
-    tags: searchParams.tags,
-    date_range: searchParams.date_range,
-    from: searchParams.from,
-    to: searchParams.to,
-    page: searchParams.page,
-  };
   const buildTagSearch = (tag: string) => ({
     ...backToEventsSearch,
-    tags: searchParams.tags.includes(tag) ? searchParams.tags : [...searchParams.tags, tag],
+    tags: backToEventsSearch.tags.includes(tag)
+      ? backToEventsSearch.tags
+      : [...backToEventsSearch.tags, tag],
     page: 1,
   });
 
@@ -174,7 +165,7 @@ export default function MessageDetailPage() {
             ) : null}
             <Link
               to="/s/$sourceId/events"
-              params={{ sourceId: sourceIdStr }}
+              params={{ sourceId }}
               search={backToEventsSearch}
               className={cn(controlClassName, secondaryControlClassName)}
             >
@@ -183,7 +174,16 @@ export default function MessageDetailPage() {
           </>
         }
       >
-        <p className="mt-1.5 text-sm text-white/45">Message {shortMessageId}</p>
+        <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-white/45">
+          Message {shortMessageId}
+          {recipientRows.length === 1 && recipientRows[0] ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="sr-only">Latest event:</span>
+              <EventBadge eventType={recipientRows[0].event_type} />
+            </>
+          ) : null}
+        </p>
       </PageHeader>
 
       {error ? (
@@ -267,7 +267,7 @@ export default function MessageDetailPage() {
                       <Link
                         key={tag.label}
                         to="/s/$sourceId/events"
-                        params={{ sourceId: sourceIdStr }}
+                        params={{ sourceId }}
                         search={buildTagSearch(tag.label)}
                         className={cn(
                           focusClassName,
@@ -286,92 +286,95 @@ export default function MessageDetailPage() {
             </dl>
           </section>
 
-          <section
-            aria-labelledby="message-recipients-heading"
-            className={cn(panelClassName, 'overflow-hidden')}
-          >
-            <div className="flex items-start justify-between gap-4 p-5">
-              <div>
-                <h2 id="message-recipients-heading" className={sectionHeadingClassName}>
-                  Recipients
-                </h2>
-                <p className="mt-1 text-xs leading-5 text-white/40">
-                  Latest event for each tracked recipient.
-                </p>
+          {/* With one recipient the timeline below already tells the whole story. */}
+          {recipientRows.length > 1 ? (
+            <section
+              aria-labelledby="message-recipients-heading"
+              className={cn(panelClassName, 'overflow-hidden')}
+            >
+              <div className="flex items-start justify-between gap-4 p-5">
+                <div>
+                  <h2 id="message-recipients-heading" className={sectionHeadingClassName}>
+                    Recipients
+                  </h2>
+                  <p className="mt-1 text-xs leading-5 text-white/40">
+                    Latest event for each tracked recipient.
+                  </p>
+                </div>
+                <span className={countBadgeClassName}>{recipientRows.length}</span>
               </div>
-              <span className={countBadgeClassName}>{recipientRows.length}</span>
-            </div>
-            {recipientRows.length > 0 ? (
-              <div className="relative overflow-x-auto">
-                <table className="w-full min-w-[720px] table-fixed text-left text-sm">
-                  <caption className="sr-only">Latest event for each tracked recipient</caption>
-                  <colgroup>
-                    <col className="w-[30%]" />
-                    <col className="w-36" />
-                    <col className="w-40" />
-                    <col />
-                  </colgroup>
-                  <thead
-                    className={cn(
-                      tableHeaderClassName,
-                      'border-y border-white/[0.06] bg-white/[0.015]',
-                    )}
-                  >
-                    <tr>
-                      <th scope="col" className="px-5 py-3 font-medium">
-                        Recipient
-                      </th>
-                      <th scope="col" className="px-3 py-3 font-medium">
-                        Latest event
-                      </th>
-                      <th scope="col" className="px-3 py-3 font-medium">
-                        Event time
-                      </th>
-                      <th scope="col" className="px-5 py-3 font-medium">
-                        Detail
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.06]">
-                    {recipientRows.map((event) => (
-                      <tr
-                        key={event.recipient_email}
-                        className="transition-colors hover:bg-white/[0.025]"
-                      >
-                        <th scope="row" className="px-5 py-4 text-left font-medium text-white/75">
-                          <div className="flex items-center gap-2">
-                            <RecipientAvatar email={event.recipient_email} />
-                            <span className="min-w-0 [overflow-wrap:anywhere]">
-                              {event.recipient_email}
-                            </span>
-                          </div>
+              {recipientRows.length > 0 ? (
+                <div className="relative overflow-x-auto">
+                  <table className="w-full min-w-[720px] table-fixed text-left text-sm">
+                    <caption className="sr-only">Latest event for each tracked recipient</caption>
+                    <colgroup>
+                      <col className="w-[30%]" />
+                      <col className="w-36" />
+                      <col className="w-40" />
+                      <col />
+                    </colgroup>
+                    <thead
+                      className={cn(
+                        tableHeaderClassName,
+                        'border-y border-white/[0.06] bg-white/[0.015]',
+                      )}
+                    >
+                      <tr>
+                        <th scope="col" className="px-5 py-3 font-medium">
+                          Recipient
                         </th>
-                        <td className="px-3 py-4">
-                          <EventBadge eventType={event.event_type} />
-                        </td>
-                        <td className="px-3 py-4">
-                          <time
-                            className="text-xs whitespace-nowrap text-white/45 tabular-nums"
-                            dateTime={new Date(event.event_at).toISOString()}
-                            title={formatDateTime(event.event_at)}
-                          >
-                            {formatCompactEventTime(event.event_at)}
-                          </time>
-                        </td>
-                        <td className="px-5 py-4 text-xs leading-5 [overflow-wrap:anywhere] text-white/55">
-                          {event.event_detail ?? '—'}
-                        </td>
+                        <th scope="col" className="px-3 py-3 font-medium">
+                          Latest event
+                        </th>
+                        <th scope="col" className="px-3 py-3 font-medium">
+                          Event time
+                        </th>
+                        <th scope="col" className="px-5 py-3 font-medium">
+                          Detail
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="px-5 pt-1 pb-6 text-sm text-white/40">
-                No recipient events recorded yet.
-              </p>
-            )}
-          </section>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.06]">
+                      {recipientRows.map((event) => (
+                        <tr
+                          key={event.recipient_email}
+                          className="transition-colors hover:bg-white/[0.025]"
+                        >
+                          <th scope="row" className="px-5 py-4 text-left font-medium text-white/75">
+                            <div className="flex items-center gap-2">
+                              <RecipientAvatar email={event.recipient_email} />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">
+                                {event.recipient_email}
+                              </span>
+                            </div>
+                          </th>
+                          <td className="px-3 py-4">
+                            <EventBadge eventType={event.event_type} />
+                          </td>
+                          <td className="px-3 py-4">
+                            <time
+                              className="text-xs whitespace-nowrap text-white/45 tabular-nums"
+                              dateTime={new Date(event.event_at).toISOString()}
+                              title={formatDateTime(event.event_at)}
+                            >
+                              {formatCompactEventTime(event.event_at)}
+                            </time>
+                          </td>
+                          <td className="px-5 py-4 text-xs leading-5 [overflow-wrap:anywhere] text-white/55">
+                            {event.event_detail ?? '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="px-5 pt-1 pb-6 text-sm text-white/40">
+                  No recipient events recorded yet.
+                </p>
+              )}
+            </section>
+          ) : null}
 
           <section aria-labelledby="message-timeline-heading" className={cn(panelClassName, 'p-5')}>
             <div className="flex items-start justify-between gap-4">

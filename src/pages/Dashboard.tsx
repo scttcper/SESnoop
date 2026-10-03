@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { getRouteApi, Link } from '@tanstack/react-router';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -9,13 +9,12 @@ import {
   ChevronRight,
   Info,
   Mail,
-  Plus,
   RefreshCw,
   Tag,
 } from 'lucide-react';
 import { lazy, Suspense, type ReactNode } from 'react';
 
-import { formatDay, startOfDayUtc, type EventType } from '../../shared/event-filters';
+import type { EventType } from '../../shared/event-filters';
 import {
   controlClassName as toolbarControlClass,
   focusClassName as focusClass,
@@ -25,17 +24,14 @@ import {
 } from '../components/layout/PageLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
-import {
-  overviewQueryOptions,
-  sourcesQueryOptions,
-  type OverviewResponse,
-  type Source,
-} from '../lib/queries';
-import { useActiveSourceId } from '../lib/use-active-source';
-import { cn, COLOR_STYLES } from '../lib/utils';
+import { DASHBOARD_PERIODS } from '../lib/constants';
+import { overviewPeriodQueryOptions, type OverviewResponse } from '../lib/queries';
+import { cn } from '../lib/utils';
+
+const routeApi = getRouteApi('/app/s/$sourceId/dashboard');
 
 const DailyVolumeSection = lazy(() => import('./DailyVolumeSection'));
-const RecipientReachSection = lazy(() => import('./RecipientReachSection'));
+const EngagementSection = lazy(() => import('./EngagementSection'));
 
 const integer = (value: number) => value.toLocaleString();
 const percent = (value: number) =>
@@ -85,16 +81,13 @@ function EventsLink({
   return (
     <Link
       to="/s/$sourceId/events"
-      params={{ sourceId: String(sourceId) }}
+      params={{ sourceId }}
       search={{
-        search: '',
         event_types: eventTypes,
-        bounce_types: [],
         tags,
         date_range: 'custom',
         from: range.from,
         to: range.to,
-        page: 1,
       }}
       className={cn(focusClass, className)}
       aria-label={label}
@@ -131,53 +124,6 @@ function LoadingState() {
         ))}
       </div>
       <div className="h-80 animate-pulse rounded-xl bg-white/5 motion-reduce:animate-none" />
-    </div>
-  );
-}
-
-function EmptySourceState({ sources }: { sources: Source[] }) {
-  return (
-    <div className="mx-auto max-w-3xl px-5 py-16 sm:py-24">
-      <div className="mb-8 flex size-12 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-400/10 text-blue-300">
-        <Mail className="size-6" aria-hidden="true" />
-      </div>
-      <h1 className="text-3xl font-semibold tracking-tight text-white">Select a source</h1>
-      <p className="mt-3 text-sm leading-6 text-white/50">
-        {sources.length > 0
-          ? 'View delivery and engagement metrics for a source.'
-          : 'Connect an Amazon SES source to collect email events.'}
-      </p>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
-        {sources.map((source) => (
-          <Link
-            key={source.id}
-            to="/s/$sourceId/dashboard"
-            params={{ sourceId: String(source.id) }}
-            search={{ period: '30' }}
-            className={cn(
-              panelClass,
-              focusClass,
-              'group flex items-center gap-3 p-5 transition-colors hover:bg-white/5',
-            )}
-          >
-            <span className={cn('size-2.5 shrink-0 rounded-full', COLOR_STYLES[source.color])} />
-            <span className="min-w-0 flex-1 truncate font-medium text-white/85">{source.name}</span>
-            <ArrowRight
-              className="size-4 text-white/30 transition-transform group-hover:translate-x-1"
-              aria-hidden="true"
-            />
-          </Link>
-        ))}
-        <Link
-          to="/sources"
-          className={cn(
-            focusClass,
-            'flex items-center gap-3 rounded-xl border border-dashed border-white/15 p-5 text-sm text-white/55 transition-colors hover:bg-white/5 hover:text-white',
-          )}
-        >
-          <Plus className="size-4" aria-hidden="true" /> Connect a source
-        </Link>
-      </div>
     </div>
   );
 }
@@ -278,12 +224,46 @@ function SummarySection({ overview, sourceId }: { overview: OverviewResponse; so
   );
 }
 
+function BounceRateTrend({ chart }: { chart: OverviewResponse['chart'] }) {
+  const rates = chart.bounce_rate;
+  const peak = Math.max(0, ...rates.map((value) => value ?? 0));
+  const bounceDays = rates.filter((value) => value !== null && value > 0).length;
+  const peakIndex = rates.indexOf(peak);
+  const summary =
+    peak > 0
+      ? `Bounces on ${bounceDays} of ${rates.length} days. Highest ${percent(peak)} on ${dateLabel(chart.days[peakIndex] ?? '')}.`
+      : `No bounces on any of the ${rates.length} days.`;
+  return (
+    <figure className="mt-auto pt-2">
+      <figcaption className="mb-2 flex items-center justify-between text-[11px] text-white/35">
+        <span>Daily bounce rate</span>
+        <span className="tabular-nums">{peak > 0 ? `Peak ${percent(peak)}` : 'No bounces'}</span>
+      </figcaption>
+      <div role="img" aria-label={summary} className="flex h-10 items-end gap-px">
+        {rates.map((value, index) => (
+          <span
+            key={chart.days[index]}
+            title={`${dateLabel(chart.days[index] ?? '')}: ${value === null ? 'no sends' : percent(value)}`}
+            className={cn(
+              'min-w-px flex-1 rounded-t-[1px]',
+              value === null ? 'bg-transparent' : value > 0 ? 'bg-rose-300/70' : 'bg-white/[0.07]',
+            )}
+            style={{
+              height: value && peak ? `${Math.max(8, (value / peak) * 100)}%` : '2px',
+            }}
+          />
+        ))}
+      </div>
+    </figure>
+  );
+}
+
 function DeliveryHealth({ overview, sourceId }: { overview: OverviewResponse; sourceId: number }) {
   const { metrics, range } = overview;
   return (
     <section className={cn(panelClass, 'flex flex-col p-5')}>
       <h2 className="text-sm font-semibold text-white/90">Delivery health</h2>
-      <div className="my-5 space-y-5">
+      <div className="mt-5 mb-6 space-y-5">
         {[
           {
             label: 'Bounce rate',
@@ -330,7 +310,8 @@ function DeliveryHealth({ overview, sourceId }: { overview: OverviewResponse; so
           </div>
         ))}
       </div>
-      <div className="mt-auto border-t border-white/[0.08] pt-4 text-xs text-white/45">
+      <BounceRateTrend chart={overview.chart} />
+      <div className="mt-5 border-t border-white/[0.08] pt-4 text-xs text-white/45">
         <p className="mb-2 font-medium text-white/60">Bounce types</p>
         {overview.bounce_breakdown.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -524,32 +505,17 @@ function BounceInsights({ overview, sourceId }: { overview: OverviewResponse; so
 }
 
 export default function DashboardPage() {
-  const sourceId = useActiveSourceId();
-  const navigate = useNavigate();
-  const search = useSearch({ strict: false });
-  const period = search.period ?? '30';
-  const today = startOfDayUtc(new Date());
-  const range = {
-    from: formatDay(new Date(today.getTime() - (Number(period) - 1) * 86_400_000)),
-    to: formatDay(today),
-  };
-  const {
-    data: sources = [],
-    isLoading: loadingSources,
-    error: sourcesError,
-    refetch: refetchSources,
-  } = useQuery(sourcesQueryOptions);
+  const { sourceId } = routeApi.useParams();
+  const { period } = routeApi.useSearch();
+  const navigate = routeApi.useNavigate();
   const {
     data: overview,
     error,
     isPending,
     isFetching,
+    isPlaceholderData,
     refetch,
-  } = useQuery(overviewQueryOptions(sourceId, range));
-
-  if (!loadingSources && !sourcesError && !sourceId) {
-    return <EmptySourceState sources={sources} />;
-  }
+  } = useQuery(overviewPeriodQueryOptions(sourceId, period));
 
   return (
     <PageLayout>
@@ -559,14 +525,11 @@ export default function DashboardPage() {
         </div>
         <div className="flex max-w-full flex-wrap items-center gap-2">
           <Select
-            value={period}
+            value={String(period)}
             onValueChange={(value) => {
-              if (value && sourceId) {
-                void navigate({
-                  to: '/s/$sourceId/dashboard',
-                  params: { sourceId: String(sourceId) },
-                  search: { period: value as '7' | '30' | '90' },
-                });
+              const nextPeriod = DASHBOARD_PERIODS.find((item) => String(item) === value);
+              if (nextPeriod) {
+                void navigate({ search: { period: nextPeriod } });
               }
             }}
           >
@@ -578,19 +541,18 @@ export default function DashboardPage() {
               <span>Last {period} days</span>
             </SelectTrigger>
             <SelectContent align="end" alignItemWithTrigger={false}>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
+              {DASHBOARD_PERIODS.map((item) => (
+                <SelectItem key={item} value={String(item)}>
+                  Last {item} days
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <button
             type="button"
             aria-label="Refresh overview"
-            disabled={isFetching || loadingSources}
-            onClick={() => {
-              void refetchSources();
-              void refetch();
-            }}
+            disabled={isFetching}
+            onClick={() => void refetch()}
             className={cn(toolbarControlClass, toolbarSecondaryClass, 'w-9 px-0')}
           >
             <RefreshCw
@@ -598,10 +560,10 @@ export default function DashboardPage() {
               aria-hidden="true"
             />
           </button>
-          {sourceId ? (
+          {overview ? (
             <EventsLink
               sourceId={sourceId}
-              range={range}
+              range={overview.range}
               className={cn(
                 toolbarControlClass,
                 'border-blue-400/20 bg-blue-400/10 text-blue-200 hover:bg-blue-400/20',
@@ -613,18 +575,15 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {sourcesError || error ? (
+      {error ? (
         <div
           role="alert"
           className="mb-6 rounded-xl border border-red-400/20 bg-red-400/5 p-5 text-sm text-red-300"
         >
-          {sourcesError?.message ?? error?.message}.{' '}
+          {error.message}.{' '}
           <button
             type="button"
-            onClick={() => {
-              void refetchSources();
-              void refetch();
-            }}
+            onClick={() => void refetch()}
             className={cn(focusClass, 'underline underline-offset-4')}
           >
             Try again
@@ -632,10 +591,16 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {loadingSources || (isPending && sourceId) ? <LoadingState /> : null}
+      {isPending ? <LoadingState /> : null}
 
-      {overview && sourceId ? (
-        <div className="space-y-5" aria-busy={isFetching}>
+      {overview ? (
+        <div
+          className={cn(
+            'space-y-5 transition-opacity',
+            isPlaceholderData && 'opacity-60 motion-reduce:transition-none',
+          )}
+          aria-busy={isFetching}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/35">
             <span>
               {dateLabel(overview.range.from)} – {dateLabel(overview.range.to)},{' '}
@@ -672,7 +637,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 to="/s/$sourceId/setup"
-                params={{ sourceId: String(sourceId) }}
+                params={{ sourceId }}
                 className={cn(focusClass, 'flex items-center gap-2 text-sm text-blue-300')}
               >
                 View setup <ArrowRight className="size-4" aria-hidden="true" />
@@ -696,18 +661,18 @@ export default function DashboardPage() {
             </div>
             <DeliveryHealth overview={overview} sourceId={sourceId} />
             <CategorySection overview={overview} sourceId={sourceId} />
-            <div className={cn(panelClass, 'p-5')}>
+            <div className={cn(panelClass, 'flex flex-col p-5')}>
               <Suspense
                 fallback={
                   <div
                     role="status"
                     className="flex h-64 items-center justify-center text-sm text-white/40"
                   >
-                    Loading audience…
+                    Loading engagement…
                   </div>
                 }
               >
-                <RecipientReachSection
+                <EngagementSection
                   chart={overview.chart}
                   uniqueRecipients={overview.metrics.unique_emails}
                 />

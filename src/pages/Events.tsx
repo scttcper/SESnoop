@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams, getRouteApi } from '@tanstack/react-router';
+import { Link, getRouteApi } from '@tanstack/react-router';
 import { CalendarDays, ChevronRight, Download, RefreshCw, Search, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { buildEventsQueryString, type EventsQueryParams } from '../../shared/event-filters';
+import { buildEventsQueryString } from '../../shared/event-filters';
 import {
   EventBadge,
   RecipientAvatar,
@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '../components/
 import {
   BOUNCE_TYPES,
   DATE_PRESETS,
+  DEFAULT_DATE_RANGE,
   DEFAULT_EVENT_TYPES,
   EVENT_TYPES,
   type BounceType,
@@ -77,91 +78,75 @@ const buildExportFileName = (sourceName: string | undefined, sourceId: number | 
   return `${trimmed || 'events'}-${dateStamp}.csv`;
 };
 
+const SEARCH_DEBOUNCE_MS = 300;
+
 export default function EventsPage() {
-  const { sourceId: sourceIdStr } = useParams({ strict: false });
-  const sourceId = sourceIdStr ? Number(sourceIdStr) : null;
-
-  const [exporting, setExporting] = useState(false);
-
+  const { sourceId } = routeApi.useParams();
   const searchParams = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
+  const [exporting, setExporting] = useState(false);
 
-  const search = searchParams.search;
-  const eventTypeSearchValues = searchParams.event_types;
-  const selectedEventTypes = eventTypeSearchValues ?? DEFAULT_EVENT_TYPES;
-  const selectedBounceTypes = searchParams.bounce_types;
-  const selectedTags: readonly string[] = searchParams.tags;
-  const datePreset = searchParams.date_range;
-  const from = searchParams.from;
-  const to = searchParams.to;
-  const page = searchParams.page;
+  const {
+    search,
+    event_types: selectedEventTypes,
+    bounce_types: selectedBounceTypes,
+    tags: selectedTags,
+    date_range: datePreset,
+    from,
+    to,
+    page,
+  } = searchParams;
 
-  const updateFilter = (updates: Partial<EventsSearchParams>) => {
+  const updateFilter = (updates: Partial<EventsSearchParams>) =>
     navigate({
       search: (prev) => ({ ...prev, ...updates, page: 1 }),
       replace: true,
     });
-  };
 
-  const updatePage = (newPage: number) => {
+  const updatePage = (newPage: number) =>
     navigate({
       search: (prev) => ({ ...prev, page: newPage }),
-      replace: true,
     });
-  };
+
+  // Typing updates the URL after a pause; null means the input shows the URL value.
+  const [searchDraft, setSearchDraft] = useState<string | null>(null);
+  useEffect(() => {
+    if (searchDraft === null) {
+      return;
+    }
+    const timeout = setTimeout(() => {
+      void navigate({
+        search: (prev) => ({ ...prev, search: searchDraft, page: 1 }),
+        replace: true,
+      }).then(() => setSearchDraft((current) => (current === searchDraft ? null : current)));
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [navigate, searchDraft]);
 
   const { data: sources = [] } = useQuery(sourcesQueryOptions);
   const currentSource = sources.find((s) => s.id === sourceId);
 
-  const filterParams = useMemo<EventsQueryParams>(
-    () => ({
-      search,
-      event_types: selectedEventTypes,
-      bounce_types: selectedBounceTypes,
-      tags: selectedTags,
-      date_range: datePreset,
-      from,
-      to,
-    }),
-    [datePreset, from, search, selectedBounceTypes, selectedEventTypes, selectedTags, to],
-  );
-
-  const queryParams = useMemo<EventsQueryParams>(
-    () => ({
-      ...filterParams,
-      page,
-    }),
-    [filterParams, page],
-  );
-
-  const detailSearch = useMemo(
-    () => ({
-      search,
-      event_types: eventTypeSearchValues,
-      bounce_types: selectedBounceTypes,
-      tags: [...selectedTags],
-      date_range: datePreset,
-      from,
-      to,
-      page,
-    }),
-    [datePreset, eventTypeSearchValues, from, page, search, selectedBounceTypes, selectedTags, to],
-  );
-
   const {
     data: eventsResponse,
-    isLoading: loadingEvents,
+    isPending: loading,
     isFetching: fetchingEvents,
+    isPlaceholderData,
     refetch: refetchEvents,
     error: queryError,
-  } = useQuery(eventsQueryOptions(sourceId, queryParams));
+  } = useQuery(eventsQueryOptions(sourceId, searchParams));
 
   const events = eventsResponse?.data ?? [];
   const counts = eventsResponse?.counts ?? EMPTY_EVENT_COUNTS;
   const pagination = eventsResponse?.pagination ?? null;
   const error = queryError instanceof Error ? queryError.message : null;
 
-  const loading = loadingEvents;
+  const hasActiveFilters =
+    search !== '' ||
+    selectedBounceTypes.length > 0 ||
+    selectedTags.length > 0 ||
+    datePreset !== DEFAULT_DATE_RANGE ||
+    selectedEventTypes.length !== DEFAULT_EVENT_TYPES.length ||
+    selectedEventTypes.some((type) => !DEFAULT_EVENT_TYPES.includes(type));
 
   const toggleEventType = (value: EventType) => {
     const newTypes = selectedEventTypes.includes(value)
@@ -201,7 +186,7 @@ export default function EventsPage() {
     setExporting(true);
     try {
       const firstPageQuery = buildEventsQueryString({
-        ...filterParams,
+        ...searchParams,
         per_page: 200,
         page: 1,
       });
@@ -216,7 +201,7 @@ export default function EventsPage() {
 
       for (let nextPage = 2; nextPage <= totalPages; nextPage += 1) {
         const pageQuery = buildEventsQueryString({
-          ...filterParams,
+          ...searchParams,
           per_page: 200,
           page: nextPage,
         });
@@ -257,15 +242,16 @@ export default function EventsPage() {
     }
   };
 
-  const totalLabel = pagination ? `${pagination.total.toLocaleString()} events` : '—';
-
-  if (!sourceId) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center text-white/60">
-        <p>Please select a source to view events.</p>
-      </div>
-    );
-  }
+  const firstRow = pagination ? (pagination.page - 1) * pagination.per_page + 1 : 0;
+  const lastRow = pagination ? firstRow + events.length - 1 : 0;
+  const pastLastPage = pagination !== null && pagination.total > 0 && events.length === 0;
+  const totalLabel = !pagination
+    ? '—'
+    : pagination.total === 0
+      ? 'No events'
+      : pastLastPage
+        ? `${pagination.total.toLocaleString()} events`
+        : `${firstRow.toLocaleString()}–${lastRow.toLocaleString()} of ${pagination.total.toLocaleString()} events`;
 
   return (
     <PageLayout>
@@ -318,8 +304,9 @@ export default function EventsPage() {
               <Input
                 aria-label="Search recipient or subject"
                 className={cn(inputClassName, 'pl-9')}
-                value={search}
-                onChange={(event) => updateFilter({ search: event.target.value })}
+                type="search"
+                value={searchDraft ?? search}
+                onChange={(event) => setSearchDraft(event.target.value)}
                 placeholder="Search recipient or subject"
               />
             </div>
@@ -351,9 +338,26 @@ export default function EventsPage() {
             <TagFilterDropdown
               selectedTags={selectedTags}
               tagCountEntries={tagCountEntries}
-              onClearTags={() => updateFilter({ tags: [] })}
+              onClearTags={() => void updateFilter({ tags: [] })}
               onToggleTag={toggleTag}
             />
+            {hasActiveFilters ? (
+              <Button
+                variant="ghost"
+                type="button"
+                className={cn(
+                  controlClassName,
+                  'border-transparent text-white/45 hover:text-white',
+                )}
+                onClick={() => {
+                  setSearchDraft(null);
+                  void navigate({ search: {}, replace: true });
+                }}
+              >
+                <X aria-hidden="true" />
+                Clear filters
+              </Button>
+            ) : null}
           </div>
 
           {datePreset === 'custom' ? (
@@ -412,6 +416,7 @@ export default function EventsPage() {
                       isSelected
                         ? 'border-blue-400/20 bg-blue-400/10 text-blue-200 hover:bg-blue-400/20'
                         : secondaryControlClassName,
+                      !isSelected && !counts.event_types[type] && 'text-white/35',
                     )}
                   >
                     {formatEventType(type)}
@@ -445,6 +450,7 @@ export default function EventsPage() {
                         isSelected
                           ? 'border-rose-400/20 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20'
                           : secondaryControlClassName,
+                        !isSelected && !counts.bounce_types[type] && 'text-white/35',
                       )}
                     >
                       {type}
@@ -496,14 +502,21 @@ export default function EventsPage() {
           <div className="mb-3 text-xs text-white/45 tabular-nums" aria-live="polite">
             {loading ? 'Loading events…' : totalLabel}
           </div>
-          <div className={cn(panelClassName, 'overflow-hidden')}>
+          <div
+            className={cn(
+              panelClassName,
+              'overflow-hidden transition-opacity',
+              isPlaceholderData && 'opacity-60 motion-reduce:transition-none',
+            )}
+            aria-busy={fetchingEvents}
+          >
             <div className="relative overflow-x-auto">
               <table className="w-full min-w-[820px] table-fixed text-left text-sm">
                 <colgroup>
-                  <col className="w-40" />
-                  <col className="w-60" />
-                  <col />
                   <col className="w-36" />
+                  <col className="w-72" />
+                  <col />
+                  <col className="w-32" />
                   <col className="w-8" />
                 </colgroup>
                 <thead className={cn(tableHeaderClassName, 'border-b border-white/[0.06]')}>
@@ -558,11 +571,8 @@ export default function EventsPage() {
                     const bounceType = event.bounce_type;
                     const messageLinkProps = {
                       to: '/s/$sourceId/messages/$sesMessageId',
-                      params: {
-                        sourceId: sourceId.toString(),
-                        sesMessageId: event.ses_message_id,
-                      },
-                      search: detailSearch,
+                      params: { sourceId, sesMessageId: event.ses_message_id },
+                      search: searchParams,
                     } as const;
                     const linkClassName =
                       'block focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-400';
@@ -670,7 +680,20 @@ export default function EventsPage() {
             </div>
             {events.length === 0 && !loading ? (
               <p className="px-4 py-12 text-center text-sm text-white/40">
-                No events match these filters.
+                {pastLastPage ? (
+                  <>
+                    No events on page {page}.{' '}
+                    <button
+                      type="button"
+                      className={cn(focusClassName, 'text-blue-300 hover:text-blue-200')}
+                      onClick={() => void updatePage(1)}
+                    >
+                      Go to the first page
+                    </button>
+                  </>
+                ) : (
+                  'No events match these filters.'
+                )}
               </p>
             ) : null}
           </div>
@@ -687,7 +710,7 @@ export default function EventsPage() {
                   type="button"
                   className={cn(controlClassName, secondaryControlClassName)}
                   disabled={page <= 1}
-                  onClick={() => updatePage(page - 1)}
+                  onClick={() => void updatePage(page - 1)}
                 >
                   Previous
                 </Button>
@@ -696,7 +719,7 @@ export default function EventsPage() {
                   type="button"
                   className={cn(controlClassName, secondaryControlClassName)}
                   disabled={page >= pagination.total_pages}
-                  onClick={() => updatePage(page + 1)}
+                  onClick={() => void updatePage(page + 1)}
                 >
                   Next
                 </Button>

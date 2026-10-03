@@ -1,37 +1,40 @@
-import { Link, ToOptions } from '@tanstack/react-router';
+import { Link, useMatchRoute, type ToOptions } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 
 import { useActiveSourceId } from '../../lib/use-active-source';
+import { cn } from '../../lib/utils';
 
 import { SourceSwitcher } from './SourceSwitcher';
 
 export function Navbar() {
   const sourceId = useActiveSourceId();
-  const sourceIdStr = sourceId?.toString();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const matchRoute = useMatchRoute();
+  // Message pages are opened from the event list, so they keep Events highlighted.
+  const onMessagePage = Boolean(matchRoute({ to: '/s/$sourceId/messages/$sesMessageId' }));
 
   const links = useMemo((): Array<ToOptions & { label: string }> => {
-    if (sourceIdStr) {
+    if (sourceId) {
       return [
         {
           label: 'Dashboard',
           to: '/s/$sourceId/dashboard',
-          params: { sourceId: sourceIdStr },
+          params: { sourceId },
         },
         {
           label: 'Events',
           to: '/s/$sourceId/events',
-          params: { sourceId: sourceIdStr },
+          params: { sourceId },
         },
         {
           label: 'Setup',
           to: '/s/$sourceId/setup',
-          params: { sourceId: sourceIdStr },
+          params: { sourceId },
         },
         {
           label: 'Settings',
           to: '/s/$sourceId/settings',
-          params: { sourceId: sourceIdStr },
+          params: { sourceId },
         },
       ];
     }
@@ -46,7 +49,7 @@ export function Navbar() {
         to: '/sources',
       },
     ];
-  }, [sourceIdStr]);
+  }, [sourceId]);
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0B0C0E]/80 backdrop-blur-md supports-[backdrop-filter]:bg-[#0B0C0E]/60">
@@ -64,12 +67,15 @@ export function Navbar() {
                   key={link.label}
                   to={link.to}
                   params={link.params}
-                  className="rounded-md px-3 py-2 text-white/45 transition-colors hover:bg-white/[0.03] hover:text-white focus-visible:outline-2 focus-visible:outline-blue-400 [&.active]:bg-white/[0.06] [&.active]:text-white"
+                  className={cn(
+                    'rounded-md px-3 py-2 text-white/45 transition-colors hover:bg-white/[0.03] hover:text-white focus-visible:outline-2 focus-visible:outline-blue-400 [&.active]:bg-white/[0.06] [&.active]:text-white',
+                    onMessagePage && link.label === 'Events' && 'bg-white/[0.06] text-white',
+                  )}
                 >
                   {link.label}
                 </Link>
               ))}
-              {!sourceIdStr ? (
+              {!sourceId ? (
                 <span
                   className="cursor-not-allowed text-white/20"
                   title="Select a source to view events"
@@ -129,7 +135,7 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            {!sourceIdStr ? (
+            {!sourceId ? (
               <span className="block cursor-not-allowed rounded-md px-3 py-2 text-white/30">
                 Events
               </span>

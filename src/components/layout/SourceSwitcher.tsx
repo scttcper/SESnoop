@@ -21,11 +21,15 @@ export function SourceSwitcher() {
     if (!value) {
       return;
     }
-    if (value === 'manage' || value === 'create') {
-      navigate({ to: '/sources' });
+    if (value === 'create') {
+      void navigate({ to: '/sources/new' });
       return;
     }
-    switchSource(value);
+    if (value === 'manage') {
+      void navigate({ to: '/sources' });
+      return;
+    }
+    switchSource(Number(value));
   };
 
   return (

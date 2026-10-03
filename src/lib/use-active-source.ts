@@ -1,26 +1,30 @@
 import { useParams } from '@tanstack/react-router';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 const STORAGE_KEY = 'sesnoop_active_source_id';
 
-export function useActiveSourceId() {
-  const { sourceId: paramSourceId } = useParams({ strict: false });
-  const [storedSourceId, setStoredSourceId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(STORAGE_KEY);
-    }
+export const readStoredSourceId = () => {
+  try {
+    const value = Number(localStorage.getItem(STORAGE_KEY));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  } catch {
     return null;
-  });
+  }
+};
 
-  // If there is a param, it wins and updates storage
-  useLayoutEffect(() => {
-    if (paramSourceId) {
-      localStorage.setItem(STORAGE_KEY, paramSourceId);
-      setStoredSourceId(paramSourceId);
+/** The source in the URL, or the last one viewed on pages outside a source. */
+export function useActiveSourceId() {
+  const { sourceId } = useParams({ strict: false });
+
+  useEffect(() => {
+    if (sourceId) {
+      try {
+        localStorage.setItem(STORAGE_KEY, String(sourceId));
+      } catch {
+        // Storage is optional; the URL still identifies the source.
+      }
     }
-  }, [paramSourceId]);
+  }, [sourceId]);
 
-  // If we are on a global page (no param), we use stored ID
-  // If we are on a source page (param), we use param ID (which matches stored)
-  return paramSourceId ? Number(paramSourceId) : storedSourceId ? Number(storedSourceId) : null;
+  return sourceId ?? readStoredSourceId();
 }

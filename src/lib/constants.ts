@@ -29,3 +29,7 @@ export const DATE_PRESETS: ReadonlyArray<{ value: DateRangeValue; label: string 
 
 // Default page number for pagination
 export const DEFAULT_PAGE = 1;
+
+export const DASHBOARD_PERIODS = [7, 30, 90] as const;
+export type DashboardPeriod = (typeof DASHBOARD_PERIODS)[number];
+export const DEFAULT_DASHBOARD_PERIOD: DashboardPeriod = 30;

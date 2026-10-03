@@ -515,8 +515,11 @@ describe('rates attributed to sends and deliveries', () => {
       bounce_rate: 0.5,
       complaint_rate: 0.5,
     });
-    expect(combined.chart.open_rate).toEqual([1, 0, 0, 0]);
-    expect(combined.chart.bounce_rate).toEqual([1, 0, 0, 0]);
+    expect(combined.chart.open_rate).toEqual([1, 0, null, null]);
+    expect(combined.chart.click_rate).toEqual([1, 0, null, null]);
+    expect(combined.chart.bounce_rate).toEqual([1, 0, null, null]);
+    expect(combined.chart.cohort_deliveries).toEqual([1, 1, 0, 0]);
+    expect(combined.chart.opened_deliveries).toEqual([1, 0, 0, 0]);
     const activityDay = await getRateOverview('2025-01-03');
     expect(activityDay.metrics.opens).toBe(3);
     expect(activityDay.metrics.open_rate).toBe(0);

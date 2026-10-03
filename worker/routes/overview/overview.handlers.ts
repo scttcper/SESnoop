@@ -254,24 +254,32 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
   type DailyMetric = 'sent' | 'delivered' | 'bounced' | 'unique_opens' | 'unique_recipients';
   const series = (metric: DailyMetric) => dayKeys.map((day) => dailyMap.get(day)?.[metric] ?? 0);
 
-  const deliveryRates = new Map<number, number>();
-  const bounceRates = new Map<number, number>();
+  const deliveryCohorts = new Map<number, OverviewRateRow>();
+  const sendCohorts = new Map<number, OverviewRateRow>();
   const rateTotals = { sent: 0, delivered: 0, opened: 0, clicked: 0, bounced: 0, complained: 0 };
   for (const row of rateRows) {
     if (row.event_type === EVENT_TYPES.delivery) {
       rateTotals.delivered += row.total;
       rateTotals.opened += row.opened;
       rateTotals.clicked += row.clicked;
-      deliveryRates.set(row.day_bucket, rate(row.opened, row.total));
+      deliveryCohorts.set(row.day_bucket, row);
     } else {
       rateTotals.sent += row.total;
       rateTotals.bounced += row.bounced;
       rateTotals.complained += row.complained;
-      bounceRates.set(row.day_bucket, rate(row.bounced, row.total));
+      sendCohorts.set(row.day_bucket, row);
     }
   }
-  const dailyRate = (values: Map<number, number>) =>
-    dayKeys.map((day) => values.get(Date.parse(day) / MS_PER_UTC_DAY) ?? 0);
+  const cohortDays = dayKeys.map((day) => Date.parse(day) / MS_PER_UTC_DAY);
+  // Days without a cohort have no rate. Null keeps charts from plotting them as 0%.
+  const dailyRate = (
+    cohorts: Map<number, OverviewRateRow>,
+    outcome: 'opened' | 'clicked' | 'bounced',
+  ) =>
+    cohortDays.map((day) => {
+      const row = cohorts.get(day);
+      return row ? rate(row[outcome], row.total) : null;
+    });
 
   const chart = {
     days: dayKeys,
@@ -280,8 +288,12 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     bounced: series('bounced'),
     unique_opens: series('unique_opens'),
     unique_recipients: series('unique_recipients'),
-    open_rate: dailyRate(deliveryRates),
-    bounce_rate: dailyRate(bounceRates),
+    cohort_deliveries: cohortDays.map((day) => deliveryCohorts.get(day)?.total ?? 0),
+    opened_deliveries: cohortDays.map((day) => deliveryCohorts.get(day)?.opened ?? 0),
+    clicked_deliveries: cohortDays.map((day) => deliveryCohorts.get(day)?.clicked ?? 0),
+    open_rate: dailyRate(deliveryCohorts, 'opened'),
+    click_rate: dailyRate(deliveryCohorts, 'clicked'),
+    bounce_rate: dailyRate(sendCohorts, 'bounced'),
   };
 
   const { unique_emails, unique_opens, unique_clicks } = rangeTotals;

@@ -49,8 +49,12 @@ const responseSchema = z.object({
     bounced: z.array(z.number()),
     unique_opens: z.array(z.number()),
     unique_recipients: z.array(z.number()),
-    open_rate: z.array(z.number()),
-    bounce_rate: z.array(z.number()),
+    cohort_deliveries: z.array(z.number()),
+    opened_deliveries: z.array(z.number()),
+    clicked_deliveries: z.array(z.number()),
+    open_rate: z.array(z.number().nullable()),
+    click_rate: z.array(z.number().nullable()),
+    bounce_rate: z.array(z.number().nullable()),
   }),
   category_breakdown: z.array(
     z.object({

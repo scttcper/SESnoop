@@ -8,7 +8,7 @@
     "paths": {
       "@/*": ["./worker/*"]
     },
-    "types": ["@cloudflare/workers-types", "vite/client"],
+    "types": ["vite/client"],
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,

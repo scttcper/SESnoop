@@ -15,7 +15,8 @@ async function signedMessage(version: '1' | '2'): Promise<SnsMessage> {
     Subject: 'Test\nsubject',
     Timestamp: '2025-01-01T00:00:00Z',
     TopicArn: 'arn:aws:sns:us-east-1:123456789012:test',
-    SigningCertURL: 'https://sns.us-east-1.amazonaws.com/SimpleNotificationService-test.pem',
+    // Signing keys are cached per cert URL, so give each message its own.
+    SigningCertURL: `https://sns.us-east-1.amazonaws.com/SimpleNotificationService-${crypto.randomUUID()}.pem`,
     SignatureVersion: version,
   };
   const der = Uint8Array.from(atob(privateKeyPem.replaceAll(/-----[^\n]+-----|\s/g, '')), (c) =>
@@ -78,6 +79,27 @@ describe('SNS signature verification', () => {
   it('rejects unavailable certificates', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('redirect disallowed')));
     expect(await verifySnsSignature(await signedMessage('2'))).toBe(false);
+  });
+
+  it('reuses the signing key for the same certificate', async () => {
+    const fetch = vi.fn().mockImplementation(async () => new Response(certificatePem));
+    vi.stubGlobal('fetch', fetch);
+    const message = await signedMessage('2');
+    expect(await verifySnsSignature(message)).toBe(true);
+    expect(await verifySnsSignature(message)).toBe(true);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('retries certificates that previously failed to load', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('', { status: 500 }))
+      .mockImplementation(async () => new Response(certificatePem));
+    vi.stubGlobal('fetch', fetch);
+    const message = await signedMessage('2');
+    expect(await verifySnsSignature(message)).toBe(false);
+    expect(await verifySnsSignature(message)).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });
 

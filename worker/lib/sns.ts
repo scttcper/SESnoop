@@ -65,13 +65,8 @@ export async function verifySnsSignature(snsMessage: SnsMessage): Promise<boolea
     return false;
   }
 
-  const certPem = await fetchCert(certUrl);
-  if (!certPem) {
-    return false;
-  }
-
   const hash = snsMessage.SignatureVersion === '2' ? 'SHA-256' : 'SHA-1';
-  const publicKey = await getPublicKeyFromCert(certPem, hash);
+  const publicKey = await getSigningKey(certUrl, hash);
   if (!publicKey) {
     return false;
   }
@@ -127,6 +122,31 @@ function isValidCertUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+// SNS rotates signing certs rarely, so keep imported keys for the isolate's
+// lifetime instead of fetching the cert on every notification.
+const signingKeys = new Map<string, Promise<CryptoKey | null>>();
+
+function getSigningKey(certUrl: string, hash: string): Promise<CryptoKey | null> {
+  const cacheKey = `${hash} ${certUrl}`;
+  let key = signingKeys.get(cacheKey);
+  if (!key) {
+    key = loadSigningKey(certUrl, hash);
+    signingKeys.set(cacheKey, key);
+    // Only remember successes so a transient fetch failure is retried.
+    void key.then((result) => {
+      if (!result) {
+        signingKeys.delete(cacheKey);
+      }
+    });
+  }
+  return key;
+}
+
+async function loadSigningKey(certUrl: string, hash: string): Promise<CryptoKey | null> {
+  const certPem = await fetchCert(certUrl);
+  return certPem ? getPublicKeyFromCert(certPem, hash) : null;
 }
 
 async function fetchCert(url: string): Promise<string | null> {

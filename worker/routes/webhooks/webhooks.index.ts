@@ -90,7 +90,7 @@ router.post('/api/webhooks/:source_token', async (c) => {
       }
 
       try {
-        await ingestNotification(db, source, snsMessage, snsPayload, eventPayload);
+        await ingestNotification(db, source, snsMessage, eventPayload);
       } catch (error) {
         console.error('Webhook ingestion failed', error);
         return c.json(

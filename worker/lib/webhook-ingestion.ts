@@ -42,14 +42,10 @@ const uniqueList = (values: string[]): string[] => {
   return normalized;
 };
 
-async function forEachChunk<T>(
-  values: T[],
-  size: number,
-  callback: (chunk: T[]) => Promise<unknown>,
-): Promise<void> {
-  for (let index = 0; index < values.length; index += size) {
-    await callback(values.slice(index, index + size));
-  }
+function chunk<T>(values: T[], size: number): T[][] {
+  return Array.from({ length: Math.ceil(values.length / size) }, (_, index) =>
+    values.slice(index * size, (index + 1) * size),
+  );
 }
 
 export function parseNotificationPayload(snsMessage: SnsMessage): EventPayload | null {
@@ -77,11 +73,14 @@ export function parseNotificationPayload(snsMessage: SnsMessage): EventPayload |
   return eventPayload;
 }
 
-async function persistNotification(
+/**
+ * Persist a notification in a single D1 batch: one round trip, applied atomically.
+ * Every insert is idempotent so SNS retries fill in anything missing.
+ */
+export async function ingestNotification(
   db: Db,
   source: Source,
   snsMessage: SnsMessage,
-  _snsPayload: unknown,
   eventPayload: EventPayload,
 ): Promise<void> {
   const recipients = normalizeRecipients(eventPayload.recipients);
@@ -95,6 +94,7 @@ async function persistNotification(
     throw new Error('Missing valid notification timestamp');
   }
   const destinations = uniqueList(extractDestinations(eventPayload.mail));
+  const tags = normalizeMailTags(eventPayload.mail);
 
   const messageId = sql<number>`(
     select ${messages.id}
@@ -104,72 +104,64 @@ async function persistNotification(
     limit 1
   )`;
 
-  const insertMessage = db
-    .insert(messages)
-    .values({
-      source_id: source.id,
-      ses_message_id: eventPayload.messageId,
-      source_email: eventPayload.sourceEmail,
-      subject: eventPayload.subject,
-      sent_at: eventPayload.sentAt,
-    })
-    .onConflictDoNothing();
-
-  const insertMessagePayload = db
-    .insert(messagePayloads)
-    .values({
-      message_id: messageId,
-      mail_metadata: eventPayload.mailMetadata,
-    })
-    .onConflictDoNothing();
-
-  const insertWebhook = db
-    .insert(webhooks)
-    .values({
-      source_id: source.id,
-      message_id: messageId,
-      sns_message_id: snsMessage.MessageId,
-      sns_type: snsMessage.Type,
-      sns_timestamp: snsTimestamp,
-    })
-    .onConflictDoNothing();
-
-  await db.batch([insertMessage, insertMessagePayload, insertWebhook]);
-
-  await forEachChunk(destinations, MAX_MULTI_ROW_INSERT_SIZE, async (chunk) => {
-    await db
-      .insert(messageRecipients)
-      .values(
-        chunk.map((recipient) => ({
-          source_id: source.id,
-          message_id: messageId,
-          email: recipient,
-        })),
-      )
-      .onConflictDoNothing();
-  });
-
-  const normalizedTags = normalizeMailTags(eventPayload.mail);
-  await forEachChunk(normalizedTags, MAX_MULTI_ROW_INSERT_SIZE, async (chunk) => {
-    await db
-      .insert(messageTags)
-      .values(
-        chunk.map((tag) => ({
-          source_id: source.id,
-          message_id: messageId,
-          key: tag.key,
-          value: tag.value,
-        })),
-      )
-      .onConflictDoNothing();
-  });
-
-  if (recipients.length > 0) {
-    await forEachChunk(recipients, MAX_MULTI_ROW_INSERT_SIZE, async (chunk) => {
-      await db
+  await db.batch([
+    db
+      .insert(messages)
+      .values({
+        source_id: source.id,
+        ses_message_id: eventPayload.messageId,
+        source_email: eventPayload.sourceEmail,
+        subject: eventPayload.subject,
+        sent_at: eventPayload.sentAt,
+      })
+      .onConflictDoNothing(),
+    db
+      .insert(messagePayloads)
+      .values({
+        message_id: messageId,
+        mail_metadata: eventPayload.mailMetadata,
+      })
+      .onConflictDoNothing(),
+    db
+      .insert(webhooks)
+      .values({
+        source_id: source.id,
+        message_id: messageId,
+        sns_message_id: snsMessage.MessageId,
+        sns_type: snsMessage.Type,
+        sns_timestamp: snsTimestamp,
+      })
+      .onConflictDoNothing(),
+    ...chunk(destinations, MAX_MULTI_ROW_INSERT_SIZE).map((emails) =>
+      db
+        .insert(messageRecipients)
+        .values(
+          emails.map((email) => ({
+            source_id: source.id,
+            message_id: messageId,
+            email,
+          })),
+        )
+        .onConflictDoNothing(),
+    ),
+    ...chunk(tags, MAX_MULTI_ROW_INSERT_SIZE).map((tagChunk) =>
+      db
+        .insert(messageTags)
+        .values(
+          tagChunk.map((tag) => ({
+            source_id: source.id,
+            message_id: messageId,
+            key: tag.key,
+            value: tag.value,
+          })),
+        )
+        .onConflictDoNothing(),
+    ),
+    ...chunk(recipients, MAX_MULTI_ROW_INSERT_SIZE).map((recipientChunk) =>
+      db
         .insert(events)
         .values(
-          chunk.map((recipient) => ({
+          recipientChunk.map((recipient) => ({
             message_id: messageId,
             source_id: source.id,
             event_type: eventType,
@@ -179,17 +171,7 @@ async function persistNotification(
             bounce_type: eventPayload.bounceType,
           })),
         )
-        .onConflictDoNothing();
-    });
-  }
-}
-
-export async function ingestNotification(
-  db: Db,
-  source: Source,
-  snsMessage: SnsMessage,
-  snsPayload: unknown,
-  eventPayload: EventPayload,
-): Promise<void> {
-  await persistNotification(db, source, snsMessage, snsPayload, eventPayload);
+        .onConflictDoNothing(),
+    ),
+  ]);
 }
